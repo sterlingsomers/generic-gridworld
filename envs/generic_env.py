@@ -12,7 +12,9 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
-# from common.graph import *
+
+import threading
+from time import sleep
 
 
 import time
@@ -125,14 +127,30 @@ class GenericEnv(gym.Env):
                            3:lambda x: (x[0],x[1]-1),
                            4:lambda x: (x[0],x[1]+1)}
 
+        self.run()
 
+
+    def run(self):
+        tr = threading.Thread(target = self.update)
+        tr.start()
+        return True
+
+    def update(self):
+        while True:
+            for goal in self.goals:
+                self.value_to_objects[goal]['color'] = random.choice(list(self.colors.keys()))
+            sleep(1)
 
     def moveToGoal(self,current_position,intended_position):
         '''What to do in the event you move to a goal'''
+
         current_position_value = self.current_grid_map[current_position[0], current_position[1]]
         intended_position_value = self.current_grid_map[intended_position[0], intended_position[1]]
-        self.current_grid_map[current_position] = 0.0
-        self.current_grid_map[intended_position] = current_position_value
+        print('asdfadsfad',int(intended_position_value))
+        if self.value_to_objects[int(intended_position_value)]['color'] == self.value_to_objects[int(current_position_value)]['color']:
+            self.current_grid_map[current_position] = 0.0
+            self.current_grid_map[intended_position] = current_position_value
+
         return 0
 
     def moveToObstacle(self,current_position,intended_position):

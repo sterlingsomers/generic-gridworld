@@ -42,6 +42,14 @@ running = True
 
 while running:
     key_pressed = 0
+    current_image = env._gridmap_to_image()
+    current_image = PIL.Image.fromarray(current_image)
+    size = tuple((np.array(current_image.size) * size_factor).astype(int))
+    current_image = np.array(current_image.resize(size, PIL.Image.NEAREST))
+    surf = pygame.surfarray.make_surface(np.flip(np.rot90(current_image),0))
+    display.blit(surf, (0,0))
+    pygame.display.update()
+
     for event in pygame.event.get():
 
         if event.type == pygame.QUIT:
