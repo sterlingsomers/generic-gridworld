@@ -102,7 +102,7 @@ class GenericEnv(gym.Env):
                 obstacles[key] = obstacle_defaults[key]
             for color, position in zip(obstacles['color'], obstacles['position']):
                 value = self.object_values[-1] + 1
-                self.goals.append(value)
+                self.obstacles.append(value)
                 self.value_to_objects[value] = {'class': 'obstacle', 'color': color, 'moveTo': self.moveToObstacle,
                                                 'position': position}
                 self.object_values.append(value)
@@ -174,7 +174,7 @@ class GenericEnv(gym.Env):
         for goal in self.goals:
             free_spaces = np.where(self.current_grid_map == 0)
             free_spaces = list(zip(free_spaces[0], free_spaces[1]))
-            if self.value_to_objects[agent]['position'] == 'random':
+            if self.value_to_objects[goal]['position'] == 'random':
                 free_space = random.choice(free_spaces)
                 # self.agent_position = free_space
                 self.current_grid_map[free_space[0], free_space[1]] = goal
@@ -182,7 +182,7 @@ class GenericEnv(gym.Env):
         for obstacle in self.obstacles:
             free_spaces = np.where(self.current_grid_map == 0)
             free_spaces = list(zip(free_spaces[0], free_spaces[1]))
-            if self.value_to_objects[agent]['position'] == 'random':
+            if self.value_to_objects[obstacle]['position'] == 'random':
                 free_space = random.choice(free_spaces)
                 # self.agent_position = free_space
                 self.current_grid_map[free_space[0], free_space[1]] = obstacle
@@ -211,8 +211,8 @@ class GenericEnv(gym.Env):
             image[goal[0],goal[1],:] = self.colors[self.value_to_objects[goal_val]['color']]
 
         for obstacle_val in self.obstacles:
-            obstacle = np.where(self.current_grid_map == goal_val)
-            image[goal[0],goal[1],:] = self.colors[self.value_to_objects[obstacle_val]['color']]
+            obstacle = np.where(self.current_grid_map == obstacle_val)
+            image[obstacle[0],obstacle[1],:] = self.colors[self.value_to_objects[obstacle_val]['color']]
 
 
 
