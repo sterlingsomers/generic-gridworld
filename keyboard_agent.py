@@ -13,7 +13,7 @@ import numpy as np
 
 import PIL
 
-env = envs.generic_env.GenericEnv()
+env = envs.generic_env.GenericEnv(goals={'color':['pink']},obstacles=0)
 
 
 
@@ -22,9 +22,11 @@ human_agent_action = 0
 human_wants_restart = False
 human_sets_pause = False
 
+size_factor = 10
+
 initial_image_data = env.reset()
 initial_img = PIL.Image.fromarray(initial_image_data)
-size = tuple((np.array(initial_img.size) * 10).astype(int))
+size = tuple((np.array(initial_img.size) * size_factor).astype(int))
 initial_img = np.array(initial_img.resize(size, PIL.Image.NEAREST))
 
 initial_img = np.flip(np.rot90(initial_img),0)
@@ -53,7 +55,7 @@ while running:
                 key_pressed = True
                 obs = env.reset()
                 obs = PIL.Image.fromarray(obs)
-                size = tuple((np.array(obs.size) * 10).astype(int))
+                size = tuple((np.array(obs.size) * size_factor).astype(int))
                 obs = np.array(obs.resize(size, PIL.Image.NEAREST))
                 surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
                 display.blit(surf, (0, 0))
@@ -63,7 +65,7 @@ while running:
     if key_pressed and not game_done:
         obs, r, done, info = env.step(key_pressed)
         obs = PIL.Image.fromarray(obs)
-        size = tuple((np.array(obs.size) * 10).astype(int))
+        size = tuple((np.array(obs.size) * size_factor).astype(int))
         obs = np.array(obs.resize(size, PIL.Image.NEAREST))
         game_done = done
         print("reward", r)
