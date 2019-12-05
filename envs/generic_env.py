@@ -137,7 +137,16 @@ class GenericEnv(gym.Env):
 
     def moveToObstacle(self,current_position,intended_position):
         '''What to do in the event you move to an obstacle'''
-        return 0
+        current_position_value = self.current_grid_map[current_position[0], current_position[1]]
+        intended_position_value = self.current_grid_map[intended_position[0], intended_position[1]]
+        self.current_grid_map[current_position] = 0.0
+        self.current_grid_map[intended_position] = current_position_value
+        free_spaces = np.where(self.current_grid_map == 0)
+        free_spaces = list(zip(free_spaces[0], free_spaces[1]))
+
+        free_space = random.choice(free_spaces)
+        self.current_grid_map[free_space[0], free_space[1]] = intended_position_value
+
 
 
     def reset(self):

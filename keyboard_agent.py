@@ -13,7 +13,8 @@ import numpy as np
 
 import PIL
 
-env = envs.generic_env.GenericEnv(goals={'color':['pink']},obstacles=0)
+env = envs.generic_env.GenericEnv(goals={'color':['green']},
+                                  obstacles={'class':'fire', 'color':['red','red','red'],'position':['random','random','randomd']})
 
 
 
