@@ -7,25 +7,16 @@ from pyglet.window import key
 import envs.generic_env
 from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
 
-#
-# Test yourself as a learning agent! Pass environment name as a command-line argument.
-#
+
 import pygame
 import numpy as np
-# from scipy.misc import imresize
+
 import PIL
-# import skimage
 
-#a = Graph(depth=10)
-env = envs.generic_env.GenericEnv(obstacles={'number':1},goals={'number':1})
-#env = gym.make('Gridworld1-v1')
+env = envs.generic_env.GenericEnv()
 
-# if not hasattr(env.action_space, 'n'):
-#     raise Exception('Keyboard agent only supports discrete action spaces')
-# ACTIONS = env.action_space.n
-# ROLLOUT_TIME = 1000
-# SKIP_CONTROL = 0  # Use previous control decision SKIP_CONTROL times, that's how you
-# # can test what skip is still usable.
+
+
 
 human_agent_action = 0
 human_wants_restart = False
@@ -35,8 +26,7 @@ initial_image_data = env.reset()
 initial_img = PIL.Image.fromarray(initial_image_data)
 size = tuple((np.array(initial_img.size) * 10).astype(int))
 initial_img = np.array(initial_img.resize(size, PIL.Image.NEAREST))
-# initial_img = (np.array(initial_image_data.size).astype(int))#imresize(env.reset(), 1000, interp='nearest')
-# initial_img = skimage.transform.resize(initial_img, (initial_img.shape[0] * 10, initial_img.shape[1] * 10), order=3)
+
 initial_img = np.flip(np.rot90(initial_img),0)
 #one noop
 pygame.init()
@@ -62,7 +52,7 @@ while running:
             if event.key == pygame.K_r:
                 key_pressed = True
                 obs = env.reset()
-                obs = PIL.Image.fromarray(obs)#imresize(obs, 1000, interp='nearest')
+                obs = PIL.Image.fromarray(obs)
                 size = tuple((np.array(obs.size) * 10).astype(int))
                 obs = np.array(obs.resize(size, PIL.Image.NEAREST))
                 surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))

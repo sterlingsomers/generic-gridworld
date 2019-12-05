@@ -62,6 +62,9 @@ class GenericEnv(gym.Env):
         'yellow': (252, 252, 3),
         'pink': (227, 77, 180),
         'purple': (175, 4, 181),
+        'orange': (255,162,0),
+        'white': (255,255,255),
+        'aqua': (0,255,255),
         'black': (0, 0, 0)
     }
 
@@ -124,11 +127,6 @@ class GenericEnv(gym.Env):
 
 
 
-        #all door = 3
-        #all keys = 4
-        #no-go space = > 0 - (2,3)
-        #will make map {tuple(map(int,val)):color} where each tuple is a coordinate in the
-
     def moveToGoal(self,current_position,intended_position):
         '''What to do in the event you move to a goal'''
         current_position_value = self.current_grid_map[current_position[0], current_position[1]]
@@ -143,8 +141,7 @@ class GenericEnv(gym.Env):
 
 
     def reset(self):
-        # current_node = self.graph.trunk_nodes[0]  # goal node
-        # finished_nodes = []  # ordered by placement & distance from goal
+
 
         # insert the agents
         for agent in self.agents:
@@ -201,7 +198,7 @@ class GenericEnv(gym.Env):
 
 
 
-        return image#imresize(image, 10 * 100, interp='nearest')
+        return image
 
 
 
