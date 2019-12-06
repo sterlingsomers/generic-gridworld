@@ -151,7 +151,7 @@ class GenericEnv(gym.Env):
                     self.value_to_objects[value].update(maps[map]['properties'][value])
 
 
-    def moveToAgent(self):
+    def moveToAgent(self,current_position,intended_position):
         return 0
 
     def moveToPill(self,current_position,intended_position):
