@@ -78,7 +78,7 @@ class GenericEnv(gym.Env):
         for color,position in zip(agents['color'],agents['position']):
             value = self.object_values[-1] + 1
             self.agents.append(value)
-            self.value_to_objects[value] = {'class':'agent', 'color':color,'moveTo':0,'position':position}
+            self.value_to_objects[value] = {'class':'agent', 'color':color,'moveTo':self.moveToAgent,'position':position}
             self.object_values.append(value)
 
 
@@ -88,9 +88,12 @@ class GenericEnv(gym.Env):
             for key in [x for x in goal_defaults.keys() if not x in goals.keys()]:
                 goals[key] = goal_defaults[key]
             for color,position in zip(goals['color'],goals['position']):
+                properties = goals.copy()
+                properties['color'] = color
+                properties['position'] = position
                 value = self.object_values[-1] + 1
                 self.goals.append(value)
-                self.value_to_objects[value] = {'class':'agent', 'color':color, 'moveTo':self.moveToGoal, 'position':position}
+                self.value_to_objects[value] = properties#{'class':'goal', 'color':color, 'moveTo':self.moveToGoal, 'position':position}
                 self.object_values.append(value)
 
         self.obstacles = []
@@ -99,10 +102,14 @@ class GenericEnv(gym.Env):
             for key in [x for x in obstacle_defaults.keys() if not x in obstacles.keys()]:
                 obstacles[key] = obstacle_defaults[key]
             for color, position in zip(obstacles['color'], obstacles['position']):
+                properties = obstacles.copy()
+                properties['color'] = color
+                properties['position'] = position
                 value = self.object_values[-1] + 1
                 self.obstacles.append(value)
-                self.value_to_objects[value] = {'class': 'obstacle', 'color': color, 'moveTo': self.moveToObstacle,
-                                                'position': position}
+                self.value_to_objects[value] = properties
+                    # {'class': 'obstacle', 'color': color, 'moveTo': self.moveToObstacle,
+                    #                             'position': position}
                 self.object_values.append(value)
 
 
