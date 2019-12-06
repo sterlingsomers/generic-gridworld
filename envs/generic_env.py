@@ -98,7 +98,7 @@ class GenericEnv(gym.Env):
 
         self.obstacles = []
         if obstacles:
-            obstacle_defaults = {'number': 1, 'position': ['random'], 'color': ['green']}
+            obstacle_defaults = {'number': 1, 'position': ['random'], 'color': ['green'], 'moveTo':self.moveToObstacle}
             for key in [x for x in obstacle_defaults.keys() if not x in obstacles.keys()]:
                 obstacles[key] = obstacle_defaults[key]
             for color, position in zip(obstacles['color'], obstacles['position']):
