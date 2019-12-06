@@ -53,7 +53,7 @@ class wall(gridObject):
 
 
 class GenericEnv(gym.Env):
-    value_to_objects = {1: {'class': 'wall', 'color': (0, 0, 0), 'moveTo': 0}}
+    value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0}}
     object_values = [1]
     colors = {
         'red': (252, 3, 3),
@@ -65,12 +65,16 @@ class GenericEnv(gym.Env):
         'orange': (255,162,0),
         'white': (255,255,255),
         'aqua': (0,255,255),
-        'black': (0, 0, 0)
+        'black': (0, 0, 0),
+        'gray' : (96,96,96)
     }
 
-    def __init__(self,dims=(12,12),agents={'number':1,'position':['random'],'color':['blue']},
+    def __init__(self,dims=(12,12),map='',agents={'number':1,'position':['random'],'color':['blue']},
                  goals={'number':1,'position':['random'],'color':['red']},
                  obstacles={'number':1, 'position':['random'], 'color':['green']}):
+
+        #before anything happens, setup the map
+        self.setupMap(map,dims)
 
 
 
@@ -113,28 +117,41 @@ class GenericEnv(gym.Env):
                 self.object_values.append(value)
 
 
-        self.dims = dims
-        self.position_node_map = {}
-        self.position_key_color_map = {}
-        self.current_grid_map = np.zeros(dims)
-        #make border the walls (walls = 1)
-        self.current_grid_map[0,:] = [1] * dims[0]
-        self.current_grid_map[:,0] = [1] * dims[1]
-        self.current_grid_map[:,-1] = [1] * dims[1]
-        self.current_grid_map[-1,:] = [1] * dims[0]
 
 
 
         self.base_grid_map = np.copy(self.current_grid_map)
 
-        self.action_map = {1:lambda x: (x[0]+1,x[1]),
-                           2:lambda x: (x[0]-1,x[1]),
-                           3:lambda x: (x[0],x[1]-1),
-                           4:lambda x: (x[0],x[1]+1)}
+        self.action_map = {1:lambda x: ((x[0]+1)%self.dims[0],(x[1])%self.dims[1]),
+                           2:lambda x: ((x[0]-1)%self.dims[0],(x[1])%self.dims[1]),
+                           3:lambda x: (x[0]%self.dims[0],(x[1]-1)%self.dims[1]),
+                           4:lambda x: (x[0]%self.dims[0],(x[1]+1)%self.dims[1])}
 
 
+    def setupMap(self,map,dims):
+        if map == '':
+            self.dims = dims
+            self.current_grid_map = np.zeros(dims)
+            #make border the walls (walls = 1)
+            self.current_grid_map[0,:] = [1] * dims[0]
+            self.current_grid_map[:,0] = [1] * dims[1]
+            self.current_grid_map[:,-1] = [1] * dims[1]
+            self.current_grid_map[-1,:] = [1] * dims[0]
+        else:
+            self.dims = maps[map]['map'].shape
+            self.current_grid_map = maps[map]['map']
+            self.object_values = np.unique(self.current_grid_map).tolist()
+            if 'colors' in maps[map]:
+                for value in maps[map]['colors']:
+                    if value  in self.value_to_objects:
+                        continue
+                    self.value_to_objects[value] = {'color':maps[map]['colors'][value]}
+            if 'properties' in maps[map]:
+                for value in maps[map]['properties']:
+                    self.value_to_objects[value].update(maps[map]['properties'][value])
 
-    def moveToAgent(self):
+
+    def moveToAgent(self,current_position,intended_position):
         return 0
 
 
@@ -199,10 +216,12 @@ class GenericEnv(gym.Env):
         walls = np.where(self.current_grid_map == 1.0)
         for x,y in list(zip(walls[0],walls[1])):
             #print((x,y))
-            image[x,y,:] = self.value_to_objects[1]['color']
+            image[x,y,:] = self.colors[self.value_to_objects[1]['color']]
 
 
-
+        for obj_val in self.object_values:
+            obj = np.where(self.current_grid_map == obj_val)
+            image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
 
         for agent_val in self.agents:
             agent = np.where(self.current_grid_map == agent_val)
@@ -223,11 +242,11 @@ class GenericEnv(gym.Env):
 
 
 
-    def step(self, action):
+    def step(self, action, value):
         action = int(action)
         reward, done, info = 0,0,0
         print("action", action)
-        current_position = np.where(self.current_grid_map == 2)
+        current_position = np.where(self.current_grid_map == value)
         position_function = self.action_map[action]
         intended_position = position_function(current_position)
         intended_position_value = self.current_grid_map[intended_position[0],intended_position[1]]
@@ -239,11 +258,16 @@ class GenericEnv(gym.Env):
         #movement to empty space
         if intended_position_value == 0.0:
             self.current_grid_map[current_position[0],current_position[1]] = 0.0
-            self.current_grid_map[intended_position[0],intended_position[1]] = 2.0
+            self.current_grid_map[intended_position[0],intended_position[1]] = value
         elif intended_position_value == 1.0:
             pass #do nothing if it's a wall
         else:
-            moveTo = self.value_to_objects[int(intended_position_value)]['moveTo'](current_position,intended_position)
+            if self.value_to_objects[int(intended_position_value)]['moveTo']:
+                if type(self.value_to_objects[int(intended_position_value)]['moveTo']) == str:
+                    moveFunc = getattr(self,self.value_to_objects[int(intended_position_value)]['moveTo'])
+                    moveFunc(current_position,intended_position)
+                else:
+                    moveTo = self.value_to_objects[int(intended_position_value)]['moveTo'](current_position,intended_position)
 
 
 

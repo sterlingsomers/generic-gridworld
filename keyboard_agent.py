@@ -17,7 +17,7 @@ env = envs.generic_env.GenericEnv(goals={'color':['green']},
                                   obstacles={'class':'fire', 'color':['red','red','red'],'position':['random','random','randomd']})
 
 
-
+agent_value = 2.0
 
 human_agent_action = 0
 human_wants_restart = False
@@ -64,7 +64,7 @@ while running:
                 break
 
     if key_pressed and not game_done:
-        obs, r, done, info = env.step(key_pressed)
+        obs, r, done, info = env.step(key_pressed,agent_value)
         obs = PIL.Image.fromarray(obs)
         size = tuple((np.array(obs.size) * size_factor).astype(int))
         obs = np.array(obs.resize(size, PIL.Image.NEAREST))
