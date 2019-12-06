@@ -84,7 +84,7 @@ class GenericEnv(gym.Env):
 
         self.goals = []
         if goals:
-            goal_defaults = {'number':1,'position':['random'],'color':['red']}
+            goal_defaults = {'number':1,'position':['random'],'color':['red'], 'moveTo':self.moveToGoal}
             for key in [x for x in goal_defaults.keys() if not x in goals.keys()]:
                 goals[key] = goal_defaults[key]
             for color,position in zip(goals['color'],goals['position']):
@@ -132,6 +132,10 @@ class GenericEnv(gym.Env):
                            3:lambda x: (x[0],x[1]-1),
                            4:lambda x: (x[0],x[1]+1)}
 
+
+
+    def moveToAgent(self):
+        return 0
 
 
     def moveToGoal(self,current_position,intended_position):
