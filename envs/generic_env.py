@@ -86,7 +86,7 @@ class GenericEnv(gym.Env):
 
         self.goals = []
         if goals:
-            goal_defaults = {'number':1,'position':['random'],'color':['red']}
+            goal_defaults = {'number':1,'position':['random'],'color':['red'], 'moveTo':self.moveToGoal}
             for key in [x for x in goal_defaults.keys() if not x in goals.keys()]:
                 goals[key] = goal_defaults[key]
             for color,position in zip(goals['color'],goals['position']):
@@ -100,7 +100,7 @@ class GenericEnv(gym.Env):
 
         self.obstacles = []
         if obstacles:
-            obstacle_defaults = {'number': 1, 'position': ['random'], 'color': ['green']}
+            obstacle_defaults = {'number': 1, 'position': ['random'], 'color': ['green'], 'moveTo':self.moveToObstacle}
             for key in [x for x in obstacle_defaults.keys() if not x in obstacles.keys()]:
                 obstacles[key] = obstacle_defaults[key]
             for color, position in zip(obstacles['color'], obstacles['position']):
