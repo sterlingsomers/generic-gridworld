@@ -79,7 +79,7 @@ class GenericEnv(gym.Env):
         self.setupMap(map,dims)
 
 
-
+        #note to self - combine these using getattr
         self.agents = []
         for color,position in zip(agents['color'],agents['position']):
             value = self.object_values[-1] + 1
