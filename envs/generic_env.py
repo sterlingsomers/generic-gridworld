@@ -122,10 +122,10 @@ class GenericEnv(gym.Env):
 
         self.base_grid_map = np.copy(self.current_grid_map)
 
-        self.action_map = {1:lambda x: (x[0]+1,x[1]),
-                           2:lambda x: (x[0]-1,x[1]),
-                           3:lambda x: (x[0],x[1]-1),
-                           4:lambda x: (x[0],x[1]+1)}
+        self.action_map = {1:lambda x: ((x[0]+1)%self.dims[0],(x[1])%self.dims[1]),
+                           2:lambda x: ((x[0]-1)%self.dims[0],(x[1])%self.dims[1]),
+                           3:lambda x: (x[0]%self.dims[0],(x[1]-1)%self.dims[1]),
+                           4:lambda x: (x[0]%self.dims[0],(x[1]+1)%self.dims[1])}
 
 
     def setupMap(self,map,dims):

@@ -16,7 +16,7 @@ import PIL
 env = envs.generic_env.GenericEnv(map='pacman')
 
 
-agent_value = 2.0
+agent_value = 4.0
 
 human_agent_action = 0
 human_wants_restart = False
