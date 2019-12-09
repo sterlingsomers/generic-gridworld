@@ -109,6 +109,8 @@ class GenericEnv(gym.Env):
     def update_water(self):
         fire_spaces = np.where(self.current_grid_map == 3.0)
         fire_spaces = list(zip(fire_spaces[0], fire_spaces[1]))
+        if len(fire_spaces) >= 12:
+            return 0
         free_spaces = np.where(self.current_grid_map == 0.0)
         free_spaces = list(zip(free_spaces[0], free_spaces[1]))
         random.shuffle(fire_spaces)
@@ -172,10 +174,10 @@ class GenericEnv(gym.Env):
 
         for entity in self.entities:
             if entity.value == current_position_value:
-                if entity.water > 0:
-                    entity.remove_water()
-                    self.current_grid_map[current_position] = 0.0
-                    self.current_grid_map[intended_position] = current_position_value
+
+                if entity.remove_water():
+                        self.current_grid_map[current_position] = 0.0
+                        self.current_grid_map[intended_position] = current_position_value
 
 
     def moveToWater(self,current_position,intended_position):
@@ -186,9 +188,10 @@ class GenericEnv(gym.Env):
 
         for entity in self.entities:
             if entity.value == current_position_value:
-                entity.add_water()
-                self.current_grid_map[current_position] = 0.0
-                self.current_grid_map[intended_position] = current_position_value
+
+                if entity.add_water():
+                    self.current_grid_map[current_position] = 0.0
+                    self.current_grid_map[intended_position] = current_position_value
 
 
 
@@ -202,11 +205,11 @@ class GenericEnv(gym.Env):
         time_since_update = {'fire':100, 'water':100}
         while True:
             water_now = time.time()
-            if water_now - time_since_update['water'] >= 2.00:
+            if water_now - time_since_update['water'] >= 0.5:
                 self.update_water()
                 time_since_update['water'] = time.time()
             fire_now = time.time()
-            if fire_now - time_since_update['fire'] >= 3.00:
+            if fire_now - time_since_update['fire'] >= 1.00:
                 self.update_fire()
                 time_since_update['fire'] = time.time()
 
@@ -326,16 +329,21 @@ class Firefighter(Entity):
         print("add water")
 
 
-        if self.water <= 10:
+        if self.water < 10:
             self.outer.extra_row[0,self.water] = 10.0
             self.water += 1
+            return 1
+        return 0
 
 
     def remove_water(self):
         # self.outer.current_grid_map[20,0] = 10.0
-        if self.water >= 0:
-            self.outer.extra_row[0,self.water] = 0.0
+        if self.water > 0:
+            self.outer.extra_row[0,self.water -1] = 0.0
             self.water -= 1
+            return 1
+
+        return 0
 
 
 
