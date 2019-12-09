@@ -174,6 +174,10 @@ class GenericEnv(gym.Env):
         '''What to do in the event you move to an obstacle'''
         return 0
 
+    def moveToObstacle(self, current_position, intended_position):
+        '''What to do in the event you move to an empty'''
+        return 0
+
 
     def reset(self):
 
