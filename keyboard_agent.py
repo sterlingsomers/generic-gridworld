@@ -14,7 +14,8 @@ import numpy as np
 import PIL
 
 env = envs.generic_env.GenericEnv(dims=(20,20), features=[{'class':'feature','type':'fire','start_number':3,'color':'red', 'moveTo':'moveToFire'},
-                                                          {'class':'feature','type':'water','start_number':5,'color':'blue', 'moveTo':'moveToWater'}])
+                                                          {'class':'feature','type':'water','start_number':5,'color':'blue', 'moveTo':'moveToWater'}],
+                                  agents=[{'class':'agent','color':'purple','position':'random-free'}])
 
 
 agent_value = env.entities[0].value

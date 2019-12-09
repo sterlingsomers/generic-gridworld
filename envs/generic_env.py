@@ -63,11 +63,6 @@ class GenericEnv(gym.Env):
 
 
 
-
-
-
-
-
         self.base_grid_map = np.copy(self.current_grid_map)
 
         self.action_map = {1:lambda x: ((x[0]+1)%self.dims[0],(x[1])%self.dims[1]),
@@ -78,13 +73,16 @@ class GenericEnv(gym.Env):
         # self.run()
 
     class entity:
-        def __init__(self, outer, entity_type='', color='', position='random-free', moveTo='moveToDefault'):
+        def __init__(self, outer, entity_type='', color='', position='random-free'):
             self.outer = outer
             self.value = outer.object_values[-1] + 1
             self.outer.object_values.append(self.value)
             self.outer.value_to_objects[self.value] = {'color': color}
             self.color = color
             self.moveTo = 'moveToDefault'
+
+        def moveTo(self,current_position,intended_position):
+            return 0
 
         def place(self, position='random-free'):
             if position == 'random-free':
