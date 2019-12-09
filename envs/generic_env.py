@@ -59,7 +59,11 @@ class GenericEnv(gym.Env):
 
         #Add agents to the environment (1 required).  Will be placed on reset()
         for agent in agents:
-            self.entities.append(self.entity(self,entity_type=agent['class'],color=agent['color'],position=agent['position']))
+            self.entities.append(Firefighter(self,entity_type=agent['class'],color=agent['color'],position=agent['position']))
+
+        #add other entities to the environment
+        for entity in entities:
+            self.entities.append(Entity(self,entity_type=entity['class'],color=entity['color'],position=entity['position']))
 
 
 
@@ -70,26 +74,12 @@ class GenericEnv(gym.Env):
                            3:lambda x: (x[0]%self.dims[0],(x[1]-1)%self.dims[1]),
                            4:lambda x: (x[0]%self.dims[0],(x[1]+1)%self.dims[1])}
 
-        # self.run()
+        #Run the dynamic environment
+        self.run()
 
-    class entity:
-        def __init__(self, outer, entity_type='', color='', position='random-free'):
-            self.outer = outer
-            self.value = outer.object_values[-1] + 1
-            self.outer.object_values.append(self.value)
-            self.outer.value_to_objects[self.value] = {'color': color}
-            self.color = color
-            self.moveTo = 'moveToDefault'
 
-        def moveTo(self,current_position,intended_position):
-            return 0
 
-        def place(self, position='random-free'):
-            if position == 'random-free':
-                free_spaces = np.where(self.outer.current_grid_map == 0)
-                free_spaces = list(zip(free_spaces[0], free_spaces[1]))
-                free_space = random.choice(free_spaces)
-                self.outer.current_grid_map[free_space] = self.value
+
 
     def addMapFeatures(self,features=[]):
         for feature in features:
@@ -110,6 +100,37 @@ class GenericEnv(gym.Env):
                 free_space = random.choice(free_spaces)
                 self.current_grid_map[free_space] = object_value
 
+
+    def update_water(self):
+        fire_spaces = np.where(self.current_grid_map == 3.0)
+        fire_spaces = list(zip(fire_spaces[0], fire_spaces[1]))
+        free_spaces = np.where(self.current_grid_map == 0.0)
+        free_spaces = list(zip(free_spaces[0], free_spaces[1]))
+        random.shuffle(fire_spaces)
+        for fire_space in fire_spaces:
+            x_permute = random.randint(-1, 1)
+            y_permute = random.randint(-1, 1)
+            if (fire_space[0] + x_permute, fire_space[1] + y_permute) in free_spaces:
+                self.current_grid_map[fire_space[0] + x_permute, fire_space[1] + y_permute] = 3.0
+                break
+
+    def update_fire(self):
+        #I know fire's number (2), but we could do a search first
+        # print("update fire")
+        fire_spaces = np.where(self.current_grid_map == 2.0)
+        fire_spaces = list(zip(fire_spaces[0], fire_spaces[1]))
+        free_spaces = np.where(self.current_grid_map == 0.0)
+        free_spaces = list(zip(free_spaces[0], free_spaces[1]))
+        water_spaces = np.where(self.current_grid_map == 3.0)
+        water_spaces = list(zip(water_spaces[0], water_spaces[1]))
+        free_spaces.extend(water_spaces)
+        random.shuffle(fire_spaces)
+        for fire_space in fire_spaces:
+            x_permute = random.randint(-1,1)
+            y_permute = random.randint(-1,1)
+            if (fire_space[0] + x_permute, fire_space[1] + y_permute) in free_spaces:
+                self.current_grid_map[fire_space[0] + x_permute, fire_space[1] + y_permute] = 2.0
+                break
 
 
 
@@ -141,10 +162,30 @@ class GenericEnv(gym.Env):
         return 0
 
     def moveToFire(self,current_position,intended_position):
-        return 0
+        current_position_value = self.current_grid_map[current_position[0], current_position[1]]
+        intended_position_value = self.current_grid_map[intended_position[0], intended_position[1]]
+
+        for entity in self.entities:
+            if entity.value == current_position_value:
+                if entity.water > 0:
+                    entity.water -= 1
+                    self.current_grid_map[current_position] = 0.0
+                    self.current_grid_map[intended_position] = current_position_value
+
 
     def moveToWater(self,current_position,intended_position):
-        return 0
+        print("move to water")
+        current_position_value = self.current_grid_map[current_position[0], current_position[1]]
+        intended_position_value = self.current_grid_map[intended_position[0], intended_position[1]]
+
+
+        for entity in self.entities:
+            if entity.value == current_position_value:
+                entity.water += 1
+                self.current_grid_map[current_position] = 0.0
+                self.current_grid_map[intended_position] = current_position_value
+
+
 
     def run(self):
         time.sleep(1)
@@ -153,10 +194,19 @@ class GenericEnv(gym.Env):
         return True
 
     def update(self):
+        time_since_update = {'fire':100, 'water':100}
         while True:
-            for goal in self.goals:
-                self.value_to_objects[goal]['color'] = random.choice(list(self.colors.keys()))
-            sleep(1)
+            water_now = time.time()
+            if water_now - time_since_update['water'] >= 2.00:
+                self.update_water()
+                time_since_update['water'] = time.time()
+            fire_now = time.time()
+            if fire_now - time_since_update['fire'] >= 3.00:
+                self.update_fire()
+                time_since_update['fire'] = time.time()
+
+
+            sleep(0.1)
 
     def moveToGoal(self,current_position,intended_position):
         '''What to do in the event you move to a goal'''
@@ -200,18 +250,6 @@ class GenericEnv(gym.Env):
             obj = np.where(self.current_grid_map == obj_val)
             image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
 
-        # for agent_val in self.agents:
-        #     agent = np.where(self.current_grid_map == agent_val)
-        #     image[agent[0],agent[1],:] = self.colors[self.value_to_objects[agent_val]['color']]
-        #
-        # for goal_val in self.goals:
-        #     goal = np.where(self.current_grid_map == goal_val)
-        #     image[goal[0],goal[1],:] = self.colors[self.value_to_objects[goal_val]['color']]
-        #
-        # for obstacle_val in self.obstacles:
-        #     obstacle = np.where(self.current_grid_map == obstacle_val)
-        #     image[obstacle[0],obstacle[1],:] = self.colors[self.value_to_objects[obstacle_val]['color']]
-
 
 
         return image
@@ -251,6 +289,30 @@ class GenericEnv(gym.Env):
 
         return self._gridmap_to_image(), reward, done, info
 
+
+
+class Entity:
+    def __init__(self, outer, entity_type='', color='', position='random-free'):
+        self.outer = outer
+        self.value = outer.object_values[-1] + 1
+        self.outer.object_values.append(self.value)
+        self.outer.value_to_objects[self.value] = {'color': color}
+        self.color = color
+        self.moveTo = 'moveToDefault'
+
+    def moveTo(self,current_position,intended_position):
+        return 0
+
+    def place(self, position='random-free'):
+        if position == 'random-free':
+            free_spaces = np.where(self.outer.current_grid_map == 0)
+            free_spaces = list(zip(free_spaces[0], free_spaces[1]))
+            free_space = random.choice(free_spaces)
+            self.outer.current_grid_map[free_space] = self.value
+
+
+class Firefighter(Entity):
+    water = 0
 
 
 
