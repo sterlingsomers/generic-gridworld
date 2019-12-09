@@ -30,6 +30,7 @@ class GenericEnv(gym.Env):
     value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0}}
     object_values = [1]
     entities = []
+    backup_values = {}
 
     colors = {
         'red': (252, 3, 3),
@@ -176,8 +177,12 @@ class GenericEnv(gym.Env):
             if entity.value == current_position_value:
 
                 if entity.remove_water():
-                        self.current_grid_map[current_position] = 0.0
-                        self.current_grid_map[intended_position] = current_position_value
+                    self.current_grid_map[current_position] = 0.0
+                    self.current_grid_map[intended_position] = current_position_value
+                else:
+                    self.current_grid_map[current_position] = 0.0
+                    self.backup_values[(int(intended_position[0]),int(intended_position[1]))] = intended_position_value
+                    self.current_grid_map[intended_position] = current_position_value
 
 
     def moveToWater(self,current_position,intended_position):
@@ -191,6 +196,10 @@ class GenericEnv(gym.Env):
 
                 if entity.add_water():
                     self.current_grid_map[current_position] = 0.0
+                    self.current_grid_map[intended_position] = current_position_value
+                else:
+                    self.current_grid_map[current_position] = 0.0
+                    self.backup_values[(int(intended_position[0]),int(intended_position[1]))] = intended_position_value
                     self.current_grid_map[intended_position] = current_position_value
 
 
@@ -284,6 +293,10 @@ class GenericEnv(gym.Env):
         if intended_position_value == 0.0:
             self.current_grid_map[current_position[0],current_position[1]] = 0.0
             self.current_grid_map[intended_position[0],intended_position[1]] = value
+            if (int(current_position[0]), int(current_position[1])) in self.backup_values:
+                self.current_grid_map[(int(current_position[0]), int(current_position[1]))] = self.backup_values[
+                    (int(current_position[0]), int(current_position[1]))]
+                del self.backup_values[(int(current_position[0]), int(current_position[1]))]
         elif intended_position_value == 1.0:
             pass #do nothing if it's a wall
         else:
@@ -293,6 +306,9 @@ class GenericEnv(gym.Env):
                     moveFunc(current_position,intended_position)
                 else:
                     moveTo = self.value_to_objects[int(intended_position_value)]['moveTo'](current_position,intended_position)
+                if (int(current_position[0]),int(current_position[1])) in self.backup_values:
+                    self.current_grid_map[(int(current_position[0]),int(current_position[1]))] = self.backup_values[(int(current_position[0]),int(current_position[1]))]
+                    del self.backup_values[(int(current_position[0]),int(current_position[1]))]
 
 
 
