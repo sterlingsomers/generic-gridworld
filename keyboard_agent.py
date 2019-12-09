@@ -13,10 +13,11 @@ import numpy as np
 
 import PIL
 
-env = envs.generic_env.GenericEnv(goals={'color':['pink']},obstacles=0)
+env = envs.generic_env.GenericEnv(dims=(20,20), features=[{'class':'feature','type':'fire','start_number':3,'color':'red', 'moveTo':'moveToFire'},
+                                                          {'class':'feature','type':'water','start_number':5,'color':'blue', 'moveTo':'moveToWater'}])
 
 
-agent_value = 2.0
+agent_value = env.entities[0].value
 
 human_agent_action = 0
 human_wants_restart = False

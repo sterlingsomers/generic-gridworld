@@ -25,38 +25,12 @@ UP = 2
 LEFT = 3
 RIGHT = 4
 
-class gridObject():
-    colors = {
-        'red':(252,3,3),
-        'green':(3,252,78),
-        'blue':(3,15,252),
-        'yellow':(252,252,3),
-        'pink':(227,77,180),
-        'purple':(175,4,181),
-        'black':(0,0,0)
-    }
-
-    def __init__(self, color='random', category='obstacle'):
-        if color=='random':
-            self.color = self.colors[random.choice(self.colors.keys())]
-
-        else:
-            self.color = self.colors[color]
-
-class wall(gridObject):
-
-    def __init__(self, color='black'):
-        self.color = self.colors['black']
-
-    def moveTo(self,env):
-        '''Do nothing because there's a wall there.'''
-        return 0
-
-
 
 class GenericEnv(gym.Env):
     value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0}}
     object_values = [1]
+    entities = []
+
     colors = {
         'red': (252, 3, 3),
         'green': (3, 252, 78),
@@ -71,52 +45,24 @@ class GenericEnv(gym.Env):
         'gray' : (96,96,96)
     }
 
-    def __init__(self,dims=(12,12),map='',agents={'number':1,'position':['random'],'color':['blue']},
-                 goals={'number':1,'position':['random'],'color':['red']},
-                 obstacles={'number':1, 'position':['random'], 'color':['green']}):
+
+
+
+
+    def __init__(self,dims=(12,12),map='',agents=[{'class':'agent','color':'green','position':'random-free'}],features=[],entities=[]):
 
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
+        #add (dynamic, random) features to the map
+        self.addMapFeatures(features)
 
-        #note to self - combine these using getattr
-        self.agents = []
-        for color,position in zip(agents['color'],agents['position']):
-            value = self.object_values[-1] + 1
-            self.agents.append(value)
-            self.value_to_objects[value] = {'class':'agent', 'color':color,'moveTo':self.moveToAgent,'position':position}
-            self.object_values.append(value)
+        #Add agents to the environment (1 required).  Will be placed on reset()
+        for agent in agents:
+            self.entities.append(self.entity(self,entity_type=agent['class'],color=agent['color'],position=agent['position']))
 
 
-        self.goals = []
-        if goals:
-            goal_defaults = {'number':1,'position':['random'],'color':['red'], 'moveTo':self.moveToGoal}
-            for key in [x for x in goal_defaults.keys() if not x in goals.keys()]:
-                goals[key] = goal_defaults[key]
-            for color,position in zip(goals['color'],goals['position']):
-                properties = goals.copy()
-                properties['color'] = color
-                properties['position'] = position
-                value = self.object_values[-1] + 1
-                self.goals.append(value)
-                self.value_to_objects[value] = properties#{'class':'goal', 'color':color, 'moveTo':self.moveToGoal, 'position':position}
-                self.object_values.append(value)
 
-        self.obstacles = []
-        if obstacles:
-            obstacle_defaults = {'number': 1, 'position': ['random'], 'color': ['green'], 'moveTo':self.moveToObstacle}
-            for key in [x for x in obstacle_defaults.keys() if not x in obstacles.keys()]:
-                obstacles[key] = obstacle_defaults[key]
-            for color, position in zip(obstacles['color'], obstacles['position']):
-                properties = obstacles.copy()
-                properties['color'] = color
-                properties['position'] = position
-                value = self.object_values[-1] + 1
-                self.obstacles.append(value)
-                self.value_to_objects[value] = properties
-                    # {'class': 'obstacle', 'color': color, 'moveTo': self.moveToObstacle,
-                    #                             'position': position}
-                self.object_values.append(value)
 
 
 
@@ -129,7 +75,44 @@ class GenericEnv(gym.Env):
                            3:lambda x: (x[0]%self.dims[0],(x[1]-1)%self.dims[1]),
                            4:lambda x: (x[0]%self.dims[0],(x[1]+1)%self.dims[1])}
 
-        self.run()
+        # self.run()
+
+    class entity:
+        def __init__(self, outer, entity_type='', color='', position='random-free', moveTo='moveToDefault'):
+            self.outer = outer
+            self.value = outer.object_values[-1] + 1
+            self.outer.object_values.append(self.value)
+            self.outer.value_to_objects[self.value] = {'color': color}
+            self.color = color
+            self.moveTo = 'moveToDefault'
+
+        def place(self, position='random-free'):
+            if position == 'random-free':
+                free_spaces = np.where(self.outer.current_grid_map == 0)
+                free_spaces = list(zip(free_spaces[0], free_spaces[1]))
+                free_space = random.choice(free_spaces)
+                self.outer.current_grid_map[free_space] = self.value
+
+    def addMapFeatures(self,features=[]):
+        for feature in features:
+            n_features = feature['start_number']
+            object_value = self.object_values[-1] + 1
+            self.object_values.append(object_value)
+            self.value_to_objects[object_value] = {'class':feature['type'], 'color':feature['color'], 'moveTo':feature['moveTo']}
+            free_spaces = np.where(self.current_grid_map == 0)
+            random_free_space_i = random.choice(free_spaces[0])
+            random_free_space_j = random.choice(free_spaces[1])
+            random_free_space = (random_free_space_i,random_free_space_j)
+            self.current_grid_map[random_free_space] = object_value
+            #pertubation = np.random.randint(-1, 1, (1,2))
+            for i in range(n_features - 1):
+                free_spaces = np.where(self.current_grid_map == 0)
+                free_spaces = [(x,y) for x,y in zip(free_spaces[0],free_spaces[1]) if x >= random_free_space_i - 1 and x <= random_free_space_i + 1 and
+                               y >= random_free_space_j - 1 and y <= random_free_space_j + 1]
+                free_space = random.choice(free_spaces)
+                self.current_grid_map[free_space] = object_value
+
+
 
 
     def setupMap(self,map,dims):
@@ -157,6 +140,12 @@ class GenericEnv(gym.Env):
 
 
     def moveToAgent(self,current_position,intended_position):
+        return 0
+
+    def moveToFire(self,current_position,intended_position):
+        return 0
+
+    def moveToWater(self,current_position,intended_position):
         return 0
 
     def run(self):
@@ -189,36 +178,15 @@ class GenericEnv(gym.Env):
 
 
     def reset(self):
-
-
-        # insert the agents
-        for agent in self.agents:
+        for entity in self.entities:
             free_spaces = np.where(self.current_grid_map == 0)
             free_spaces = list(zip(free_spaces[0], free_spaces[1]))
-            if self.value_to_objects[agent]['position'] == 'random':
-                free_space = random.choice(free_spaces)
-                # self.agent_position = free_space
-                self.current_grid_map[free_space[0], free_space[1]] = agent
+            entity.place(position='random-free')
 
-        #insert the goals
-        for goal in self.goals:
-            free_spaces = np.where(self.current_grid_map == 0)
-            free_spaces = list(zip(free_spaces[0], free_spaces[1]))
-            if self.value_to_objects[goal]['position'] == 'random':
-                free_space = random.choice(free_spaces)
-                # self.agent_position = free_space
-                self.current_grid_map[free_space[0], free_space[1]] = goal
 
-        for obstacle in self.obstacles:
-            free_spaces = np.where(self.current_grid_map == 0)
-            free_spaces = list(zip(free_spaces[0], free_spaces[1]))
-            if self.value_to_objects[obstacle]['position'] == 'random':
-                free_space = random.choice(free_spaces)
-                # self.agent_position = free_space
-                self.current_grid_map[free_space[0], free_space[1]] = obstacle
         return self._gridmap_to_image()
 
-        #
+
 
     def _gridmap_to_image(self):
         image = np.zeros((self.dims[0],self.dims[1],3), dtype=np.uint8)
@@ -234,17 +202,17 @@ class GenericEnv(gym.Env):
             obj = np.where(self.current_grid_map == obj_val)
             image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
 
-        for agent_val in self.agents:
-            agent = np.where(self.current_grid_map == agent_val)
-            image[agent[0],agent[1],:] = self.colors[self.value_to_objects[agent_val]['color']]
-
-        for goal_val in self.goals:
-            goal = np.where(self.current_grid_map == goal_val)
-            image[goal[0],goal[1],:] = self.colors[self.value_to_objects[goal_val]['color']]
-
-        for obstacle_val in self.obstacles:
-            obstacle = np.where(self.current_grid_map == obstacle_val)
-            image[obstacle[0],obstacle[1],:] = self.colors[self.value_to_objects[obstacle_val]['color']]
+        # for agent_val in self.agents:
+        #     agent = np.where(self.current_grid_map == agent_val)
+        #     image[agent[0],agent[1],:] = self.colors[self.value_to_objects[agent_val]['color']]
+        #
+        # for goal_val in self.goals:
+        #     goal = np.where(self.current_grid_map == goal_val)
+        #     image[goal[0],goal[1],:] = self.colors[self.value_to_objects[goal_val]['color']]
+        #
+        # for obstacle_val in self.obstacles:
+        #     obstacle = np.where(self.current_grid_map == obstacle_val)
+        #     image[obstacle[0],obstacle[1],:] = self.colors[self.value_to_objects[obstacle_val]['color']]
 
 
 
