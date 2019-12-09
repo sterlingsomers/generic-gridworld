@@ -57,6 +57,11 @@ class GenericEnv(gym.Env):
         #add (dynamic, random) features to the map
         self.addMapFeatures(features)
 
+        #A special value for firechief
+        self.extra_row = np.zeros((1,dims[1]))
+        self.value_to_objects[10] = {'color':'blue'}
+        self.object_values.append(10)
+
         #Add agents to the environment (1 required).  Will be placed on reset()
         for agent in agents:
             self.entities.append(Firefighter(self,entity_type=agent['class'],color=agent['color'],position=agent['position']))
@@ -168,7 +173,7 @@ class GenericEnv(gym.Env):
         for entity in self.entities:
             if entity.value == current_position_value:
                 if entity.water > 0:
-                    entity.water -= 1
+                    entity.remove_water()
                     self.current_grid_map[current_position] = 0.0
                     self.current_grid_map[intended_position] = current_position_value
 
@@ -181,7 +186,7 @@ class GenericEnv(gym.Env):
 
         for entity in self.entities:
             if entity.value == current_position_value:
-                entity.water += 1
+                entity.add_water()
                 self.current_grid_map[current_position] = 0.0
                 self.current_grid_map[intended_position] = current_position_value
 
@@ -237,17 +242,19 @@ class GenericEnv(gym.Env):
 
 
     def _gridmap_to_image(self):
-        image = np.zeros((self.dims[0],self.dims[1],3), dtype=np.uint8)
+        image = np.zeros((self.dims[0]+1,self.dims[1],3), dtype=np.uint8)
         image[:] = [96,96,96]
+
+        to_interpret = np.concatenate((self.current_grid_map,self.extra_row))
         #put border walls in
-        walls = np.where(self.current_grid_map == 1.0)
+        walls = np.where(to_interpret == 1.0)
         for x,y in list(zip(walls[0],walls[1])):
             #print((x,y))
             image[x,y,:] = self.colors[self.value_to_objects[1]['color']]
 
 
         for obj_val in self.object_values:
-            obj = np.where(self.current_grid_map == obj_val)
+            obj = np.where(to_interpret == obj_val)
             image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
 
 
@@ -260,13 +267,13 @@ class GenericEnv(gym.Env):
     def step(self, action, value):
         action = int(action)
         reward, done, info = 0,0,0
-        print("action", action)
+        # print("action", action)
         current_position = np.where(self.current_grid_map == value)
         position_function = self.action_map[action]
         intended_position = position_function(current_position)
         intended_position_value = self.current_grid_map[intended_position[0],intended_position[1]]
-        print("cur",current_position)
-        print("intended",intended_position,intended_position_value)
+        # print("cur",current_position)
+        # print("intended",intended_position,intended_position_value)
 
 
 
@@ -313,6 +320,24 @@ class Entity:
 
 class Firefighter(Entity):
     water = 0
+
+
+    def add_water(self):
+        print("add water")
+
+
+        if self.water <= 10:
+            self.outer.extra_row[0,self.water] = 10.0
+            self.water += 1
+
+
+    def remove_water(self):
+        # self.outer.current_grid_map[20,0] = 10.0
+        if self.water >= 0:
+            self.outer.extra_row[0,self.water] = 0.0
+            self.water -= 1
+
+
 
 
 
