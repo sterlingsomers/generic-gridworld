@@ -13,8 +13,8 @@ import numpy as np
 
 import PIL
 
-env = envs.generic_env.GenericEnv(agents=[{'class':'agent','color':'purple','position':'random-free'}],
-                                  entities=[{'class':'goal', 'color':'red','position':'random-free'}])
+env = envs.generic_env.GenericEnv(agents=[{'class':'Entity','color':'purple','position':'random-free','entity_type':'agent'}],
+                                  entities=[{'class':'Entity', 'color':'red','position':'random-free','entity_type':'goal'}])
 
 
 #Find the first agent for agent_value

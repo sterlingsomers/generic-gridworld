@@ -47,7 +47,7 @@ class GenericEnv(gym.Env):
 
 
 
-    def __init__(self,dims=(12,12),map='',agents=[{'class':'agent','color':'green','position':'random-free'}],features=[],entities=[]):
+    def __init__(self,dims=(12,12),map='',agents=[{'class':'Entity','color':'green','position':'random-free','entity_type':'agent'}],features=[],entities=[]):
 
         #before anything happens, setup the map
         self.setupMap(map,dims)
@@ -58,12 +58,14 @@ class GenericEnv(gym.Env):
 
         #Add agents to the environment (1 required).  Will be placed on reset()
         for agent in agents:
-            Entity(self,entity_type=agent['class'],color=agent['color'],position=agent['position'])
+            class_to_use = getattr(sys.modules[__name__], agent['class'])
+            class_to_use(self,entity_type=agent['entity_type'],color=agent['color'],position=agent['position'])
 
 
         #add other entities to the environment
         for entity in entities:
-            Entity(self,entity_type=entity['class'],color=entity['color'],position=entity['position'])
+            class_to_use = getattr(sys.modules[__name__], agent['class'])
+            class_to_use(self,entity_type=entity['entity_type'],color=entity['color'],position=entity['position'])
 
 
 
