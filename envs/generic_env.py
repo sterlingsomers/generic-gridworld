@@ -230,6 +230,9 @@ class Entity:
             free_space = random.choice(free_spaces)
             self.outer.current_grid_map[free_space] = self.value
 
+    def update(self):
+        pass
+
 
 
 
