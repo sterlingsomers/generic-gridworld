@@ -13,10 +13,16 @@ import numpy as np
 
 import PIL
 
-env = envs.generic_env.GenericEnv(goals={'color':['pink']},obstacles=0)
+env = envs.generic_env.GenericEnv(agents=[{'class':'agent','color':'purple','position':'random-free'}],
+                                  entities=[{'class':'goal', 'color':'red','position':'random-free'}])
 
 
+#Find the first agent for agent_value
 agent_value = 2.0
+for entity in env.entities:
+    if env.entities[entity].entity_type == 'agent':
+        agent_value = entity
+        break
 
 human_agent_action = 0
 human_wants_restart = False
