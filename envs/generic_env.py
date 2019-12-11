@@ -28,6 +28,9 @@ class GenericEnv(gym.Env):
     object_values = [1]
     entities = {} #indexed by object value
     backup_values = {}
+    actions = {}
+    reward = 0
+    done = 0
 
     colors = {
         'red': (252, 3, 3),
@@ -47,7 +50,7 @@ class GenericEnv(gym.Env):
 
 
 
-    def __init__(self,dims=(12,12),map='',agents=[{'class':'Entity','color':'green','position':'random-free','entity_type':'agent'}],features=[],entities=[]):
+    def __init__(self,dims=(12,12),map='',agents=[],features=[],entities=[]):
 
         #before anything happens, setup the map
         self.setupMap(map,dims)
@@ -64,7 +67,7 @@ class GenericEnv(gym.Env):
 
         #add other entities to the environment
         for entity in entities:
-            class_to_use = getattr(sys.modules[__name__], agent['class'])
+            class_to_use = getattr(sys.modules[__name__], entity['class'])
             class_to_use(self,entity_type=entity['entity_type'],color=entity['color'],position=entity['position'])
 
 
@@ -177,33 +180,43 @@ class GenericEnv(gym.Env):
 
 
 
-    def step(self, action, value):
-        action = int(action)
-        reward, done, info = 0,0,0
-        print("action", action)
-        current_position = np.where(self.current_grid_map == value)
-        position_function = self.action_map[action]
-        intended_position = position_function(current_position)
-        intended_position_value = self.current_grid_map[intended_position[0],intended_position[1]]
-        current_position_value = self.current_grid_map[current_position[0], current_position[1]]
-        print("cur",current_position)
-        print("intended",intended_position,intended_position_value)
+    def step(self):
+        # action = int(action)
+        reward, done, info = self.reward,self.done,0
+        for entity in self.actions:
+            # print("action", action)
+            action = self.actions[entity]
+            current_position = np.where(self.current_grid_map == self.entities[entity].value)
+            position_function = self.action_map[action]
+            intended_position = position_function(current_position)
+            intended_position_value = self.current_grid_map[intended_position[0],intended_position[1]]
+            current_position_value = self.current_grid_map[current_position[0], current_position[1]]
+            print("cur",current_position)
+            print("intended",intended_position,intended_position_value)
 
 
 
-        #movement to empty space
-        if intended_position_value == 0.0:
-            self.current_grid_map[current_position[0],current_position[1]] = 0.0
-            self.current_grid_map[intended_position[0],intended_position[1]] = value
-        elif intended_position_value == 1.0:
-            pass #do nothing if it's a wall
-        else:
-            self.entities[int(current_position_value)].moveTo(current_position,intended_position)
+            #movement to empty space
+            if intended_position_value == 0.0:
+                self.current_grid_map[current_position[0],current_position[1]] = 0.0
+                self.current_grid_map[intended_position[0],intended_position[1]] = self.entities[entity].value
+            elif intended_position_value == 1.0:
+                pass #do nothing if it's a wall
+            else:
+                if int(intended_position_value) in self.entities:
+                    self.entities[int(intended_position_value)].moveTo(current_position,intended_position)
+                else:
+                    moveTo = getattr(self,self.value_to_objects[int(intended_position_value)]['moveTo'])
+                    moveTo(current_position,intended_position)
+                if (int(current_position[0]), int(current_position[1])) in self.backup_values:
+                    self.current_grid_map[(int(current_position[0]), int(current_position[1]))] = self.backup_values[
+                        (int(current_position[0]), int(current_position[1]))]
+                    del self.backup_values[(int(current_position[0]), int(current_position[1]))]
 
 
 
 
-        return self._gridmap_to_image(), reward, done, info
+        return self._gridmap_to_image(), self.reward, self.done, info
 
 
 

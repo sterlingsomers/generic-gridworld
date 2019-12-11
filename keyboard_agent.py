@@ -6,6 +6,7 @@ from pyglet.window import key
 
 import envs.generic_env
 from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
+from envs.core import *
 
 
 import pygame
@@ -13,16 +14,12 @@ import numpy as np
 
 import PIL
 
-env = envs.generic_env.GenericEnv(agents=[{'class':'Entity','color':'purple','position':'random-free','entity_type':'agent'}],
-                                  entities=[{'class':'Entity', 'color':'red','position':'random-free','entity_type':'goal'}])
+env = envs.generic_env.GenericEnv()
+player1 = Agent(env,entity_type='agent',color='blue')
+player2 = Agent(env,entity_type='agent',color='orange')
 
 
-#Find the first agent for agent_value
-agent_value = 2.0
-for entity in env.entities:
-    if env.entities[entity].entity_type == 'agent':
-        agent_value = entity
-        break
+
 
 human_agent_action = 0
 human_wants_restart = False
@@ -69,7 +66,8 @@ while running:
                 break
 
     if key_pressed and not game_done:
-        obs, r, done, info = env.step(key_pressed,agent_value)
+        player1.action(key_pressed)
+        obs, r, done, info = env.step()
         obs = PIL.Image.fromarray(obs)
         size = tuple((np.array(obs.size) * size_factor).astype(int))
         obs = np.array(obs.resize(size, PIL.Image.NEAREST))
