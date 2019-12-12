@@ -69,8 +69,7 @@ while running:
     pygame.time.delay(100)
 
     obs, r, done, info = env.step()
-    if done:
-        pygame.quit()
+
     obs = PIL.Image.fromarray(obs)
     size = tuple((np.array(obs.size) * size_factor).astype(int))
     obs = np.array(obs.resize(size, PIL.Image.NEAREST))
@@ -114,6 +113,8 @@ while running:
     # pygame.time.delay(100)
     pygame.display.update()
     # clock.tick(1)
+    if done:
+        break
 
 pygame.quit()
 
