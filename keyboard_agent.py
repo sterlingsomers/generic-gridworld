@@ -30,15 +30,10 @@ class AI_Agent(Agent):
     def getAction(self,obs):
         return random.choice([UP,DOWN,LEFT,RIGHT])
 
-env = envs.generic_env.GenericEnv(dims=(5,5))
+env = envs.generic_env.GenericEnv(dims=(10,10))
 player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 player2 = Agent(env,entity_type='agent',color='orange')
-# player3 = HumanAgent(env,entity_type='agent',color='red')
-
-
-
-
-
+player3 = HumanAgent(env,entity_type='agent',color='red')
 
 
 
@@ -72,7 +67,10 @@ clock = pygame.time.Clock()
 while running:
     key_pressed = 0
     pygame.time.delay(100)
+
     obs, r, done, info = env.step()
+    if done:
+        pygame.quit()
     obs = PIL.Image.fromarray(obs)
     size = tuple((np.array(obs.size) * size_factor).astype(int))
     obs = np.array(obs.resize(size, PIL.Image.NEAREST))
@@ -102,12 +100,6 @@ while running:
 
     if key_pressed and not game_done:
         player3.action = key_pressed
-        obs = player3.obs
-        obs = PIL.Image.fromarray(obs)
-        size = tuple((np.array(obs.size) * size_factor).astype(int))
-        obs = np.array(obs.resize(size, PIL.Image.NEAREST))
-        game_done = done
-        display.blit(background, (0, 0))
         if done:
             #obs = env.reset()
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
