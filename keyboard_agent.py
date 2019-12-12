@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-
+from threading import Thread
 import sys, gym, time
 from pyglet.window import key
 
@@ -14,9 +14,32 @@ import numpy as np
 
 import PIL
 
-env = envs.generic_env.GenericEnv()
-player1 = Agent(env,entity_type='agent',color='blue')
+#A new class to extend old classes
+class AI_Agent(Agent):
+    def __init__(self, env, obs_type='data',entity_type='', color='', position='random-free'):
+        self.env = env
+        self.value = env.object_values[-1] + 1
+        self.env.object_values.append(self.value)
+        self.env.value_to_objects[self.value] = {'color': color}
+        self.env.entities[self.value] = self
+        self.color = color
+        # self.moveTo = 'moveToDefault'
+        self.entity_type = entity_type
+        self.obs_type = obs_type
+
+    def getAction(self,obs):
+        return random.choice([UP,DOWN,LEFT,RIGHT])
+
+env = envs.generic_env.GenericEnv(dims=(5,5))
+player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 player2 = Agent(env,entity_type='agent',color='orange')
+# player3 = HumanAgent(env,entity_type='agent',color='red')
+
+
+
+
+
+
 
 
 
@@ -43,9 +66,21 @@ pygame.display.update()
 game_done = False
 running = True
 
+# t = Thread(target=run_player2)
+# t.start()
+clock = pygame.time.Clock()
 while running:
     key_pressed = 0
+    pygame.time.delay(100)
+    obs, r, done, info = env.step()
+    obs = PIL.Image.fromarray(obs)
+    size = tuple((np.array(obs.size) * size_factor).astype(int))
+    obs = np.array(obs.resize(size, PIL.Image.NEAREST))
+    surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+    display.blit(surf, (0, 0))
+    pygame.display.update()
     for event in pygame.event.get():
+
 
         if event.type == pygame.QUIT:
             running = False
@@ -66,14 +101,13 @@ while running:
                 break
 
     if key_pressed and not game_done:
-        player1.action(key_pressed)
-        obs, r, done, info = env.step()
+        player3.action = key_pressed
+        obs = player3.obs
         obs = PIL.Image.fromarray(obs)
         size = tuple((np.array(obs.size) * size_factor).astype(int))
         obs = np.array(obs.resize(size, PIL.Image.NEAREST))
         game_done = done
-        print("reward", r)
-        display.blit(background, (0,0))
+        display.blit(background, (0, 0))
         if done:
             #obs = env.reset()
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
@@ -85,8 +119,9 @@ while running:
             display.blit(surf, (0,0))
 
 
-        pygame.time.delay(100)
-        pygame.display.update()
+    # pygame.time.delay(100)
+    pygame.display.update()
+    # clock.tick(1)
 
 pygame.quit()
 

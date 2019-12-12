@@ -31,6 +31,7 @@ class GenericEnv(gym.Env):
     actions = {}
     reward = 0
     done = 0
+    to_clean = []
 
     colors = {
         'red': (252, 3, 3),
@@ -77,14 +78,21 @@ class GenericEnv(gym.Env):
         self.action_map = {1:lambda x: ((x[0]+1)%self.dims[0],(x[1])%self.dims[1]),
                            2:lambda x: ((x[0]-1)%self.dims[0],(x[1])%self.dims[1]),
                            3:lambda x: (x[0]%self.dims[0],(x[1]-1)%self.dims[1]),
-                           4:lambda x: (x[0]%self.dims[0],(x[1]+1)%self.dims[1])}
+                           4:lambda x: (x[0]%self.dims[0],(x[1]+1)%self.dims[1]),
+                           0:lambda x: (x[0],x[1])}
 
         #Run the dynamic environment
         #self.run()
 
 
 
+    def schedule_cleanup(self,value):
+        self.to_clean.append(value)
 
+    def cleanup(self):
+        for entity in self.to_clean:
+            del self.entities[entity]
+        self.to_clean = []
 
     def addMapFeatures(self,features=[]):
         for feature in features:
@@ -181,22 +189,19 @@ class GenericEnv(gym.Env):
 
 
     def step(self):
-        # action = int(action)
-        reward, done, info = self.reward,self.done,0
-        for entity in self.actions:
-            # print("action", action)
-            action = self.actions[entity]
+        info = 0
+        obs = self._gridmap_to_image()
+        actions = []
+        for entity in self.entities:
+            actions.append(self.entities[entity].getAction(obs))
+        for entity, action in zip(self.entities, actions):
             current_position = np.where(self.current_grid_map == self.entities[entity].value)
             position_function = self.action_map[action]
             intended_position = position_function(current_position)
-            intended_position_value = self.current_grid_map[intended_position[0],intended_position[1]]
+            intended_position_value = self.current_grid_map[intended_position[0], intended_position[1]]
             current_position_value = self.current_grid_map[current_position[0], current_position[1]]
-            print("cur",current_position)
-            print("intended",intended_position,intended_position_value)
-
-
-
-            #movement to empty space
+            if not len(current_position[0]):
+                continue
             if intended_position_value == 0.0:
                 self.current_grid_map[current_position[0],current_position[1]] = 0.0
                 self.current_grid_map[intended_position[0],intended_position[1]] = self.entities[entity].value
@@ -214,39 +219,12 @@ class GenericEnv(gym.Env):
                     del self.backup_values[(int(current_position[0]), int(current_position[1]))]
 
 
-
-
+        self.cleanup()
         return self._gridmap_to_image(), self.reward, self.done, info
 
 
 
-class Entity:
-    def __init__(self, outer, entity_type='', color='', position='random-free'):
-        self.outer = outer
-        self.value = outer.object_values[-1] + 1
-        self.outer.object_values.append(self.value)
-        self.outer.value_to_objects[self.value] = {'color': color}
-        self.outer.entities[self.value] = self
-        self.color = color
-        # self.moveTo = 'moveToDefault'
-        self.entity_type = entity_type
 
-    def moveTo(self,current_position,intended_position):
-        current_position_value = self.outer.current_grid_map[current_position[0], current_position[1]]
-        intended_position_value = self.outer.current_grid_map[intended_position[0], intended_position[1]]
-        self.outer.current_grid_map[current_position] = 0.0
-        self.outer.current_grid_map[intended_position] = current_position_value
-        return 1
-
-    def place(self, position='random-free'):
-        if position == 'random-free':
-            free_spaces = np.where(self.outer.current_grid_map == 0)
-            free_spaces = list(zip(free_spaces[0], free_spaces[1]))
-            free_space = random.choice(free_spaces)
-            self.outer.current_grid_map[free_space] = self.value
-
-    def update(self):
-        pass
 
 
 
