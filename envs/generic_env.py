@@ -49,6 +49,12 @@ class GenericEnv(gym.Env):
 
     def __init__(self,dims=(12,12),map='',agents=[{'class':'Entity','color':'green','position':'random-free','entity_type':'agent'}],features=[],entities=[]):
 
+        # openai stuff
+        self.obs_shape = [dims[0], dims[1], 3]
+        self.observation_space = spaces.Box(low=0, high=255, shape=self.obs_shape, dtype=np.uint8)
+        self.action_space = spaces.Discrete(5)
+        self.reward_range = (-float('inf'), float('inf')) # or self.reward_range = (0,1)
+
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
@@ -177,17 +183,17 @@ class GenericEnv(gym.Env):
 
 
 
-    def step(self, action, value):
+    def step(self, action, value=2):
         action = int(action)
         reward, done, info = 0,0,0
-        print("action", action)
+        # print("action", action)
         current_position = np.where(self.current_grid_map == value)
         position_function = self.action_map[action]
         intended_position = position_function(current_position)
         intended_position_value = self.current_grid_map[intended_position[0],intended_position[1]]
         current_position_value = self.current_grid_map[current_position[0], current_position[1]]
-        print("cur",current_position)
-        print("intended",intended_position,intended_position_value)
+        # print("cur",current_position)
+        # print("intended",intended_position,intended_position_value)
 
 
 
