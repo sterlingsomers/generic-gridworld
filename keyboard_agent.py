@@ -66,7 +66,7 @@ running = True
 clock = pygame.time.Clock()
 while running:
     key_pressed = 0
-    pygame.time.delay(100)
+    pygame.time.delay(50)
 
     obs, r, done, info = env.step()
 
@@ -112,7 +112,7 @@ while running:
 
     # pygame.time.delay(100)
     pygame.display.update()
-    # clock.tick(1)
+    # clock.tick(100)
     if done:
         break
 

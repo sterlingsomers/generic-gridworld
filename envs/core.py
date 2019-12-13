@@ -47,16 +47,18 @@ class Entity:
         # print("regular update")
 
 class Agent(Entity):
+
     def moveTo(self,current_position,intended_position):
         current_position_value = self.env.current_grid_map[current_position[0], current_position[1]]
         intended_position_value = self.env.current_grid_map[intended_position[0], intended_position[1]]
         self.env.current_grid_map[current_position] = 0.0
         self.env.current_grid_map[intended_position] = current_position_value
         self.env.schedule_cleanup(self.value)
+        print('agent says done in moveto',self.value)
         self.env.done = 1
         return 1
 
-class HumanAgent(Entity):
+class HumanAgent(Agent):
     obs = None
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
         self.size_factor = 10
@@ -76,10 +78,6 @@ class HumanAgent(Entity):
         timeout = 0.300
         action = self.action
         self.obs = obs
-        # img = PIL.Image.fromarray(obs)
-        # size = tuple((np.array(img.size) * self.size_factor).astype(int))
-        # img = np.array(img.resize(size, PIL.Image.NEAREST))
-        # self.obs = np.flip(np.rot90(img), 0)
         self.action = 0
         start = time.time()
         while time.time()  - start < timeout:
@@ -88,9 +86,6 @@ class HumanAgent(Entity):
                 return action
             else:
                 action = self.action
-
-
-
         return action
 
 

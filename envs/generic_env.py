@@ -157,6 +157,8 @@ class GenericEnv(gym.Env):
 
 
     def reset(self):
+        self.done = False
+        self.reward = 0
         for entity in self.entities:
             free_spaces = np.where(self.current_grid_map == 0)
             free_spaces = list(zip(free_spaces[0], free_spaces[1]))
@@ -195,6 +197,8 @@ class GenericEnv(gym.Env):
         for entity in self.entities:
             actions.append(self.entities[entity].getAction(obs))
         for entity, action in zip(self.entities, actions):
+            if action == 0:
+                continue
             current_position = np.where(self.current_grid_map == self.entities[entity].value)
             position_function = self.action_map[action]
             intended_position = position_function(current_position)
