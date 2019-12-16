@@ -9,7 +9,7 @@ import itertools
 # import matplotlib
 # matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-
+from common.maps import *
 import numpy as np
 
 
@@ -149,6 +149,8 @@ class GenericEnv(gym.Env):
         intended_position_value = self.current_grid_map[intended_position[0], intended_position[1]]
         self.current_grid_map[current_position] = 0.0
         self.current_grid_map[intended_position] = current_position_value
+        self.done = True
+        self.reward += 1
         return 0
 
     def moveToObstacle(self,current_position,intended_position):
@@ -167,7 +169,7 @@ class GenericEnv(gym.Env):
 
         return self._gridmap_to_image()
 
-        #
+
 
     def _gridmap_to_image(self):
         image = np.zeros((self.dims[0],self.dims[1],3), dtype=np.uint8)

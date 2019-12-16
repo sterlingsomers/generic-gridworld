@@ -9,6 +9,7 @@ from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
 from envs.core import *
 
 
+
 import pygame
 import numpy as np
 
@@ -30,10 +31,11 @@ class AI_Agent(Agent):
     def getAction(self,obs):
         return random.choice([UP,DOWN,LEFT,RIGHT])
 
-env = envs.generic_env.GenericEnv(dims=(10,10))
-player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
-player2 = Agent(env,entity_type='agent',color='orange')
-player3 = HumanAgent(env,entity_type='agent',color='red')
+env = envs.generic_env.GenericEnv(dims=(20,20),features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
+# player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
+# player2 = Agent(env,entity_type='agent',color='orange')
+player3 = HumanAgent(env,entity_type='agent',color='blue',pygame=pygame)
+advisary = Advisary(env,entity_type='advisary',color='red')
 
 
 
@@ -65,8 +67,9 @@ running = True
 # t.start()
 clock = pygame.time.Clock()
 while running:
+    pygame.display.update()
     key_pressed = 0
-    pygame.time.delay(50)
+    pygame.time.delay(250)
 
     obs, r, done, info = env.step()
 
