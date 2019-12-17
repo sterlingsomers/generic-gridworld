@@ -32,6 +32,7 @@ class GenericEnv(gym.Env):
     reward = 0
     done = 0
     to_clean = []
+    permanents = []
 
     colors = {
         'red': (252, 3, 3),
@@ -137,11 +138,25 @@ class GenericEnv(gym.Env):
             if 'properties' in maps[map]:
                 for value in maps[map]['properties']:
                     self.value_to_objects[value].update(maps[map]['properties'][value])
+            if 'permanent' in maps[map]:
+                for value in maps[map]['permanent']:
+                    self.permanents.append(value)
 
 
     def moveToAgent(self,current_position,intended_position):
         return 0
 
+    def moveToDefault(self,current_position,intended_position):
+        '''What to do in the event you move to a goal'''
+
+        current_position_value = self.current_grid_map[current_position[0], current_position[1]]
+        intended_position_value = self.current_grid_map[intended_position[0], intended_position[1]]
+        self.backup_values[(int(intended_position[0]), int(intended_position[1]))] = int(intended_position_value)
+        self.current_grid_map[current_position] = 0.0
+        self.current_grid_map[intended_position] = current_position_value
+
+
+        return 0
 
     def moveToGoal(self,current_position,intended_position):
         '''What to do in the event you move to a goal'''
@@ -219,10 +234,18 @@ class GenericEnv(gym.Env):
                 else:
                     moveTo = getattr(self,self.value_to_objects[int(intended_position_value)]['moveTo'])
                     moveTo(current_position,intended_position)
-                if (int(current_position[0]), int(current_position[1])) in self.backup_values:
-                    self.current_grid_map[(int(current_position[0]), int(current_position[1]))] = self.backup_values[
-                        (int(current_position[0]), int(current_position[1]))]
-                    del self.backup_values[(int(current_position[0]), int(current_position[1]))]
+                    continue
+        bv = self.backup_values.copy()
+        for position in bv:
+            grid_value = self.current_grid_map[(position[0],position[1])]
+            if grid_value in self.permanents:
+                self.current_grid_map[(position[0],position[1])] = self.backup_values[(position[0],position[1])]
+                del self.backup_values[(position[0],position[1])]
+
+                # if (int(current_position[0]), int(current_position[1])) in self.backup_values:
+                #     self.current_grid_map[(int(current_position[0]), int(current_position[1]))] = self.backup_values[
+                #         (int(current_position[0]), int(current_position[1]))]
+                #     del self.backup_values[(int(current_position[0]), int(current_position[1]))]
 
 
         self.cleanup()

@@ -31,11 +31,27 @@ class AI_Agent(Agent):
     def getAction(self,obs):
         return random.choice([UP,DOWN,LEFT,RIGHT])
 
-env = envs.generic_env.GenericEnv(dims=(20,20),features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
+class BlockingAdvisary(Advisary):
+    def getGoal(self):
+        target_value = 0
+        for value in self.env.value_to_objects:
+            if 'class' in self.env.value_to_objects[value]:
+                if self.env.value_to_objects[value]['class'] == 'goal':
+                    target_value = value
+                break
+        target_location = np.where(obs == target_value)
+
+
+    def getAction(self,obs):
+        print("here")
+
+
+
+env = envs.generic_env.GenericEnv(map='house',features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
 player3 = HumanAgent(env,entity_type='agent',color='blue',pygame=pygame)
-advisary = Advisary(env,entity_type='advisary',color='red')
+advisary = Advisary(env,entity_type='advisary',color='red',obs_type='data')
 
 
 
@@ -69,7 +85,7 @@ clock = pygame.time.Clock()
 while running:
     pygame.display.update()
     key_pressed = 0
-    pygame.time.delay(250)
+    pygame.time.delay(50)
 
     obs, r, done, info = env.step()
 
