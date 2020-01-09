@@ -40,7 +40,7 @@ maps = {'pacman':{'colors':{0:'gray',1:'black',2:'white',3:'yellow',4:'pink',5:'
 
         'house': {'colors':{0:'gray',1:'black',2:'gray'},
                   'properties':{2:{'doorway':True,'moveTo':'moveToDefault'}},
-                  'free-spaces':[0],
+                  'free-spaces':[0,2],
                   'permanent':[1,2,0],
                   'map': np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                                    [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],

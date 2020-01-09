@@ -7,7 +7,7 @@ from pyglet.window import key
 import envs.generic_env
 from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
 from envs.core import *
-
+from scipy.spatial.distance import cityblock
 
 
 import pygame
@@ -28,30 +28,67 @@ class AI_Agent(Agent):
         self.entity_type = entity_type
         self.obs_type = obs_type
 
+
+
     def getAction(self,obs):
         return random.choice([UP,DOWN,LEFT,RIGHT])
 
 class BlockingAdvisary(Advisary):
-    def getGoal(self):
-        target_value = 0
+    def getGoal(self,obs):
+        target_value = None
         for value in self.env.value_to_objects:
             if 'class' in self.env.value_to_objects[value]:
                 if self.env.value_to_objects[value]['class'] == 'goal':
                     target_value = value
-                break
-        target_location = np.where(obs == target_value)
+                    break
+        target_location = np.where(self.env.current_grid_map == target_value)
+        return target_location
 
 
     def getAction(self,obs):
-        print("here")
+        my_location = np.where(self.env.current_grid_map == self.value)
+
+
+        agents = self.getAgents()
+        distance_by_id = {}
+        for agent_value in agents:
+            target_location = np.where(self.env.current_grid_map == agent_value)
+            distance_by_id[agent_value] = cityblock(my_location,target_location)
+        for agent_value in distance_by_id:
+            if distance_by_id[agent_value] <= 5:
+                rad_to_agent = math.atan2(target_location[0] - my_location[0], target_location[1] - my_location[1])
+                deg_to_agent = math.degrees(rad_to_agent)
+                # print(deg_to_agent)
+                if deg_to_agent >= 45 and deg_to_agent <= 135.0:
+                    return 1
+                elif deg_to_agent >= -45 and deg_to_agent <= 45.0:
+                    return 4
+                elif deg_to_agent >= -135 and deg_to_agent <= 45.0:
+                    return 2
+                else:
+                    return 3
+        goal_location = self.getGoal(obs)
+        permutation = (random.randint(-1,1),random.randint(0,1))
+        target_location = (goal_location[0] + permutation[0], goal_location[1] + permutation[1])
+        rad_to_agent = math.atan2(target_location[0] - my_location[0], target_location[1] - my_location[1])
+        deg_to_agent = math.degrees(rad_to_agent)
+        # print(deg_to_agent)
+        if deg_to_agent >= 45 and deg_to_agent <= 135.0:
+            return 1
+        elif deg_to_agent >= -45 and deg_to_agent <= 45.0:
+            return 4
+        elif deg_to_agent >= -135 and deg_to_agent <= 45.0:
+            return 2
+        else:
+            return 3
 
 
 
 env = envs.generic_env.GenericEnv(map='house',features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-player3 = HumanAgent(env,entity_type='agent',color='blue',pygame=pygame)
-advisary = Advisary(env,entity_type='advisary',color='red',obs_type='data')
+player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+advisary = BlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data')
 
 
 
@@ -86,7 +123,9 @@ while running:
     pygame.display.update()
     key_pressed = 0
     pygame.time.delay(50)
-
+    free_spaces = env.free_spaces + list(env.entities.keys()) + [3]
+    free_spaces.remove(advisary.value)
+    env.getPathTo((1,1),(18,6),free_spaces=free_spaces)
     obs, r, done, info = env.step()
 
     obs = PIL.Image.fromarray(obs)

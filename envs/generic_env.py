@@ -33,6 +33,7 @@ class GenericEnv(gym.Env):
     done = 0
     to_clean = []
     permanents = []
+    free_spaces = [0]
 
     colors = {
         'red': (252, 3, 3),
@@ -85,7 +86,68 @@ class GenericEnv(gym.Env):
         #Run the dynamic environment
         #self.run()
 
+    def getPathTo(self,start_location,end_location, free_spaces=[]):
+        pathArray = np.full(self.dims,0)
 
+        for free_space in free_spaces:
+            zeros = np.where(self.current_grid_map == free_space)
+            zeros = list(zip(zeros[0],zeros[1]))
+            for point in zeros:
+                pathArray[point] = 1
+
+        #Because we started with true (1), we start with a current value of 1 (which will increase to two)
+        current_value = 1
+        target_value = 0
+        pathArray[start_location] = 2
+        directions = [UP, DOWN, LEFT, RIGHT]
+        stop = False
+        while True:
+            current_value += 1
+            target_value = current_value + 1
+            test_points = np.where(pathArray == current_value)
+            test_points = list(zip(test_points[0],test_points[1]))
+            still_looking = False
+            for test_point in test_points:
+                for direction in directions:
+                    if pathArray[self.action_map[direction](test_point)] and pathArray[self.action_map[direction](test_point)] + current_value <= target_value:
+                        pathArray[self.action_map[direction](test_point)] = target_value
+                        still_looking = True
+                    print(self.action_map[direction](test_point), end_location)
+                    if self.action_map[direction](test_point) == end_location:
+                        stop = True
+                        break
+            if not still_looking:
+                return -1
+            if stop:
+                break
+        current_point = end_location
+        while True:
+            for direction in directions:
+                if pathArray[self.action_map[direction](current_point)] == target_value - 1:
+                    pathArray[current_point] = -1
+                    current_point = self.action_map[direction](current_point)
+                    target_value -= 1
+                if current_point == start_location:
+                    pathArray[current_point] = -1
+                    return pathArray
+
+
+
+
+    def getNeighbors(self,location):
+        up = self.action_map[UP](location)
+        if not int(self.current_grid_map[up[0],up[1]]) in self.free_spaces:
+            up = False
+        down = self.action_map[DOWN](location)
+        if not int(self.current_grid_map[down[0],down[1]]) in self.free_spaces:
+            down = False
+        left = self.action_map[LEFT](location)
+        if not int(self.current_grid_map[left[0],left[1]]) in self.free_spaces:
+            left = False
+        right = self.action_map[RIGHT](location)
+        if not int(self.current_grid_map[right[0],right[1]]) in self.free_spaces:
+            right = False
+        return {'up':up, 'down':down, 'left':left, 'right':right}
 
     def schedule_cleanup(self,value):
         self.to_clean.append(value)
@@ -141,7 +203,8 @@ class GenericEnv(gym.Env):
             if 'permanent' in maps[map]:
                 for value in maps[map]['permanent']:
                     self.permanents.append(value)
-
+            if 'free-spaces' in maps[map]:
+                [self.free_spaces.append(i) for i in maps[map]['free-spaces'] if not i in self.free_spaces]
 
     def moveToAgent(self,current_position,intended_position):
         return 0

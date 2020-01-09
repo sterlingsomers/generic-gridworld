@@ -28,6 +28,9 @@ class Entity:
             return 0
 
 
+
+        return {'up':up,'down':down,'left':left,'right':right}
+
     def moveTo(self,current_position,intended_position):
         current_position_value = self.env.current_grid_map[current_position[0], current_position[1]]
         intended_position_value = self.env.current_grid_map[intended_position[0], intended_position[1]]
@@ -144,7 +147,3 @@ class Advisary(Entity):
             return 2
         else:
             return 3
-        #below is incase it gets stuck - it will take a random move
-        self.post_location = np.where(self.env.current_grid_map == self.value)
-        if my_location == self.post_location:
-            self.env.step(random.randint(1, 4), self.value)
