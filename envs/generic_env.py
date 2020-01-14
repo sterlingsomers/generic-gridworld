@@ -87,6 +87,11 @@ class GenericEnv(gym.Env):
         #self.run()
 
     def getPathTo(self,start_location,end_location, free_spaces=[]):
+        '''An A* algorithm to get from one point to another.
+        free_spaces is a list of values that can be traversed.
+        start_location and end_location are tuple point values.
+
+        Returns a map with path denoted by -1 values. Inteded to use np.where(path == -1).'''
         pathArray = np.full(self.dims,0)
 
         for free_space in free_spaces:
@@ -112,12 +117,13 @@ class GenericEnv(gym.Env):
                     if pathArray[self.action_map[direction](test_point)] and pathArray[self.action_map[direction](test_point)] + current_value <= target_value:
                         pathArray[self.action_map[direction](test_point)] = target_value
                         still_looking = True
-                    print(self.action_map[direction](test_point), end_location)
+                    # print(self.action_map[direction](test_point), end_location)
                     if self.action_map[direction](test_point) == end_location:
+                        pathArray[end_location] = - 1
                         stop = True
                         break
             if not still_looking:
-                return -1
+                return pathArray
             if stop:
                 break
         current_point = end_location
@@ -132,7 +138,11 @@ class GenericEnv(gym.Env):
                     return pathArray
 
 
-
+    def getGoalValue(self):
+        for value in self.value_to_objects:
+            if 'class' in self.value_to_objects[value]:
+                if self.value_to_objects[value]['class'] == 'goal':
+                    return value
 
     def getNeighbors(self,location):
         up = self.action_map[UP](location)
@@ -240,8 +250,8 @@ class GenericEnv(gym.Env):
         self.done = False
         self.reward = 0
         for entity in self.entities:
-            free_spaces = np.where(self.current_grid_map == 0)
-            free_spaces = list(zip(free_spaces[0], free_spaces[1]))
+            # free_spaces = np.where(self.current_grid_map == 0)
+            # free_spaces = list(zip(free_spaces[0], free_spaces[1]))
             self.entities[entity].place(position='random-free')
 
 
@@ -274,11 +284,14 @@ class GenericEnv(gym.Env):
         info = 0
         obs = self._gridmap_to_image()
         actions = []
+        count = 0
         for entity in self.entities:
             actions.append(self.entities[entity].getAction(obs))
         for entity, action in zip(self.entities, actions):
+            count += 1
             if action == 0:
                 continue
+            print('action',action, 'entity', entity, 'count', count)
             current_position = np.where(self.current_grid_map == self.entities[entity].value)
             position_function = self.action_map[action]
             intended_position = position_function(current_position)

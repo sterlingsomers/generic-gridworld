@@ -8,7 +8,7 @@ import envs.generic_env
 from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
 from envs.core import *
 from scipy.spatial.distance import cityblock
-
+from itertools import permutations
 
 import pygame
 import numpy as np
@@ -33,6 +33,93 @@ class AI_Agent(Agent):
     def getAction(self,obs):
         return random.choice([UP,DOWN,LEFT,RIGHT])
 
+class ChasingAdvisary(Advisary):
+
+    def getAction(self,obs):
+        my_location = np.where(self.env.current_grid_map == self.value)
+
+        agents = self.getAgents()
+        distance_to_agents = {}
+        for agent in agents:
+            agent_location = np.where(self.env.current_grid_map == agent)
+            path  = self.env.getPathTo((my_location[0],my_location[1]),(agent_location[0],agent_location[1]),free_spaces=self.env.free_spaces)
+            points_in_path = np.where(path == -1)
+            points_in_path = list(zip(points_in_path[0],points_in_path[1]))
+            distance_to_agents[agent] = {'dist':len(points_in_path),'path':path}
+        #determine which is closest here.
+        #for speed, just use the only agent
+        path = distance_to_agents[4]['path']
+        for direction in [UP, DOWN, LEFT, RIGHT]:
+            if path[self.env.action_map[direction]((my_location[0],my_location[1]))] == -1:
+                return direction
+
+class ChasingBlockingAdvisary(Advisary):
+    def getAction(self, obs):
+        my_location = np.where(self.env.current_grid_map == self.value)
+        goal_val = self.env.getGoalValue()
+        goal_location = np.where(self.env.current_grid_map == goal_val)
+        agents = self.getAgents()
+        distance_to_agents = {}
+        agents_to_goal = {}
+        for agent in agents:
+            agent_location = np.where(self.env.current_grid_map == agent)
+            path = self.env.getPathTo((my_location[0], my_location[1]), (agent_location[0], agent_location[1]),
+                                      free_spaces=self.env.free_spaces)
+            points_in_path = np.where(path == -1)
+            if len(points_in_path) < 2:
+                print("NOOP")
+                return NOOP
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            agent_goal_transform = (int(agent_location[0])-int(goal_location[0]),int(agent_location[1]-goal_location[1]))
+            distance_to_agents[agent] = {'dist': len(points_in_path), 'path': path, 'goal_transform':agent_goal_transform}
+
+        #assume we've determined the closest agent
+        #use #4 for now
+        if distance_to_agents[agents[0]]['dist'] > 3:
+
+            goal_transform = list(distance_to_agents[agents[0]]['goal_transform'])
+            if goal_transform[0] < 0:
+                goal_transform[0] = -1
+            elif goal_transform[0] > 1:
+                goal_transform[0] = 1
+            if goal_transform[1] < 0:
+                goal_transform[1] = -1
+            elif goal_transform[1] > 1:
+                goal_transform[1] = 1
+            goal_location = [int(goal_location[0]), int(goal_location[1])]
+            goal_location[0] = goal_location[0] + goal_transform[0]
+            goal_location[1] = goal_location[1] + goal_transform[1]
+            if int(my_location[0]) == int(goal_location[0]) and int(my_location[1]) == int(goal_location[1]):
+                print("noooop")
+                return NOOP
+            path = self.env.getPathTo((my_location[0], my_location[1]), (goal_location[0], goal_location[1]),
+                                      free_spaces=self.env.free_spaces)
+            #if no path was found
+            if not list(np.where(path == -1)[0]):
+                print("NOOP 2")
+                return NOOP
+            for direction in [UP, DOWN, LEFT, RIGHT]:
+
+                if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
+                    print("direction", direction)
+                    return direction
+        else:
+            path = distance_to_agents[agents[0]]['path']
+            for direction in [UP, DOWN, LEFT, RIGHT]:
+                if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
+                    print("diection2", direction)
+                    return direction
+        return 2
+
+
+
+
+
+
+
+
+
+
 class BlockingAdvisary(Advisary):
     def getGoal(self,obs):
         target_value = None
@@ -47,9 +134,8 @@ class BlockingAdvisary(Advisary):
 
     def getAction(self,obs):
         my_location = np.where(self.env.current_grid_map == self.value)
-
-
         agents = self.getAgents()
+
         distance_by_id = {}
         for agent_value in agents:
             target_location = np.where(self.env.current_grid_map == agent_value)
@@ -88,7 +174,7 @@ env = envs.generic_env.GenericEnv(map='house',features=[{'class':'feature','type
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
 player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-advisary = BlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data')
+advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data')
 
 
 
@@ -123,9 +209,9 @@ while running:
     pygame.display.update()
     key_pressed = 0
     pygame.time.delay(50)
-    free_spaces = env.free_spaces + list(env.entities.keys()) + [3]
-    free_spaces.remove(advisary.value)
-    env.getPathTo((1,1),(18,6),free_spaces=free_spaces)
+    # free_spaces = env.free_spaces + list(env.entities.keys()) + [3]
+    # free_spaces.remove(advisary.value)
+    # env.getPathTo((1,1),(18,6),free_spaces=free_spaces)
     obs, r, done, info = env.step()
 
     obs = PIL.Image.fromarray(obs)

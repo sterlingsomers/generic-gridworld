@@ -41,10 +41,12 @@ class Entity:
 
     def place(self, position='random-free'):
         if position == 'random-free':
-            free_spaces = np.where(self.env.current_grid_map == 0)
-            free_spaces = list(zip(free_spaces[0], free_spaces[1]))
-            free_space = random.choice(free_spaces)
-            self.env.current_grid_map[free_space] = self.value
+            free_spaces = []
+            for free_space in self.env.free_spaces:
+                found_spaces = np.where(self.env.current_grid_map == free_space)
+                free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
+            the_space = random.choice(free_spaces)
+            self.env.current_grid_map[the_space] = self.value
 
     def update(self):
         pass
@@ -80,6 +82,7 @@ class HumanAgent(Agent):
 
     def getAction(self,obs):
         #this updates the picture
+        print("human getAction")
         key_pressed = None
         while key_pressed == None:
             event = self.pygame.event.wait()
@@ -89,6 +92,7 @@ class HumanAgent(Agent):
                 if event.key == self.pygame.K_DOWN: key_pressed = DOWN
                 if event.key == self.pygame.K_UP: key_pressed = UP
 
+        print("human pressed", key_pressed)
         return key_pressed
         # print("event", event)
         # timeout = 5.500
