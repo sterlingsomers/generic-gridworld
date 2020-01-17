@@ -118,7 +118,7 @@ class GenericEnv(gym.Env):
                         pathArray[self.action_map[direction](test_point)] = target_value
                         still_looking = True
                     # print(self.action_map[direction](test_point), end_location)
-                    if self.action_map[direction](test_point) == end_location:
+                    if self.action_map[direction](test_point) == (int(end_location[0]),int(end_location[1])):
                         pathArray[end_location] = - 1
                         stop = True
                         break
@@ -134,7 +134,7 @@ class GenericEnv(gym.Env):
                     current_point = self.action_map[direction](current_point)
                     target_value -= 1
                 if current_point == start_location:
-                    pathArray[current_point] = -1
+                    # pathArray[current_point] = -1
                     return pathArray
 
 
@@ -173,18 +173,24 @@ class GenericEnv(gym.Env):
             object_value = self.object_values[-1] + 1
             self.object_values.append(object_value)
             self.value_to_objects[object_value] = {'class':feature['type'], 'color':feature['color'], 'moveTo':feature['moveTo']}
-            free_spaces = np.where(self.current_grid_map == 0)
-            random_free_space_i = random.choice(free_spaces[0])
-            random_free_space_j = random.choice(free_spaces[1])
-            random_free_space = (random_free_space_i,random_free_space_j)
-            self.current_grid_map[random_free_space] = object_value
+            # free_spaces = np.where(self.current_grid_map == 0)
+            # random_free_space_i = random.choice(free_spaces[0])
+            # random_free_space_j = random.choice(free_spaces[1])
+            # random_free_space = (random_free_space_i,random_free_space_j)
+            # self.current_grid_map[random_free_space] = object_value
             #pertubation = np.random.randint(-1, 1, (1,2))
-            for i in range(n_features - 1):
-                free_spaces = np.where(self.current_grid_map == 0)
-                free_spaces = [(x,y) for x,y in zip(free_spaces[0],free_spaces[1]) if x >= random_free_space_i - 1 and x <= random_free_space_i + 1 and
-                               y >= random_free_space_j - 1 and y <= random_free_space_j + 1]
-                free_space = random.choice(free_spaces)
-                self.current_grid_map[free_space] = object_value
+            for i in range(n_features):
+                free_spaces = []
+                for free_space in self.free_spaces:
+                    found_spaces = np.where(self.current_grid_map == free_space)
+                    free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
+                the_space = random.choice(free_spaces)
+                self.current_grid_map[the_space] = object_value
+                # free_spaces = np.where(self.current_grid_map == 0)
+                # free_spaces = [(x,y) for x,y in zip(free_spaces[0],free_spaces[1]) if x >= random_free_space_i - 1 and x <= random_free_space_i + 1 and
+                #                y >= random_free_space_j - 1 and y <= random_free_space_j + 1]
+                # free_space = random.choice(free_spaces)
+                # self.current_grid_map[free_space] = object_value
 
 
 
