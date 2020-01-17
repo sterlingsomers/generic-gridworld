@@ -109,8 +109,6 @@ class GenericEnv(gym.Env):
                 self.current_grid_map[free_space] = object_value
 
 
-
-
     def setupMap(self,map,dims):
         if map == '':
             self.dims = dims
@@ -176,11 +174,7 @@ class GenericEnv(gym.Env):
             obj = np.where(self.current_grid_map == obj_val)
             image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
 
-
-
         return image
-
-
 
 
     def step(self, action, value=2):
@@ -195,8 +189,6 @@ class GenericEnv(gym.Env):
         # print("cur",current_position)
         # print("intended",intended_position,intended_position_value)
 
-
-
         #movement to empty space
         if intended_position_value == 0.0:
             self.current_grid_map[current_position[0],current_position[1]] = 0.0
@@ -205,9 +197,6 @@ class GenericEnv(gym.Env):
             pass #do nothing if it's a wall
         else:
             self.entities[int(current_position_value)].moveTo(current_position,intended_position)
-
-
-
 
         return self._gridmap_to_image(), reward, done, info
 
