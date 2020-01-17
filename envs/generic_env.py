@@ -120,6 +120,7 @@ class GenericEnv(gym.Env):
                     # print(self.action_map[direction](test_point), end_location)
                     if self.action_map[direction](test_point) == (int(end_location[0]),int(end_location[1])):
                         pathArray[end_location] = - 1
+                        still_looking = True
                         stop = True
                         break
             if not still_looking:

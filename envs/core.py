@@ -64,8 +64,8 @@ class Agent(Entity):
         self.env.done = 1
         return 1
 
-class AI_Agent(Agent):
-    def __init__(self, env, obs_type='data',entity_type='', color='', position='random-free'):
+class AIAgent(Agent):
+    def __init__(self, env, obs_type='data',entity_type='', color='', position='random-free',pygame='None'):
         self.env = env
         self.value = env.object_values[-1] + 1
         self.env.object_values.append(self.value)
@@ -75,11 +75,23 @@ class AI_Agent(Agent):
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
+        self.pygame = pygame
 
 
 
     def getAction(self,obs):
+        #go straight for the goal
+        my_location = np.where(self.env.current_grid_map == self.value)
+        goal_val = self.env.getGoalValue()
+        goal_location = np.where(self.env.current_grid_map == goal_val)
+        path = self.env.getPathTo((my_location[0], my_location[1]), (int(goal_location[0]), goal_location[1]),
+                                  free_spaces=self.env.free_spaces)
+        for direction in [UP, DOWN, LEFT, RIGHT]:
+            if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
+                #print("diection2", direction)
+                return direction
         return random.choice([UP,DOWN,LEFT,RIGHT])
+
 
 class HumanAgent(Agent):
     obs = None
@@ -148,6 +160,7 @@ class Advisary(Entity):
 
     def moveTo(self,current_position,intended_position):
         #who is moving?
+
         self.env.done = 1
         self.env.reward = -1
 
