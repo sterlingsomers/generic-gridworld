@@ -32,7 +32,7 @@ advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_ty
 
 class NetworkAgent(Entity):
 
-    def __init__(self, env, obs_type='image', entity_type='', color='', position='random-free'):
+    def __init__(self,obs_type='image', entity_type='', color='', position='random-free'):
         self.env = env
         self.value = env.object_values[-1] + 1
         self.env.object_values.append(self.value)
