@@ -25,13 +25,32 @@ import PIL
 env = envs.generic_env.GenericEnv(map='small-empty',features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+player3 = AIAgent(env,entity_type='agent',color='orange',pygame=pygame)
 advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data')
 #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
 
 
+class NetworkAgent(Entity):
 
+    def __init__(self, env, obs_type='image', entity_type='', color='', position='random-free'):
+        self.env = env
+        self.value = env.object_values[-1] + 1
+        self.env.object_values.append(self.value)
+        self.env.value_to_objects[self.value] = {'color': color}
+        self.env.entities[self.value] = self
+        self.color = color
+        # self.moveTo = 'moveToDefault'
+        self.entity_type = entity_type
+        self.obs_type = obs_type
+        self.active = True
 
+        #load your network jazz
+
+    def getAction(self,obs):
+        if self.active:
+            return random.choice([UP])
+        else:
+            return 0
 
 human_agent_action = 0
 human_wants_restart = False

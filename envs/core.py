@@ -21,6 +21,8 @@ class Entity:
         self.obs_type = obs_type
         self.active = True
 
+    # def register_environment
+
     def getAction(self,obs):
         if self.active:
             return random.choice([UP])
