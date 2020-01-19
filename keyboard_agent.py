@@ -1,28 +1,37 @@
 #!/usr/bin/env python
 from __future__ import print_function
-
+from threading import Thread
 import sys, gym, time
 from pyglet.window import key
 
 import envs.generic_env
 from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
-
+from envs.core import *
+from scipy.spatial.distance import cityblock
+from itertools import permutations
 
 import pygame
 import numpy as np
 
 import PIL
 
-env = envs.generic_env.GenericEnv(agents=[{'class':'Entity','color':'purple','position':'random-free','entity_type':'agent'}],
-                                  entities=[{'class':'Entity', 'color':'red','position':'random-free','entity_type':'goal'}])
+#A new class to extend old classes
 
 
-#Find the first agent for agent_value
-agent_value = 2.0
-for entity in env.entities:
-    if env.entities[entity].entity_type == 'agent':
-        agent_value = entity
-        break
+
+
+
+
+env = envs.generic_env.GenericEnv(map='small-empty',features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
+# player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
+# player2 = Agent(env,entity_type='agent',color='orange')
+player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data')
+#advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
+
+
+
+
 
 human_agent_action = 0
 human_wants_restart = False
@@ -46,9 +55,26 @@ pygame.display.update()
 game_done = False
 running = True
 
+# t = Thread(target=run_player2)
+# t.start()
+clock = pygame.time.Clock()
 while running:
+    pygame.display.update()
     key_pressed = 0
+    pygame.time.delay(50)
+    # free_spaces = env.free_spaces + list(env.entities.keys()) + [3]
+    # free_spaces.remove(advisary.value)
+    # env.getPathTo((1,1),(18,6),free_spaces=free_spaces)
+    obs, r, done, info = env.step()
+
+    obs = PIL.Image.fromarray(obs)
+    size = tuple((np.array(obs.size) * size_factor).astype(int))
+    obs = np.array(obs.resize(size, PIL.Image.NEAREST))
+    surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+    display.blit(surf, (0, 0))
+    pygame.display.update()
     for event in pygame.event.get():
+
 
         if event.type == pygame.QUIT:
             running = False
@@ -69,13 +95,7 @@ while running:
                 break
 
     if key_pressed and not game_done:
-        obs, r, done, info = env.step(key_pressed,agent_value)
-        obs = PIL.Image.fromarray(obs)
-        size = tuple((np.array(obs.size) * size_factor).astype(int))
-        obs = np.array(obs.resize(size, PIL.Image.NEAREST))
-        game_done = done
-        print("reward", r)
-        display.blit(background, (0,0))
+        player3.action = key_pressed
         if done:
             #obs = env.reset()
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
@@ -87,8 +107,11 @@ while running:
             display.blit(surf, (0,0))
 
 
-        pygame.time.delay(100)
-        pygame.display.update()
+    # pygame.time.delay(100)
+    pygame.display.update()
+    # clock.tick(100)
+    if done:
+        break
 
 pygame.quit()
 
