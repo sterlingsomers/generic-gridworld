@@ -19,7 +19,10 @@ from baselines import logger
 from baselines.bench import Monitor
 # from baselines.common import set_global_seeds
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
-
+import os
+import envs.generic_env
+from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
+from envs.core import *
 
 class ProbabilityDistribution(tf.keras.Model):
     def call(self, logits):
@@ -229,11 +232,8 @@ def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
     if wrapper_kwargs is None: wrapper_kwargs = {}
     def make_env(rank): # pylint: disable=C0111
         def _thunk():
-            if env_id=='FireGrid':
-                env = GenericEnv(agents=[{'class':'Entity','color':'purple','position':'random-free','entity_type':'agent'}],
-                                  entities=[{'class':'Entity', 'color':'red','position':'random-free','entity_type':'goal'}])
-            else:
-                env = gym.make(env_id)
+            env = envs.generic_env.GenericEnv(map='small-empty',features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
+            predator = ChasingBlockingAdvisary(env, entity_type='advisary', color='red', obs_type='data')
             env.seed(seed + rank) # DONT SEED (OR USE SAME SEED) IF YOU WANT TO REPLICATE RESULTS
             # Monitor should take care of reset!
             env = Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)), allow_early_resets=True) # SUBPROC NEEDS 4 OUTPUS FROM STEP FUNCTION

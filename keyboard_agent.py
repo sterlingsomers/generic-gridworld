@@ -31,8 +31,6 @@ advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_ty
 
 
 
-
-
 human_agent_action = 0
 human_wants_restart = False
 human_sets_pause = False
