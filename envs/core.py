@@ -2,10 +2,16 @@ import numpy as np
 import random
 import math
 from threading import Lock
-from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
+# from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
 from scipy.spatial.distance import cityblock
 import PIL
 import time
+
+NOOP = 0
+DOWN = 1
+UP = 2
+LEFT = 3
+RIGHT = 4
 
 class Entity:
 
@@ -326,3 +332,21 @@ class BlockingAdvisary(Advisary):
             return 2
         else:
             return 3
+
+
+class NetworkAgent(Entity):
+
+    def __init__(self,env,obs_type='image', entity_type='', color='', position='random-free'):
+        self.env = env
+        self.value = env.object_values[-1] + 1
+        self.env.object_values.append(self.value)
+        self.env.value_to_objects[self.value] = {'color': color}
+        self.env.entities[self.value] = self
+        self.color = color
+        # self.moveTo = 'moveToDefault'
+        self.entity_type = entity_type
+        self.obs_type = obs_type
+        self.active = True
+
+        #load your network jazz
+

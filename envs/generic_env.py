@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from common.maps import *
 import numpy as np
 
-
+from envs.core import *
 
 import time
 
@@ -286,20 +286,28 @@ class GenericEnv(gym.Env):
         return image
 
 
-    def step(self):
+
+
+    def step(self, action):
         info = 0
         obs = self._gridmap_to_image()
-        actions = []
+
+
+
+        entity_actions = []
         count = 0
         for entity in self.entities:
-            actions.append(self.entities[entity].getAction(obs))
-        for entity, action in zip(self.entities, actions):
+            if not type(entity) == NetworkAgent:
+                entity_actions.append(self.entities[entity].getAction(obs))
+            else:
+                entity_actions.append(action)
+        for entity, an_action in zip(self.entities, entity_actions):
             count += 1
-            if action == 0:
+            if an_action == 0:
                 continue
-            print('action',action, 'entity', entity, 'count', count)
+            print('action',an_action, 'entity', entity, 'count', count)
             current_position = np.where(self.current_grid_map == self.entities[entity].value)
-            position_function = self.action_map[action]
+            position_function = self.action_map[an_action]
             intended_position = position_function(current_position)
             intended_position_value = self.current_grid_map[intended_position[0], intended_position[1]]
             current_position_value = self.current_grid_map[current_position[0], current_position[1]]
