@@ -49,11 +49,7 @@ class GenericEnv(gym.Env):
         'gray' : (96,96,96)
     }
 
-
-
-
-
-    def __init__(self,dims=(12,12),map='',agents=[],features=[],entities=[]):
+    def __init__(self,dims=(10,10),map='',agents=[],features=[],entities=[]):
 
         #before anything happens, setup the map
         self.setupMap(map,dims)
@@ -82,6 +78,11 @@ class GenericEnv(gym.Env):
                            3:lambda x: (x[0]%self.dims[0],(x[1]-1)%self.dims[1]),
                            4:lambda x: (x[0]%self.dims[0],(x[1]+1)%self.dims[1]),
                            0:lambda x: (x[0],x[1])}
+
+        self.obs_shape = [dims[0], dims[0], 3]
+        self.observation_space = spaces.Box(low=0, high=255, shape=self.obs_shape, dtype=np.uint8)
+        self.action_space = spaces.Discrete(4)
+        self.reward_range = (-float('inf'), float('inf')) # or self.reward_range = (0,1)
 
         #Run the dynamic environment
         #self.run()
@@ -283,8 +284,6 @@ class GenericEnv(gym.Env):
 
 
         return image
-
-
 
 
     def step(self):
