@@ -18,7 +18,7 @@ import PIL
 #A new class to extend old classes
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
-env = envs.generic_env.GenericEnv(dims=(10,10))
+env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
 goal = Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')

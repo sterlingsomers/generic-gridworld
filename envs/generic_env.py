@@ -176,9 +176,7 @@ class GenericEnv(gym.Env):
     def addMapFeatures(self,features=[]):
         for feature in features:
             n_features = feature['start_number']
-            object_value = self.object_values[-1] + 1
-            self.object_values.append(object_value)
-            self.value_to_objects[object_value] = {'entity_type':feature['entity_type'], 'color':feature['color'], 'moveTo':feature['moveTo']}
+
             # free_spaces = np.where(self.current_grid_map == 0)
             # random_free_space_i = random.choice(free_spaces[0])
             # random_free_space_j = random.choice(free_spaces[1])
@@ -186,6 +184,10 @@ class GenericEnv(gym.Env):
             # self.current_grid_map[random_free_space] = object_value
             #pertubation = np.random.randint(-1, 1, (1,2))
             for i in range(n_features):
+                object_value = self.object_values[-1] + 1
+                self.object_values.append(object_value)
+                self.value_to_objects[object_value] = {'entity_type': feature['entity_type'], 'color': feature['color'],
+                                                       'moveTo': feature['moveTo']}
                 free_spaces = []
                 for free_space in self.free_spaces:
                     found_spaces = np.where(self.current_grid_map == free_space)
