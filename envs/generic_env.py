@@ -24,7 +24,7 @@ RIGHT = 4
 
 
 class GenericEnv(gym.Env):
-    value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0}}
+    value_to_objects = {1: {'class': 'wall', 'color': 'gray', 'moveTo': 0}}
     object_values = [1]
     entities = {} #indexed by object value
     backup_values = {}
