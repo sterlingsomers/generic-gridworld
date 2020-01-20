@@ -99,6 +99,7 @@ class A2CAgent:
                 mb_actions[:, n], mb_values[:, n] = self.model.action_value(latest_obs)
                 # print('|step:', n, '|actions:', action_ids)  # (MINE) If you put it after the envs.step the SUCCESS appears at the envs.step so it will appear oddly
                 mb_obs[:, n] = latest_obs.copy()
+                print('### Update:', update, '### nstep:', n)
                 latest_obs, mb_rewards[:, n], mb_done[:, n], info = envs.step(mb_actions[:, n])
 
                 indx = 0  # env count
@@ -234,6 +235,7 @@ def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
         def _thunk():
             env = envs.generic_env.GenericEnv(map='small-empty',features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
             predator = ChasingBlockingAdvisary(env, entity_type='advisary', color='red', obs_type='data')
+            network_agent = NetworkAgent(env, color='aqua')
             env.seed(seed + rank) # DONT SEED (OR USE SAME SEED) IF YOU WANT TO REPLICATE RESULTS
             # Monitor should take care of reset!
             env = Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)), allow_early_resets=True) # SUBPROC NEEDS 4 OUTPUS FROM STEP FUNCTION
@@ -246,11 +248,13 @@ def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     eager_exec = True
-    num_envs = 2
+    num_envs = 1
     env_name = 'FireGrid' # CartPole-v0, MsPacman-v4
     # env = gym.make('CartPole-v0')
     # env = gameEnv(partial=False, size=9)
     env = make_custom_env(env_name, num_envs, 1)
+    print('ok')
+
 
     if eager_exec==True:
         '''Comment for graph execution'''

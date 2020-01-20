@@ -67,9 +67,11 @@ class Agent(Entity):
         intended_position_value = self.env.current_grid_map[intended_position[0], intended_position[1]]
         self.env.current_grid_map[current_position] = 0.0
         self.env.current_grid_map[intended_position] = current_position_value
-        self.env.schedule_cleanup(self.value)
+        # self.env.schedule_cleanup(self.value)
         print('agent says done in moveto',self.value)
-        self.env.done = 1
+        print('AGENT IS BEING ATTACKED')
+        self.env.done = True
+        self.env.reward = -1
         return 1
 
 class AIAgent(Agent):
@@ -171,6 +173,7 @@ class Advisary(Entity):
 
         self.env.done = 1
         self.env.reward = -1
+        print('PREADATOR IS BEING ATTACKED')
 
     def getAction(self,obs):
         agents = self.getAgents()
@@ -277,14 +280,6 @@ class ChasingBlockingAdvisary(Advisary):
         return 2
 
 
-
-
-
-
-
-
-
-
 class BlockingAdvisary(Advisary):
     def getGoal(self,obs):
         target_value = None
@@ -334,7 +329,7 @@ class BlockingAdvisary(Advisary):
             return 3
 
 
-class NetworkAgent(Entity):
+class NetworkAgent(Agent):
 
     def __init__(self,env,obs_type='image', entity_type='', color='', position='random-free'):
         self.env = env

@@ -49,26 +49,27 @@ class GenericEnv(gym.Env):
         'gray' : (96,96,96)
     }
 
-    def __init__(self,dims=(10,10),map='',agents=[],features=[],entities=[]):
+    def __init__(self,dims=(10,10),map='',agents=[],features=[], entities = []):
 
+        self.map = map
+        self.features = features
+        self.dims = dims
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
         #add (dynamic, random) features to the map
         self.addMapFeatures(features)
 
-
         #Add agents to the environment (1 required).  Will be placed on reset()
-        for agent in agents:
-            class_to_use = getattr(sys.modules[__name__], agent['class'])
-            class_to_use(self,entity_type=agent['entity_type'],color=agent['color'],position=agent['position'])
-
-
-        #add other entities to the environment
+        # for agent in agents:
+        #     class_to_use = getattr(sys.modules[__name__], agent['class'])
+        #     class_to_use(self,entity_type=agent['entity_type'],color=agent['color'],position=agent['position'])
+        #
+        #
+        # #add other entities to the environment
         for entity in entities:
             class_to_use = getattr(sys.modules[__name__], entity['class'])
             class_to_use(self,entity_type=entity['entity_type'],color=entity['color'],position=entity['position'])
-
 
 
         self.base_grid_map = np.copy(self.current_grid_map)
@@ -194,9 +195,6 @@ class GenericEnv(gym.Env):
                 # free_space = random.choice(free_spaces)
                 # self.current_grid_map[free_space] = object_value
 
-
-
-
     def setupMap(self,map,dims):
         if map == '':
             self.dims = dims
@@ -247,6 +245,7 @@ class GenericEnv(gym.Env):
         self.current_grid_map[intended_position] = current_position_value
         self.done = True
         self.reward += 1
+        print('GOAL REACHED')
         return 0
 
     def moveToObstacle(self,current_position,intended_position):
@@ -255,13 +254,37 @@ class GenericEnv(gym.Env):
 
 
     def reset(self):
+        # for entity in self.entities:
+        #     entity_loc = np.where(self.current_grid_map == entity)
+        #     for x,y in list(zip(entity_loc[0],entity_loc[1])):
+        #         self.current_grid_map[(x,y)] = 0
+
+        for object_value in self.object_values:
+            if object_value <= 1:
+                continue
+            obj_loc = np.where(self.current_grid_map == object_value)
+            for x,y in list(zip(obj_loc[0],obj_loc[1])):
+                self.current_grid_map[(x,y)] = 0
+
         self.done = False
         self.reward = 0
-        for entity in self.entities:
-            # free_spaces = np.where(self.current_grid_map == 0)
-            # free_spaces = list(zip(free_spaces[0], free_spaces[1]))
-            self.entities[entity].place(position='random-free')
 
+
+        self.base_grid_map = np.copy(self.current_grid_map)
+        # for entity in self.entities:
+        #     # free_spaces = np.where(self.current_grid_map == 0)
+        #     # free_spaces = list(zip(free_spaces[0], free_spaces[1]))
+        #     self.entities[entity].place(position='random-free')
+
+        for object_value in self.object_values:
+            if object_value <= 1:
+                continue
+            free_spaces = []
+            for free_space in self.free_spaces:
+                found_spaces = np.where(self.current_grid_map == free_space)
+                free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
+            the_space = random.choice(free_spaces)
+            self.current_grid_map[the_space] = object_value
 
         return self._gridmap_to_image()
 
@@ -286,22 +309,26 @@ class GenericEnv(gym.Env):
         return image
 
 
-
-
     def step(self, action):
-        info = 0
+        info = {}
         obs = self._gridmap_to_image()
-
-
 
         entity_actions = []
         count = 0
         for entity in self.entities:
+            # if self.done:
+            #     print('done1a:',self.done)
+            #     return self._gridmap_to_image(), self.reward, self.done, info
             if not type(entity) == NetworkAgent:
-                entity_actions.append(self.entities[entity].getAction(obs))
+                entity_actions.append(self.entities[entity].getAction(obs)) # collect non agent actions
             else:
-                entity_actions.append(action)
+                entity_actions.append(action) # collect agent's actions
+
+        # Execute the list of actions collected above
         for entity, an_action in zip(self.entities, entity_actions):
+            if self.done:
+                print('done1b:',self.done)
+                return self._gridmap_to_image(), self.reward, self.done, info
             count += 1
             if an_action == 0:
                 continue
@@ -321,10 +348,10 @@ class GenericEnv(gym.Env):
             else:
                 if int(intended_position_value) in self.entities:
                     self.entities[int(intended_position_value)].moveTo(current_position,intended_position)
-                else:
+                else: # If there is a goal and agent moves to it then moveTo  becomes moveToGoal
                     moveTo = getattr(self,self.value_to_objects[int(intended_position_value)]['moveTo'])
                     moveTo(current_position,intended_position)
-                    continue
+                    # continue
         bv = self.backup_values.copy()
         for position in bv:
             grid_value = self.current_grid_map[(position[0],position[1])]
@@ -337,18 +364,6 @@ class GenericEnv(gym.Env):
                 #         (int(current_position[0]), int(current_position[1]))]
                 #     del self.backup_values[(int(current_position[0]), int(current_position[1]))]
 
-
-        self.cleanup()
+        print('done2:',self.done)
+        # self.cleanup()
         return self._gridmap_to_image(), self.reward, self.done, info
-
-
-
-
-
-
-
-
-
-
-
-
