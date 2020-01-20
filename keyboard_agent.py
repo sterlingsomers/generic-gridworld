@@ -30,27 +30,7 @@ advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_ty
 #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
 
 
-class NetworkAgent(Entity):
 
-    def __init__(self,obs_type='image', entity_type='', color='', position='random-free'):
-        self.env = env
-        self.value = env.object_values[-1] + 1
-        self.env.object_values.append(self.value)
-        self.env.value_to_objects[self.value] = {'color': color}
-        self.env.entities[self.value] = self
-        self.color = color
-        # self.moveTo = 'moveToDefault'
-        self.entity_type = entity_type
-        self.obs_type = obs_type
-        self.active = True
-
-        #load your network jazz
-
-    def getAction(self,obs):
-        if self.active:
-            return random.choice([UP])
-        else:
-            return 0
 
 human_agent_action = 0
 human_wants_restart = False
@@ -84,7 +64,7 @@ while running:
     # free_spaces = env.free_spaces + list(env.entities.keys()) + [3]
     # free_spaces.remove(advisary.value)
     # env.getPathTo((1,1),(18,6),free_spaces=free_spaces)
-    obs, r, done, info = env.step()
+    obs, r, done, info = env.step([])
 
     obs = PIL.Image.fromarray(obs)
     size = tuple((np.array(obs.size) * size_factor).astype(int))
