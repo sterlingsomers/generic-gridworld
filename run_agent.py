@@ -25,7 +25,8 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 import gym
 from gym.wrappers import TimeLimit
 
-import envs.generic_env_v2
+# import envs.generic_env_v2
+from envs.generic_env_v2 import GenericEnv
 from envs.generic_env_v2 import UP, DOWN, LEFT, RIGHT, NOOP
 from envs.core_v2 import *
 
@@ -87,7 +88,7 @@ def check_and_handle_existing_folder(f):
 
 def _print(i):
     print(datetime.now())
-    print("# batch %d" % i)
+    print("# Update %d" % i)
     sys.stdout.flush()
 
 
@@ -104,7 +105,7 @@ def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
     def make_env(rank): # pylint: disable=C0111
         def _thunk():
             # env = gym.make(env_id)
-            env = TimeLimit(envs.generic_env_v2.GenericEnv())
+            env = TimeLimit(GenericEnv()) # envs.generic_env_v2.GenericEnv()
             env._max_episode_steps = 500
             goal = Goal(env, entity_type='goal', color='green')
             network_agent = NetworkAgent(env, color='aqua')
@@ -133,7 +134,8 @@ def main():
     elif FLAGS.training==False:
         #envs = make_custom_env('gridworld-v0', 1, 1)
         # envs = gym.make('gridworld{}-v0'.format('visualize' if FLAGS.visualize else ''))
-        envs = envs.generic_env_v2.GenericEnv()
+        print('HERE')
+        envs = GenericEnv()
         goal = Goal(envs, entity_type='goal', color='green')
         network_agent = NetworkAgent(envs, color='aqua')
         # AI_agent = AIAgent(envs, entity_type='agent', color='blue', pygame='1')

@@ -17,7 +17,10 @@ class Entity:
     current_position = (0,0)
 
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
-        self.env = env.env
+        if env.unwrapped:
+            self.env = env.env
+        else:
+            self.env = env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
@@ -64,7 +67,10 @@ class Entity:
 
 class Goal(Entity):
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
-        self.env = env.env
+        if env.unwrapped:
+            self.env = env.env
+        else:
+            self.env = env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
@@ -111,7 +117,10 @@ class Agent(Entity):
 
 class AIAgent(Agent):
     def __init__(self, env, obs_type='data',entity_type='', color='', position='random-free',pygame='None'):
-        self.env = env.env
+        if env.unwrapped:
+            self.env = env.env
+        else:
+            self.env = env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
@@ -142,7 +151,10 @@ class HumanAgent(Agent):
     obs = None
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',pygame='None'):
         self.size_factor = 10
-        self.env = env.env
+        if env.unwrapped:
+            self.env = env.env
+        else:
+            self.env = env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
@@ -369,7 +381,10 @@ class BlockingAdvisary(Advisary):
 class NetworkAgent(Agent):
 
     def __init__(self,env,obs_type='image', entity_type='', color='', position='random-free'):
-        self.env = env.env
+        if env.unwrapped:
+            self.env = env.env
+        else:
+            self.env = env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
