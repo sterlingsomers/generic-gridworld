@@ -4,6 +4,7 @@ import os
 import time
 from datetime import datetime
 import gym
+from gym import wrappers
 from envs.generic_env import GenericEnv
 import logging
 import scipy
@@ -233,7 +234,8 @@ def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
     if wrapper_kwargs is None: wrapper_kwargs = {}
     def make_env(rank): # pylint: disable=C0111
         def _thunk():
-            env = envs.generic_env.GenericEnv(map='small-empty',features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
+            env = wrappers.TimeLimit(envs.generic_env.GenericEnv(map='small-empty',features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}]))
+            env._max_episode_steps = 500
             predator = ChasingBlockingAdvisary(env, entity_type='advisary', color='red', obs_type='data')
             network_agent = NetworkAgent(env, color='aqua')
             env.seed(seed + rank) # DONT SEED (OR USE SAME SEED) IF YOU WANT TO REPLICATE RESULTS
