@@ -14,6 +14,7 @@ LEFT = 3
 RIGHT = 4
 
 class Entity:
+    current_position = (0,0)
 
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
         self.env = env
@@ -28,12 +29,16 @@ class Entity:
         self.active = True
 
     # def register_environment
+    def moveToMe(self,entity_object):
+        self.env.done = True
+        self.env.reward -= 1
 
     def getAction(self,obs):
         if self.active:
             return random.choice([UP])
         else:
             return 0
+
 
 
     def moveTo(self,current_position,intended_position):
@@ -52,6 +57,7 @@ class Entity:
                 free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
             the_space = random.choice(free_spaces)
             self.env.current_grid_map[the_space] = self.value
+            self.current_position = the_space
 
     def update(self):
         pass
@@ -70,6 +76,10 @@ class Goal(Entity):
         self.obs_type = obs_type
         self.active = True
 
+    def moveToMe(self,entity_object):
+        self.env.done = True
+        self.env.reward += 1
+
     def moveTo(self,current_position,intended_position):
         current_position_value = self.env.current_grid_map[current_position[0], current_position[1]]
         intended_position_value = self.env.current_grid_map[intended_position[0], intended_position[1]]
@@ -83,6 +93,10 @@ class Goal(Entity):
 
 
 class Agent(Entity):
+    def moveToMe(self,entity_object):
+        self.env.done = True
+        self.env.reward -= 1
+
 
     def moveTo(self,current_position,intended_position):
         current_position_value = self.env.current_grid_map[current_position[0], current_position[1]]
@@ -90,8 +104,8 @@ class Agent(Entity):
         self.env.current_grid_map[current_position] = 0.0
         self.env.current_grid_map[intended_position] = current_position_value
         # self.env.schedule_cleanup(self.value)
-        print('agent says done in moveto',self.value)
-        print('AGENT IS BEING ATTACKED')
+        # print('agent says done in moveto',self.value)
+        # print('AGENT IS BEING ATTACKED')
         self.env.done = True
         self.env.reward = -1
         return 1
@@ -143,7 +157,7 @@ class HumanAgent(Agent):
 
     def getAction(self,obs):
         #this updates the picture
-        print("human getAction")
+        # print("human getAction")
         key_pressed = None
         while key_pressed == None:
             event = self.pygame.event.wait()
@@ -157,21 +171,9 @@ class HumanAgent(Agent):
         if key_pressed == 'reset':
             self.env.reset()
             return 0
-        print("human pressed", key_pressed)
+        # print("human pressed", key_pressed)
         return key_pressed
-        # print("event", event)
-        # timeout = 5.500
-        # action = self.action
-        # self.obs = obs
-        # self.action = 0
-        # start = time.time()
-        # while time.time()  - start < timeout:
-        #     if not action == 0:
-        #         self.action = 0
-        #         return action
-        #     else:
-        #         action = self.action
-        # return action
+
 
 
 class Advisary(Entity):
@@ -199,7 +201,7 @@ class Advisary(Entity):
 
         self.env.done = 1
         self.env.reward = -1
-        print('PREADATOR IS BEING ATTACKED')
+        # print('PREADATOR IS BEING ATTACKED')
 
     def getAction(self,obs):
         agents = self.getAgents()
@@ -245,20 +247,28 @@ class ChasingBlockingAdvisary(Advisary):
     def getAction(self, obs):
         my_location = np.where(self.env.current_grid_map == self.value)
         goal_val = self.env.getGoalValue()
+        # print('goal_val',goal_val)
+
         goal_location = np.where(self.env.current_grid_map == goal_val)
+        # if goal_location[0].size==0:
+        #     print('DEBUG')
         agents = self.getAgents()
+        # print('agents', agents)
         distance_to_agents = {}
         agents_to_goal = {}
         for agent in agents:
             agent_location = np.where(self.env.current_grid_map == agent)
+            # print('myloc', my_location)
+            # print('agentloc', agent_location)
             path_to_agent = self.env.getPathTo((my_location[0], my_location[1]), (agent_location[0], agent_location[1]),
                                       free_spaces=self.env.free_spaces)
             points_in_path = np.where(path_to_agent == -1)
             if len(points_in_path) < 2:
-                print("NOOP")
+                # print("NOOP")
                 return NOOP
             points_in_path = list(zip(points_in_path[0], points_in_path[1]))
 
+            # print('goalloc', goal_location)
             agent_to_goal = self.env.getPathTo((agent_location[0], agent_location[1]), (goal_location[0], goal_location[1]),
                                                free_spaces=self.env.free_spaces+ [self.value])
             agent_to_goal_points = np.where(agent_to_goal == - 1)
@@ -275,7 +285,7 @@ class ChasingBlockingAdvisary(Advisary):
             agent_path = distance_to_agents[agent]['agent_to_goal']
             directions = [UP, DOWN, LEFT, RIGHT]
             if (int(my_location[0]),int(my_location[1])) in agent_path:
-                print("in there....")
+                # print("in there....")
                 return NOOP
             for direction in directions:
                 if self.env.action_map[direction](goal_location) in agent_path:
@@ -284,24 +294,26 @@ class ChasingBlockingAdvisary(Advisary):
             if target_location == (-1, -1):
                 return NOOP
             if int(my_location[0]) == int(target_location[0]) and int(my_location[1]) == int(target_location[1]):
-                print("noooop")
+                # print("noooop")
                 return NOOP
+
+            # print('targloc', target_location)
             path = self.env.getPathTo((my_location[0], my_location[1]), (target_location[0], target_location[1]),
                                       free_spaces=self.env.free_spaces)
             #if no path was found
             if not list(np.where(path == -1)[0]):
-                print("NOOP 2")
+                # print("NOOP 2")
                 return NOOP
             for direction in [UP, DOWN, LEFT, RIGHT]:
 
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
-                    print("direction", direction)
+                    # print("direction", direction)
                     return direction
         else: #go for the agent
             path = distance_to_agents[agents[0]]['raw_path_to_agent']
             for direction in [UP, DOWN, LEFT, RIGHT]:
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
-                    print("diection2", direction)
+                    # print("diection2", direction)
                     return direction
         return 2
 
@@ -369,5 +381,6 @@ class NetworkAgent(Agent):
         self.obs_type = obs_type
         self.active = True
 
-        #load your network jazz
-
+    def moveToMe(self,entity_object):
+        self.env.done = True
+        self.env.reward -=1
