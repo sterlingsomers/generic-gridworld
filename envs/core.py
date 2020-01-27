@@ -295,7 +295,7 @@ class ChasingBlockingAdvisary(Advisary):
 
             # print('goalloc', goal_location)
             agent_to_goal = self.env.getPathTo((agent_location[0], agent_location[1]), (goal_location[0], goal_location[1]),
-                                               free_spaces=self.env.free_spaces+ [self.value])
+                                               free_spaces=self.env.free_spaces + [self.value])
             agent_to_goal_points = np.where(agent_to_goal == - 1)
             points_to_goal_path = list(zip(agent_to_goal_points[0], agent_to_goal_points[1]))
 
@@ -315,7 +315,7 @@ class ChasingBlockingAdvisary(Advisary):
         #find the closest agent to intercept
         distance_list = sorted(distance_to_agents.keys(), key=lambda k: distance_to_agents[k]['dist'])
         target_agent_val = distance_list[0]
-
+        print('target_', target_agent_val)
 
         if distance_to_agents[target_agent_val]['dist']  > 2:
             #go for the goal
@@ -338,7 +338,7 @@ class ChasingBlockingAdvisary(Advisary):
 
             # print('targloc', target_location)
             path = self.env.getPathTo((my_location[0], my_location[1]), (target_location[0], target_location[1]),
-                                      free_spaces=self.env.free_spaces)
+                                      free_spaces=self.env.free_spaces + [self.value])
             #if no path was found
             if not list(np.where(path == -1)[0]):
                 # print("NOOP 2")
@@ -347,9 +347,10 @@ class ChasingBlockingAdvisary(Advisary):
 
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
                     # print("direction", direction)
+                    print('direction2', direction)
                     return direction
         else: #go for the agent
-            path = distance_to_agents[agents[0]]['raw_path_to_agent']
+            path = distance_to_agents[target_agent_val]['raw_path_to_agent']
             for direction in [UP, DOWN, LEFT, RIGHT]:
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
                     # print("diection2", direction)
