@@ -23,7 +23,8 @@ goal = Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
 player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data')
+player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
+advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
 #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
 
 

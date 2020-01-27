@@ -15,6 +15,7 @@ RIGHT = 4
 
 class Entity:
     current_position = (0,0)
+    action_chosen = None
 
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
         self.env = env
@@ -26,6 +27,7 @@ class Entity:
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
+        self.position = position
         self.active = True
 
     # def register_environment
@@ -58,6 +60,23 @@ class Entity:
             the_space = random.choice(free_spaces)
             self.env.current_grid_map[the_space] = self.value
             self.current_position = the_space
+        if position == 'near-goal':
+            goal_value = self.env.getGoalValue()
+            goal_locations = np.where(self.env.current_grid_map == goal_value)
+            goal_locations = list(zip(goal_locations[0], goal_locations[1]))
+            specific_goal_location = random.choice(goal_locations)
+            neighbors = self.env.allNeighbors(specific_goal_location[0],specific_goal_location[1])
+            free_spaces = []
+            for free_space in self.env.free_spaces:
+                found_spaces = np.where(self.env.current_grid_map == free_space)
+                free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
+            intersection_of_spaces = [x for x in neighbors if x in free_spaces]
+            the_space = random.choice(intersection_of_spaces)
+            self.env.current_grid_map[the_space] = self.value
+            self.current_position = the_space
+
+
+
 
     def update(self):
         pass
@@ -74,9 +93,13 @@ class Goal(Entity):
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
+        self.position = position
         self.active = True
 
     def moveToMe(self,entity_object):
+        if isinstance(entity_object, Advisary):
+            entity_object.intended_position = entity_object.current_position
+            return 0
         self.env.done = True
         self.env.reward += 1
 
@@ -121,6 +144,7 @@ class AIAgent(Agent):
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
+        self.position = position
         self.pygame = pygame
 
 
@@ -153,6 +177,7 @@ class HumanAgent(Agent):
         self.entity_type = entity_type
         self.obs_type = obs_type
         self.action = 0
+        self.position = position
         self.pygame = pygame
 
     def getAction(self,obs):
@@ -276,9 +301,23 @@ class ChasingBlockingAdvisary(Advisary):
 
             distance_to_agents[agent] = {'dist': len(points_in_path), 'raw_path_to_agent':path_to_agent, 'path_to_agent': points_in_path, 'agent_to_goal':points_to_goal_path}
 
-        #assume we've determined the closest agent
-        #use the only one that exists
-        if distance_to_agents[agents[0]]['dist'] > 3:
+        #distance_to_agents now has the distance to the agent, the path to the agent, AND the points in the agents path to the goal
+        #the first rule is to check if my own location is beyond 5 steps to the goal
+        path_to_goal = self.env.getPathTo((my_location[0],my_location[1]), (int(goal_location[0]),int(goal_location[1])),free_spaces=self.env.free_spaces)
+        path_to_goal_points = np.where(path_to_goal == -1)
+        path_to_goal_points = list(zip(path_to_goal_points[0], path_to_goal_points[1]))
+        if len(path_to_goal_points) > 3:
+            for direction in [UP, DOWN, LEFT, RIGHT]:
+                if path_to_goal[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
+                    # print("diection2", direction)
+                    return direction
+
+        #find the closest agent to intercept
+        distance_list = sorted(distance_to_agents.keys(), key=lambda k: distance_to_agents[k]['dist'])
+        target_agent_val = distance_list[0]
+
+
+        if distance_to_agents[target_agent_val]['dist']  > 2:
             #go for the goal
             target_location = (-1, -1)
             goal_location = [int(goal_location[0]), int(goal_location[1])]
@@ -315,7 +354,7 @@ class ChasingBlockingAdvisary(Advisary):
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
                     # print("diection2", direction)
                     return direction
-        return 2
+        # return 2
 
 
 class BlockingAdvisary(Advisary):
@@ -379,6 +418,7 @@ class NetworkAgent(Agent):
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
+        self.position = position
         self.active = True
 
     def moveToMe(self,entity_object):

@@ -148,6 +148,17 @@ class GenericEnv(gym.Env):
                     # pathArray[current_point] = -1
                     return pathArray
 
+    def allNeighbors(self,x,y):
+        X = self.current_grid_map.shape[0]
+        Y = self.current_grid_map.shape[1]
+        neighbors = [(x2, y2) for x2 in range(x - 1, x + 2)
+                                  for y2 in range(y - 1, y + 2)
+                                  if (-1 < x <= X and
+                                      -1 < y <= Y and
+                                      (x != x2 or y != y2) and
+                                      (0 <= x2 <= X) and
+                                      (0 <= y2 <= Y))]
+        return neighbors
 
     def getGoalValue(self):
         for value in self.value_to_objects:
@@ -290,7 +301,7 @@ class GenericEnv(gym.Env):
         #then put them back in
         for entity in self.entities:
             entity_object = self.entities[entity]
-            entity_object.place(position='random-free')
+            entity_object.place(position=entity_object.position)
         # for object_value in self.object_values:
         #     if object_value <= 1:
         #         continue
@@ -326,6 +337,7 @@ class GenericEnv(gym.Env):
     def step(self, action):
         info = {}
         obs = self._gridmap_to_image()
+        grid_map = self.current_grid_map
         entity_actions = []
 
         for entity in self.entities:
@@ -337,6 +349,7 @@ class GenericEnv(gym.Env):
 
         #this loop will carry out what COULD happen
         for entity, an_action in zip(self.entities, entity_actions):
+            self.entities[entity].action_chosen = (grid_map, an_action)
             if an_action == 0:
                 self.entities[entity].intended_position = self.entities[entity].current_position
                 continue
