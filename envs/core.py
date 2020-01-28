@@ -205,6 +205,7 @@ class HumanAgent(Agent):
                 if event.key == self.pygame.K_RIGHT: key_pressed = RIGHT
                 if event.key == self.pygame.K_DOWN: key_pressed = DOWN
                 if event.key == self.pygame.K_UP: key_pressed = UP
+                if event.key == self.pygame.K_SPACE: key_pressed = NOOP
                 if event.key == self.pygame.K_r: key_pressed = 'reset'
 
         if key_pressed == 'reset':
