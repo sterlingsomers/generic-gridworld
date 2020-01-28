@@ -469,6 +469,8 @@ class TrainedAgent(Agent):
         self.entity_type = entity_type
         self.obs_type = obs_type
         self.position = position
+        #self.agent = ActorCriticAgent()
+        #self.agent.buid_model()
         self.active = True
 
     def getAction(self,obs):
