@@ -100,6 +100,7 @@ class Goal(Entity):
         if isinstance(entity_object, Advisary):
             entity_object.intended_position = entity_object.current_position
             return 0
+        print('entity hit goal', entity_object)
         self.env.done = True
         self.env.reward += 1
 
@@ -147,7 +148,12 @@ class AIAgent(Agent):
         self.position = position
         self.pygame = pygame
 
-
+    def moveToMe(self,entity_object):
+        print('enity', entity_object, 'hit', self)
+        if isinstance(entity_object,Agent):
+            entity_object.intended_position = entity_object.current_position
+            return 1
+        return super.moveToMe(entity_object)
 
     def getAction(self,obs):
         #go straight for the goal
@@ -180,6 +186,14 @@ class HumanAgent(Agent):
         self.position = position
         self.pygame = pygame
 
+    def moveToMe(self,entity_object):
+        print('enity', entity_object, 'hit', self)
+        if isinstance(entity_object,Agent):
+            entity_object.intended_position = entity_object.current_position
+            self.intended_position =  self.current_position
+            return 1
+        return super.moveToMe(entity_object)
+
     def getAction(self,obs):
         #this updates the picture
         # print("human getAction")
@@ -202,6 +216,9 @@ class HumanAgent(Agent):
 
 
 class Advisary(Entity):
+    def moveToMe(self,entity_object):
+        return super().moveToMe(entity_object)
+
     def getAgents(self):
         agents = []
         for entity in self.env.entities:
@@ -269,11 +286,16 @@ class ChasingAdvisary(Advisary):
                 return direction
 
 class ChasingBlockingAdvisary(Advisary):
+    def moveToMe(self,entity_object):
+        print('CBA: entity', entity_object, 'hit me')
+        super().moveToMe(entity_object)
+
     def getAction(self, obs):
         my_location = np.where(self.env.current_grid_map == self.value)
         goal_val = self.env.getGoalValue()
         # print('goal_val',goal_val)
-
+        directions = [UP, DOWN, LEFT, RIGHT]
+        random.shuffle(directions)
         goal_location = np.where(self.env.current_grid_map == goal_val)
         # if goal_location[0].size==0:
         #     print('DEBUG')
@@ -307,7 +329,7 @@ class ChasingBlockingAdvisary(Advisary):
         path_to_goal_points = np.where(path_to_goal == -1)
         path_to_goal_points = list(zip(path_to_goal_points[0], path_to_goal_points[1]))
         if len(path_to_goal_points) > 3:
-            for direction in [UP, DOWN, LEFT, RIGHT]:
+            for direction in directions:
                 if path_to_goal[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
                     # print("diection2", direction)
                     return direction
@@ -319,38 +341,43 @@ class ChasingBlockingAdvisary(Advisary):
 
         if distance_to_agents[target_agent_val]['dist']  > 2:
             #go for the goal
+
             target_location = (-1, -1)
             goal_location = [int(goal_location[0]), int(goal_location[1])]
-            agent_path = distance_to_agents[agent]['agent_to_goal']
-            directions = [UP, DOWN, LEFT, RIGHT]
+            agent_path = distance_to_agents[target_agent_val]['agent_to_goal']
+
             if (int(my_location[0]),int(my_location[1])) in agent_path:
-                # print("in there....")
+                print("already in the way")
                 return NOOP
             for direction in directions:
                 if self.env.action_map[direction](goal_location) in agent_path:
                     target_location = self.env.action_map[direction](goal_location)
 
             if target_location == (-1, -1):
+                print("target location -1 -1 NOOP")
                 return NOOP
             if int(my_location[0]) == int(target_location[0]) and int(my_location[1]) == int(target_location[1]):
-                # print("noooop")
+                print("already at target location")
                 return NOOP
 
             # print('targloc', target_location)
             path = self.env.getPathTo((my_location[0], my_location[1]), (target_location[0], target_location[1]),
-                                      free_spaces=self.env.free_spaces + [self.value])
+                                      free_spaces=self.env.free_spaces)
             #if no path was found
             if not list(np.where(path == -1)[0]):
-                # print("NOOP 2")
+                print("No path NOOP")
                 return NOOP
             for direction in [UP, DOWN, LEFT, RIGHT]:
 
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
-                    # print("direction", direction)
+                    print("Getting in path")
+                    print(np.array2string(path))
                     print('direction2', direction)
                     return direction
         else: #go for the agent
             path = distance_to_agents[target_agent_val]['raw_path_to_agent']
+            print("Going for agent")
+            print(np.array2string(path))
             for direction in [UP, DOWN, LEFT, RIGHT]:
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
                     # print("diection2", direction)
@@ -422,6 +449,33 @@ class NetworkAgent(Agent):
         self.position = position
         self.active = True
 
+
+
     def moveToMe(self,entity_object):
         self.env.done = True
         self.env.reward -=1
+
+
+class TrainedAgent(Agent):
+
+    def __init__(self, env, obs_type='image', entity_type='', color='', position='random-free'):
+        self.env = env
+        self.value = env.object_values[-1] + 1
+        self.env.object_values.append(self.value)
+        self.env.value_to_objects[self.value] = {'color': color, 'entity_type': entity_type}
+        self.env.entities[self.value] = self
+        self.color = color
+        # self.moveTo = 'moveToDefault'
+        self.entity_type = entity_type
+        self.obs_type = obs_type
+        self.position = position
+        self.active = True
+
+    def getAction(self,obs):
+        pass
+        #network stuff
+        #return action
+
+    def moveToMe(self, entity_object):
+        self.env.done = True
+        self.env.reward -= 1

@@ -376,6 +376,7 @@ class GenericEnv(gym.Env):
                 # print('type',type(other_entity_object),'other entity obj pos=', other_entity_object.current_position, 'other entity obj intended pos=',
                 #       other_entity_object.intended_position)
                 if entity_object.intended_position == other_entity_object.intended_position:
+                    print("intended postions", entity_object, other_entity_object)
                     other_entity_object.moveToMe(entity_object)
                     if self.done:
                         # print("reward", self.reward, self.done)
