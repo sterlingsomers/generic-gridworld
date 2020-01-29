@@ -315,6 +315,10 @@ class ChasingBlockingAdvisary(Advisary):
                 # print("NOOP")
                 return NOOP
             points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            if len(points_in_path) == 0: #no points exist, therefore no path
+                points_in_path_length = 10**10
+            else:
+                points_in_path_length = len(points_in_path)
 
             # print('goalloc', goal_location)
             agent_to_goal = self.env.getPathTo((agent_location[0], agent_location[1]), (goal_location[0], goal_location[1]),
@@ -322,7 +326,7 @@ class ChasingBlockingAdvisary(Advisary):
             agent_to_goal_points = np.where(agent_to_goal == - 1)
             points_to_goal_path = list(zip(agent_to_goal_points[0], agent_to_goal_points[1]))
 
-            distance_to_agents[agent] = {'dist': len(points_in_path), 'raw_path_to_agent':path_to_agent, 'path_to_agent': points_in_path, 'agent_to_goal':points_to_goal_path}
+            distance_to_agents[agent] = {'dist': points_in_path_length, 'raw_path_to_agent':path_to_agent, 'path_to_agent': points_in_path, 'agent_to_goal':points_to_goal_path}
 
         #distance_to_agents now has the distance to the agent, the path to the agent, AND the points in the agents path to the goal
         #the first rule is to check if my own location is beyond 5 steps to the goal
