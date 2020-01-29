@@ -14,7 +14,7 @@ advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_ty
 all_data = []
 agents_to_track = [player3]
 step_data = []
-episodes = 1000
+episodes = 100
 
 env.reset()
 for i in range(episodes):

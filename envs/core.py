@@ -7,11 +7,13 @@ from scipy.spatial.distance import cityblock
 import PIL
 import time
 
+
 NOOP = 0
 DOWN = 1
 UP = 2
 LEFT = 3
 RIGHT = 4
+directions = [NOOP, DOWN, UP, LEFT, RIGHT]
 
 class Entity:
     current_position = (0,0)
@@ -168,6 +170,220 @@ class AIAgent(Agent):
                 return direction
         return random.choice([UP,DOWN,LEFT,RIGHT])
 
+class ACTR(Agent):
+    import pyactup
+
+
+    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',data=[],mismatch_penalty=1,temperature=1,noise=0.0):
+        self.size_factor = 10
+        self.env = env
+        self.value = env.object_values[-1] + 1
+        self.env.object_values.append(self.value)
+        self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
+        self.env.entities[self.value] = self
+        self.color = color
+        # self.moveTo = 'moveToDefault'
+        self.entity_type = entity_type
+        self.obs_type = obs_type
+        self.action = 0
+        self.position = position
+        self.mismatch_penalty = mismatch_penalty
+        self.temperature = temperature
+        self.noise = noise
+        self.memory = self.pyactup.Memory(noise=self.noise,decay=0.0,temperature=temperature,threshold=-100.0,mismatch=mismatch_penalty,optimized_learning=False)
+        self.pyactup.set_similarity_function(self.angle_similarity, *['goal_rads','advisary_rads'])
+        self.pyactup.set_similarity_function(self.distance_similarity, *['goal_distance','advisary_distance'])
+        self.data = data
+
+
+        #Before using the distances, they have to be normalized (0 to 1)
+        #Normalize by dividing by the max in the data
+        distances = []
+        for x in self.data:
+            distances.append(x['goal_distance'])
+            distances.append(x['advisary_distance'])
+        #distances = [x['goal_distance'],x['advisary_distance'] for x in self.data]
+        self.max_distance = max(distances)
+        for datum in self.data:
+            datum['goal_distance'] = datum['goal_distance'] / self.max_distance
+            datum['advisary_distance'] = datum['advisary_distance'] / self.max_distance
+
+
+        for chunk in self.data:
+            self.memory.learn(**chunk)
+
+
+
+    def angle_similarity(self,x,y):
+        PI = math.pi
+        TAU = 2*PI
+        result = min((2 * PI) - abs(x-y), abs(x-y))
+        normalized = result / TAU
+        xdeg = math.degrees(x)
+        ydeg = math.degrees(y)
+        resultdeg = math.degrees(result)
+        normalized2 = resultdeg / 180
+        #print("sim anle", 1 - normalized2)
+        return 1 - normalized2
+
+    def distance_similarity(self,x,y):
+        x = x/self.max_distance
+        result = 1 - abs(x-y)
+        #print("sim distance", result, x, y)
+        return result
+
+
+    def gridmap_to_symbols(self,gridmap, agent, value_to_objects):
+        agent_location = np.where(gridmap == agent)
+        agent_location = (int(agent_location[0]), int(agent_location[1]))
+        goal_location = 0
+        advisary_location = 0
+        return_dict = {}
+        for stuff in value_to_objects:
+            if 'entity_type' in value_to_objects[stuff]:
+                if value_to_objects[stuff]['entity_type'] == 'goal':
+                    goal_location = np.where(gridmap == stuff)
+                if value_to_objects[stuff]['entity_type'] == 'advisary':
+                    advisary_location = np.where(gridmap == stuff)
+        if goal_location:
+            goal_location = (int(goal_location[0]), int(goal_location[1]))
+            goal_rads = math.atan2(goal_location[0] - agent_location[0], goal_location[1] - agent_location[1])
+            path_agent_to_goal = self.env.getPathTo(agent_location, goal_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_goal == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            return_dict['goal_rads'] = goal_rads
+            return_dict['goal_distance'] = len(points_in_path) / self.max_distance
+        if advisary_location:
+            advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
+            advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
+                                       advisary_location[1] - agent_location[1])
+            path_agent_to_advisary = self.env.getPathTo(agent_location, advisary_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_advisary == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            return_dict['advisary_rads'] = advisary_rads
+            return_dict['advisary_distance'] = len(points_in_path) / self.max_distance
+
+        # the distances need to be normalized
+
+
+        return return_dict
+
+
+
+    def compute_S(self,probe, feature_list, history, Vk, MP, t):
+        chunk_names = []
+
+        PjxdSims = {}
+        for feature in feature_list:
+            Fk = probe[feature]
+            for chunk in history:
+                dSim = None
+                vjk = None
+                for attribute in chunk['attributes']:
+                    if attribute[0] == feature:
+                        vjk = attribute[1]
+                        break
+
+                if Fk == vjk:
+                    dSim = 0.0
+                else:
+                    dSim = (vjk - Fk) / abs(Fk - vjk)
+                # if Fk == vjk:
+                #     dSim = 0
+                # else:
+                #     dSim = -1 * ((Fk-vjk) / math.sqrt((Fk - vjk)**2))
+
+                Pj = chunk['retrieval_probability']
+                if not feature in PjxdSims:
+                    PjxdSims[feature] = []
+                PjxdSims[feature].append(Pj * dSim)
+                pass
+
+        # vio is the value of the output slot
+        fullsum = {}
+        result = {}  # dictionary to track feature
+        Fk = None
+        for feature in feature_list:
+            Fk = probe[feature]
+            if not feature in fullsum:
+                fullsum[feature] = []
+            inner_quantity = None
+            Pi = None
+            vio = None
+            dSim = None
+            vik = None
+            for chunk in history:
+                Pi = chunk['retrieval_probability']
+                for attribute in chunk['attributes']:
+                    if attribute[0] == Vk:
+                        vio = attribute[1]
+
+                for attribute in chunk['attributes']:
+                    if attribute[0] == feature:
+                        vik = attribute[1]
+                # if Fk > vik:
+                #     dSim = -1
+                # elif Fk == vik:
+                #     dSim = 0
+                # else:
+                #     dSim = 1
+                # dSim = (Fk - vjk) / sqrt(((Fk - vjk) ** 2) + 10 ** -10)
+                if Fk == vik:
+                    dSim = 0.0
+                else:
+                    dSim = (vik - Fk) / abs(Fk - vik)
+                #
+                # if Fk == vik:
+                #     dSim = 0
+                # else:
+                #     dSim = -1 * ((Fk-vik) / math.sqrt((Fk - vik)**2))
+
+                inner_quantity = dSim - sum(PjxdSims[feature])
+                fullsum[feature].append(Pi * inner_quantity * vio)
+
+            result[feature] = sum(fullsum[feature])
+
+        # sorted_results = sorted(result.items(), key=lambda kv: kv[1])
+        return result
+
+    def getAction(self,obs):
+        print('actr action')
+        self.memory.activation_history = []
+        self.memory.advance(0.1)
+        blends = []
+        saliences = {}
+        possible_actions = ['up','down','left','right','noop']
+        for action in possible_actions:
+            probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects)
+            blend_value = self.memory.blend(action, **probe_chunk)
+            salience = self.compute_S(self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects),
+                                      [x for x in list(probe_chunk.keys()) if not x == action],
+                                      self.memory.activation_history,
+                                      action,
+                                      self.mismatch_penalty,
+                                      self.temperature)
+            saliences[action] = salience
+            blends.append(blend_value)
+        # for x,y in zip(possible_actions, blends):
+        #     print(x,y)
+        print('argmax', np.argmax(blends), possible_actions[np.argmax(blends)])
+        print(saliences[possible_actions[np.argmax(blends)]])
+
+        argmax_action = possible_actions[np.argmax(blends)]
+        action_value = eval(argmax_action.upper())
+
+        return round(action_value)
+
+
+    def moveToMe(self,entity_object):
+        print('enity', entity_object, 'hit', self)
+        if isinstance(entity_object,Agent):
+            entity_object.intended_position = entity_object.current_position
+            self.intended_position =  self.current_position
+            return 1
+        return super().moveToMe(entity_object)
+
+
 
 class HumanAgent(Agent):
     obs = None
@@ -185,6 +401,7 @@ class HumanAgent(Agent):
         self.action = 0
         self.position = position
         self.pygame = pygame
+        self.quit = False
 
     def moveToMe(self,entity_object):
         print('enity', entity_object, 'hit', self)
@@ -192,7 +409,7 @@ class HumanAgent(Agent):
             entity_object.intended_position = entity_object.current_position
             self.intended_position =  self.current_position
             return 1
-        return super.moveToMe(entity_object)
+        return super().moveToMe(entity_object)
 
     def getAction(self,obs):
         #this updates the picture
@@ -207,9 +424,13 @@ class HumanAgent(Agent):
                 if event.key == self.pygame.K_UP: key_pressed = UP
                 if event.key == self.pygame.K_SPACE: key_pressed = NOOP
                 if event.key == self.pygame.K_r: key_pressed = 'reset'
+                if event.key == self.pygame.K_q: key_pressed = 'quit'
 
         if key_pressed == 'reset':
             self.env.reset()
+            return 0
+        if key_pressed == 'quit':
+            self.quit = True
             return 0
         # print("human pressed", key_pressed)
         return key_pressed

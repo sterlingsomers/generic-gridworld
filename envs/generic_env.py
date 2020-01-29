@@ -8,7 +8,7 @@ import random
 import itertools
 # import matplotlib
 # matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from common.maps import *
 import numpy as np
 
@@ -349,7 +349,7 @@ class GenericEnv(gym.Env):
 
         #this loop will carry out what COULD happen
         for entity, an_action in zip(self.entities, entity_actions):
-            self.entities[entity].action_chosen = (grid_map, an_action)
+            self.entities[entity].action_chosen = (grid_map.copy(), an_action)
             if an_action == 0:
                 self.entities[entity].intended_position = self.entities[entity].current_position
                 continue

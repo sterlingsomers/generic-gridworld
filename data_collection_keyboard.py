@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+
+
+#note to self: may want to normalize the angles BEFORE similarity function
+#That way you're not compressing their differences.
+
+
+
 from __future__ import print_function
 from threading import Thread
 import sys, gym, time
@@ -18,20 +25,21 @@ import numpy as np
 
 import pickle
 import PIL
+import time
 
 #A new class to extend old classes
 
-symbolic_data = pickle.load(open('symbolic_data_sterling20200128-202437.lst','rb'))
+
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
 env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
 goal = Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-player3 = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame)
+player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
 #player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
 advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
 #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
-actr = ACTR(env,obs_type='data',entity_type='agent',color='orange',position='random-free',data=symbolic_data,mismatch_penalty=5,noise=0.5)
+
 
 
 
@@ -63,8 +71,15 @@ import math
 
 # t = Thread(target=run_player2)
 # t.start()
+
+all_data = []
+agents_to_track = [player3]
+step_data = []
+episodes = 100
+human = 'sterling'
+
 clock = pygame.time.Clock()
-while running:
+while not player3.quit:
     pygame.display.update()
     key_pressed = 0
     pygame.time.delay(0)
@@ -72,6 +87,9 @@ while running:
     # free_spaces.remove(advisary.value)
     # env.getPathTo((1,1),(18,6),free_spaces=free_spaces)
     obs, r, done, info = env.step([])
+
+    for agent in agents_to_track:
+        step_data.append([type(agent).__name__, agent.value, agent.action_chosen[0], agent.action_chosen[1], env.value_to_objects])
 
     obs = PIL.Image.fromarray(obs)
     size = tuple((np.array(obs.size) * size_factor).astype(int))
@@ -84,24 +102,10 @@ while running:
 
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT: key_pressed = LEFT
-            if event.key == pygame.K_RIGHT: key_pressed = RIGHT
-            if event.key == pygame.K_DOWN: key_pressed = DOWN
-            if event.key == pygame.K_UP: key_pressed = UP
-            if event.key == pygame.K_r:
-                key_pressed = True
-                obs = env.reset()
-                obs = PIL.Image.fromarray(obs)
-                size = tuple((np.array(obs.size) * size_factor).astype(int))
-                obs = np.array(obs.resize(size, PIL.Image.NEAREST))
-                surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-                display.blit(surf, (0, 0))
-                game_done = False
-                break
+
 
     if key_pressed and not game_done:
-        #player3.action = key_pressed
+        player3.action = key_pressed
         if done:
             obs = env.reset()
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
@@ -117,14 +121,14 @@ while running:
     pygame.display.update()
     # clock.tick(100)
     if done:
+        all_data.append(step_data)
         obs = env.reset()
         obs = PIL.Image.fromarray(obs)
         size = tuple((np.array(obs.size) * size_factor).astype(int))
         obs = np.array(obs.resize(size, PIL.Image.NEAREST))
         surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
         display.blit(surf, (0, 0))
-
+print("quitting?", player3.quit)
+timestr = time.strftime("%Y%m%d-%H%M%S")
+pickle.dump(all_data,open(human + timestr + '.lst','wb'))
 pygame.quit()
-
-
-print("done")
