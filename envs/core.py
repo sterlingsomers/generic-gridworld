@@ -143,7 +143,7 @@ class AIAgent(Agent):
         if isinstance(entity_object,Agent):
             entity_object.intended_position = entity_object.current_position
             return 1
-        return super.moveToMe(entity_object)
+        return super().moveToMe(entity_object)
 
     def getAction(self,obs):
         #go straight for the goal

@@ -19,3 +19,13 @@ This is the base class of all non-features.
 ...
 
 #Version Notes
+
+
+#Sample Code
+--version update (inheritance_update)
+
+##Generating an environment
+####Creating an empty environment with border walls, with specific dimensions
+env = envs.generic_env.GenericEnv(dims=(10,10))
+
+####
