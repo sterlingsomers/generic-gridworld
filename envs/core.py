@@ -30,8 +30,11 @@ class Entity:
         self.obs_type = obs_type
         self.position = position
         self.active = True
+        self.history = []
+        self.record_history = False
 
-    # def register_environment
+
+
     def moveToMe(self,entity_object):
         self.env.done = True
         self.env.reward -= 1
@@ -77,25 +80,17 @@ class Entity:
             self.current_position = the_space
 
 
-
-
     def update(self):
         pass
-        # print("regular update")
+
+class ActiveEntity(Entity):
+    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free'):
+        super().__init__(env, obs_type, entity_type, color, position)
+        self.env.active_entities[self.value] = self
 
 class Goal(Entity):
-    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
-        self.env = env
-        self.value = env.object_values[-1] + 1
-        self.env.object_values.append(self.value)
-        self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
-        self.env.entities[self.value] = self
-        self.color = color
-        # self.moveTo = 'moveToDefault'
-        self.entity_type = entity_type
-        self.obs_type = obs_type
-        self.position = position
-        self.active = True
+    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free'):
+        super().__init__(env, obs_type, entity_type, color, position)
 
     def moveToMe(self,entity_object):
         if isinstance(entity_object, Advisary):
@@ -117,7 +112,10 @@ class Goal(Entity):
         return 0
 
 
-class Agent(Entity):
+class Agent(ActiveEntity):
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free'):
+        super().__init__(env, obs_type, entity_type, color, position)
+
     def moveToMe(self,entity_object):
         self.env.done = True
         self.env.reward -= 1
@@ -136,18 +134,9 @@ class Agent(Entity):
         return 1
 
 class AIAgent(Agent):
-    def __init__(self, env, obs_type='data',entity_type='', color='', position='random-free',pygame='None'):
-        self.env = env
-        self.value = env.object_values[-1] + 1
-        self.env.object_values.append(self.value)
-        self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
-        self.env.entities[self.value] = self
-        self.color = color
-        # self.moveTo = 'moveToDefault'
-        self.entity_type = entity_type
-        self.obs_type = obs_type
-        self.position = position
-        self.pygame = pygame
+    def __init__(self, env, obs_type='image', entity_type='agent', color='', position='random-free'):
+        super().__init__(env, obs_type, entity_type, color, position)
+
 
     def moveToMe(self,entity_object):
         print('enity', entity_object, 'hit', self)
@@ -386,19 +375,8 @@ class ACTR(Agent):
 
 class HumanAgent(Agent):
     obs = None
-    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',pygame='None'):
-        self.size_factor = 10
-        self.env = env
-        self.value = env.object_values[-1] + 1
-        self.env.object_values.append(self.value)
-        self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
-        self.env.entities[self.value] = self
-        self.color = color
-        # self.moveTo = 'moveToDefault'
-        self.entity_type = entity_type
-        self.obs_type = obs_type
-        self.action = 0
-        self.position = position
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',pygame='None'):
+        super().__init__(env, obs_type, entity_type, color, position)
         self.pygame = pygame
         self.quit = False
 
@@ -436,7 +414,7 @@ class HumanAgent(Agent):
 
 
 
-class Advisary(Entity):
+class Advisary(ActiveEntity):
     def moveToMe(self,entity_object):
         return super().moveToMe(entity_object)
 
