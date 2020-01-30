@@ -163,18 +163,7 @@ class ACTR(Agent):
 
 
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',data=[],mismatch_penalty=1,temperature=1,noise=0.0):
-        self.size_factor = 10
-        self.env = env
-        self.value = env.object_values[-1] + 1
-        self.env.object_values.append(self.value)
-        self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
-        self.env.entities[self.value] = self
-        self.color = color
-        # self.moveTo = 'moveToDefault'
-        self.entity_type = entity_type
-        self.obs_type = obs_type
-        self.action = 0
-        self.position = position
+        super().__init__(env, obs_type, entity_type, color, position)
         self.mismatch_penalty = mismatch_penalty
         self.temperature = temperature
         self.noise = noise

@@ -19,15 +19,26 @@ import numpy as np
 import PIL
 
 #A new class to extend old classes
+class Obstacle(Entity):
+    def __init__(self, env, obs_type='image', entity_type='goal', color='', position='random-free'):
+        super().__init__(env, obs_type, entity_type, color, position)
+
+    def moveToMe(self, entity_object):
+        entity_object.intended_position = entity_object.current_position
+        return 0
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
 env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
 goal = Goal(env,entity_type='goal',color='green')
+obstacles = []
+for i in range(3):
+    obstacles.append(Obstacle(env, color='yellow'))
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
 player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+
 # player4 = AIAgent(env,entity_type='agent',color='pink')
-# advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
+advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
 
 
 
@@ -79,24 +90,9 @@ while running:
 
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT: key_pressed = LEFT
-            if event.key == pygame.K_RIGHT: key_pressed = RIGHT
-            if event.key == pygame.K_DOWN: key_pressed = DOWN
-            if event.key == pygame.K_UP: key_pressed = UP
-            if event.key == pygame.K_r:
-                key_pressed = True
-                obs = env.reset()
-                obs = PIL.Image.fromarray(obs)
-                size = tuple((np.array(obs.size) * size_factor).astype(int))
-                obs = np.array(obs.resize(size, PIL.Image.NEAREST))
-                surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-                display.blit(surf, (0, 0))
-                game_done = False
-                break
+
 
     if key_pressed and not game_done:
-        player3.action = key_pressed
         if done:
             obs = env.reset()
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
