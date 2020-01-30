@@ -75,6 +75,8 @@ class Entity:
                 found_spaces = np.where(self.env.current_grid_map == free_space)
                 free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
             intersection_of_spaces = [x for x in neighbors if x in free_spaces]
+            if not intersection_of_spaces:
+                self.place(position=position)
             the_space = random.choice(intersection_of_spaces)
             self.env.current_grid_map[the_space] = self.value
             self.current_position = the_space

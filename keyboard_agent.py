@@ -28,7 +28,8 @@ class Obstacle(Entity):
         return 0
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
-env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
+##,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
+env = envs.generic_env.GenericEnv(dims=(10,10))
 goal = Goal(env,entity_type='goal',color='green')
 obstacles = []
 for i in range(3):
