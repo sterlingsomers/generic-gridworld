@@ -54,6 +54,7 @@ class GenericEnv(gym.Env):
         self.map = map
         self.features = features
         self.dims = dims
+        self.record_history = False
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
@@ -88,6 +89,10 @@ class GenericEnv(gym.Env):
 
         #Run the dynamic environment
         #self.run()
+
+    def setRecordHistory(self,value):
+        self.record_history = True
+        self.history = []
 
     def getPathTo(self,start_location,end_location, free_spaces=[]):
         '''An A* algorithm to get from one point to another.
@@ -281,6 +286,7 @@ class GenericEnv(gym.Env):
         #         self.current_grid_map[(x,y)] = 0
 
         #First, erase them
+        self.history = []
         for object_value in self.object_values:
             if object_value <= 1:
                 continue
@@ -338,6 +344,8 @@ class GenericEnv(gym.Env):
         info = {}
         obs = self._gridmap_to_image()
         grid_map = self.current_grid_map
+        if self.record_history:
+            self.history.append(self.current_grid_map.copy())
         entity_actions = []
 
         for entity in self.entities:
@@ -349,7 +357,6 @@ class GenericEnv(gym.Env):
 
         #this loop will carry out what COULD happen
         for entity, an_action in zip(self.entities, entity_actions):
-            self.entities[entity].action_chosen = (grid_map.copy(), an_action)
             if an_action == 0:
                 self.entities[entity].intended_position = self.entities[entity].current_position
                 continue
