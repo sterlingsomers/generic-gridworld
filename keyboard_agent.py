@@ -9,6 +9,9 @@ from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
 from envs.core import *
 from scipy.spatial.distance import cityblock
 from itertools import permutations
+# import matplotlib
+# matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
 
 import pygame
 import numpy as np
