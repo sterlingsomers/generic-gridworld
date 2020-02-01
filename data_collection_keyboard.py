@@ -40,8 +40,8 @@ player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
 advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
 #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
 
-
-
+env.setRecordHistory()
+player3.setRecordHistory()
 
 
 
@@ -72,9 +72,7 @@ import math
 # t = Thread(target=run_player2)
 # t.start()
 
-all_data = []
-agents_to_track = [player3]
-step_data = []
+data = {'environment_episode_data':[],'player_episode_data':[]}
 episodes = 100
 human = 'sterling'
 
@@ -83,13 +81,9 @@ while not player3.quit:
     pygame.display.update()
     key_pressed = 0
     pygame.time.delay(0)
-    # free_spaces = env.free_spaces + list(env.entities.keys()) + [3]
-    # free_spaces.remove(advisary.value)
-    # env.getPathTo((1,1),(18,6),free_spaces=free_spaces)
+
     obs, r, done, info = env.step([])
 
-    for agent in agents_to_track:
-        step_data.append([type(agent).__name__, agent.value, agent.action_chosen[0], agent.action_chosen[1], env.value_to_objects])
 
     obs = PIL.Image.fromarray(obs)
     size = tuple((np.array(obs.size) * size_factor).astype(int))
@@ -121,14 +115,17 @@ while not player3.quit:
     pygame.display.update()
     # clock.tick(100)
     if done:
-        all_data.append(step_data)
+        data['environment_episode_data'].append(env.history.copy())
+        data['player_episode_data'].append(player3.history.copy())
+
         obs = env.reset()
         obs = PIL.Image.fromarray(obs)
         size = tuple((np.array(obs.size) * size_factor).astype(int))
         obs = np.array(obs.resize(size, PIL.Image.NEAREST))
         surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
         display.blit(surf, (0, 0))
+
 print("quitting?", player3.quit)
 timestr = time.strftime("%Y%m%d-%H%M%S")
-pickle.dump(all_data,open(human + timestr + '.lst','wb'))
+pickle.dump(data,open(human + timestr + '.dict','wb'))
 pygame.quit()

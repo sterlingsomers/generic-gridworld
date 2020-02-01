@@ -91,9 +91,10 @@ class GenericEnv(gym.Env):
         #Run the dynamic environment
         #self.run()
 
-    def setRecordHistory(self,value):
+    def setRecordHistory(self,on=True,history_dict={'observations':[],'value_to_objects':0}):
         self.record_history = True
-        self.history = []
+        self.history = history_dict
+        self.history['value_to_objects'] = self.value_to_objects
 
     def getPathTo(self,start_location,end_location, free_spaces=[]):
         '''An A* algorithm to get from one point to another.
@@ -114,12 +115,14 @@ class GenericEnv(gym.Env):
         target_value = 0
         pathArray[start_location] = 2
         directions = [UP, DOWN, LEFT, RIGHT]
+        random.shuffle(directions)
         stop = False
         while True:
             current_value += 1
             target_value = current_value + 1
             test_points = np.where(pathArray == current_value)
             test_points = list(zip(test_points[0],test_points[1]))
+            random.shuffle(test_points)
             still_looking = False
             for test_point in test_points:
                 for direction in directions:
@@ -287,7 +290,7 @@ class GenericEnv(gym.Env):
         #         self.current_grid_map[(x,y)] = 0
 
         #First, erase them
-        self.history = []
+
         for object_value in self.object_values:
             if object_value <= 1:
                 continue
@@ -308,7 +311,6 @@ class GenericEnv(gym.Env):
         #then put them back ind
         for entity in self.entities:
             entity_object = self.entities[entity]
-            entity_object.history = []
             entity_object.place(position=entity_object.position)
         # for object_value in self.object_values:
         #     if object_value <= 1:
@@ -347,12 +349,15 @@ class GenericEnv(gym.Env):
         obs = self._gridmap_to_image()
         grid_map = self.current_grid_map
         if self.record_history:
-            self.history.append(self.current_grid_map.copy())
+            self.history['observations'].append(self.current_grid_map.copy())
         entity_actions = []
 
         for entity in self.active_entities:
             if not type(self.entities[entity]) == NetworkAgent:
-                entity_actions.append(self.active_entities[entity].getAction(obs))
+                action_chosen = self.active_entities[entity].getAction(obs)
+                entity_actions.append(action_chosen)
+                if self.active_entities[entity].record_history:
+                    self.active_entities[entity].history['steps'].append(action_chosen)
             else:
                 entity_actions.append(action)
         # print('ent_actions:',entity_actions)

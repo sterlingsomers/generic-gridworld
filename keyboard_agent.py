@@ -31,15 +31,15 @@ class Obstacle(Entity):
 ##,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
 env = envs.generic_env.GenericEnv(dims=(10,10))
 goal = Goal(env,entity_type='goal',color='green')
-obstacles = []
-for i in range(3):
-    obstacles.append(Obstacle(env, color='yellow'))
+# obstacles = []
+# for i in range(3):
+#     obstacles.append(Obstacle(env, color='yellow'))
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-# player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
 
-player4 = AIAgent(env,entity_type='agent',color='orange')
-player4 = AIAgent(env,entity_type='agent',color='pink')
+# player4 = AIAgent(env,entity_type='agent',color='orange')
+# player4 = AIAgent(env,entity_type='agent',color='pink')
 advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
 
 

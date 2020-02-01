@@ -19,8 +19,11 @@ class Entity:
     action_chosen = None
 
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
-        self.env = env
-        self.value = env.object_values[-1] + 1
+        if env.__class__.__name__ == 'GenericEnv':
+            self.env = env
+        else:
+            self.env = env.env
+        self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
         self.env.entities[self.value] = self
@@ -30,10 +33,13 @@ class Entity:
         self.obs_type = obs_type
         self.position = position
         self.active = True
-        self.history = []
+        self.history = {}
         self.record_history = False
 
-
+    def setRecordHistory(self,on=True,history_dict={'steps':[],'agent_value':0},write_files=False,prefix=''):
+        self.record_history = on
+        self.history = history_dict
+        self.history['agent_value'] = self.value
 
     def moveToMe(self,entity_object):
         self.env.done = True
@@ -56,6 +62,8 @@ class Entity:
         return 1
 
     def place(self, position='random-free'):
+        self.history['steps'] = []
+
         if position == 'random-free':
             free_spaces = []
             for free_space in self.env.free_spaces:
