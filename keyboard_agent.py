@@ -12,7 +12,7 @@ from itertools import permutations
 # import matplotlib
 # matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-
+import pickle
 import pygame
 import numpy as np
 
@@ -31,13 +31,14 @@ class Obstacle(Entity):
 ##,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
 env = envs.generic_env.GenericEnv(dims=(10,10))
 goal = Goal(env,entity_type='goal',color='green')
+human_data = pickle.load(open('symbolic_data_sterling20200128-161543.lst','rb'))
 # obstacles = []
 # for i in range(3):
 #     obstacles.append(Obstacle(env, color='yellow'))
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-
+# player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+player3 = ACTR(env,data = human_data,mismatch_penalty=6)
 # player4 = AIAgent(env,entity_type='agent',color='orange')
 # player4 = AIAgent(env,entity_type='agent',color='pink')
 advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
@@ -75,7 +76,7 @@ clock = pygame.time.Clock()
 while running:
     pygame.display.update()
     key_pressed = 0
-    pygame.time.delay(50)
+    pygame.time.delay(500)
     # free_spaces = env.free_spaces + list(env.entities.keys()) + [3]
     # free_spaces.remove(advisary.value)
     # env.getPathTo((1,1),(18,6),free_spaces=free_spaces)

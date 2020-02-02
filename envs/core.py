@@ -172,7 +172,7 @@ class ACTR(Agent):
     import pyactup
 
 
-    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',data=[],mismatch_penalty=1,temperature=1,noise=0.0):
+    def __init__(self, env, obs_type='image',entity_type='agent', color='orange', position='random-free',data=[],mismatch_penalty=1,temperature=1,noise=0.0):
         super().__init__(env, obs_type, entity_type, color, position)
         self.mismatch_penalty = mismatch_penalty
         self.temperature = temperature

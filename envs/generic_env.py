@@ -308,9 +308,12 @@ class GenericEnv(gym.Env):
         #     # free_spaces = list(zip(free_spaces[0], free_spaces[1]))
         #     self.entities[entity].place(position='random-free')
 
-        #then put them back ind
+        #then put them back in and deal with history
+        self.history['observations'] = []
+
         for entity in self.entities:
             entity_object = self.entities[entity]
+            entity_object.history['steps'] = []
             entity_object.place(position=entity_object.position)
         # for object_value in self.object_values:
         #     if object_value <= 1:
@@ -345,6 +348,7 @@ class GenericEnv(gym.Env):
         return image
 
     def step(self, action):
+        print('step')
         info = {}
         obs = self._gridmap_to_image()
         grid_map = self.current_grid_map

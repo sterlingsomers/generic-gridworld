@@ -118,6 +118,7 @@ while not player3.quit:
         data['environment_episode_data'].append(env.history.copy())
         data['player_episode_data'].append(player3.history.copy())
 
+
         obs = env.reset()
         obs = PIL.Image.fromarray(obs)
         size = tuple((np.array(obs.size) * size_factor).astype(int))
