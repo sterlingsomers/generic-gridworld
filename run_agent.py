@@ -32,19 +32,19 @@ from envs.core_v2 import *
 
 FLAGS = flags.FLAGS
 flags.DEFINE_bool("visualize", True, "Whether to render with pygame.")
-flags.DEFINE_float("sleep_time", 0.0, "Time-delay in the demo")
+flags.DEFINE_float("sleep_time", 0.8, "Time-delay in the demo")
 flags.DEFINE_integer("resolution",8, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 100, "Game steps per agent step.")
 flags.DEFINE_integer("step2save", 500, "Game step to save the model.") #A2C every 1000, PPO 250, 500
-flags.DEFINE_integer("n_envs", 2, "Number of environments to run in parallel")
-flags.DEFINE_integer("episodes", 10, "Number of complete episodes")
+flags.DEFINE_integer("n_envs", 100, "Number of environments to run in parallel")
+flags.DEFINE_integer("episodes", 10, "Number of complete episodes for test mode")
 flags.DEFINE_integer("n_steps_per_batch", 16,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!! You need them cauz you dont want to run till it finds the beacon especially at first episodes - will take forever
 flags.DEFINE_integer("all_summary_freq", 10, "Record all summaries every n batch")
 flags.DEFINE_integer("scalar_summary_freq", 5, "Record scalar summaries every n batch")
 flags.DEFINE_string("checkpoint_path", "_files/models", "Path for agent checkpoints")
 flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard summaries") #A2C_custom_maps#A2C-science-allmaps - BEST here for one policy
-flags.DEFINE_string("model_name", "net_vs_pred", "Name for checkpoints and tensorboard summaries") # DONT touch TESTING is the best (take out normalization layer in order to work! -- check which parts exist in the restore session if needed)
+flags.DEFINE_string("model_name", "dokimib", "Name for checkpoints and tensorboard summaries") # net_vs_pred DONT touch TESTING is the best (take out normalization layer in order to work! -- check which parts exist in the restore session if needed)
 flags.DEFINE_integer("K_batches", 100500, # Batch is like a training epoch!
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "DefeatRoaches", "Name of a map to use.")
@@ -109,8 +109,8 @@ def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
             env._max_episode_steps = 500
             goal = Goal(env, entity_type='goal', color='green')
             network_agent = NetworkAgent(env, color='aqua')
-            AI_agent = AIAgent(env, entity_type='agent', color='blue', pygame='1')
-            predator = ChasingBlockingAdvisary(env, entity_type='advisary', color='red', obs_type='data')
+            # AI_agent = AIAgent(env, entity_type='agent', color='blue')
+            predator = ChasingBlockingAdvisary(env, entity_type='advisary', color='red', obs_type='data', position='near-goal')
             # env.seed(seed + rank)
             # Monitor should take care of reset!
             env = Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)), allow_early_resets=True) # SUBPROC NEEDS 4 OUTPUS FROM STEP FUNCTION
@@ -134,12 +134,11 @@ def main():
     elif FLAGS.training==False:
         #envs = make_custom_env('gridworld-v0', 1, 1)
         # envs = gym.make('gridworld{}-v0'.format('visualize' if FLAGS.visualize else ''))
-        print('HERE')
         envs = GenericEnv()
         goal = Goal(envs, entity_type='goal', color='green')
         network_agent = NetworkAgent(envs, color='aqua')
-        # AI_agent = AIAgent(envs, entity_type='agent', color='blue', pygame='1')
-        predator = ChasingBlockingAdvisary(envs, entity_type='advisary', color='red', obs_type='data')
+        # AI_agent = AIAgent(envs, entity_type='agent', color='blue')
+        predator = ChasingBlockingAdvisary(envs, entity_type='advisary', color='red', obs_type='data', position='near-goal')
     else:
         print('Wrong choices in FLAGS training and visualization')
         return
@@ -294,101 +293,65 @@ def main():
                 surf = pygame.transform.scale(surf, (300, 300))
                 gameDisplay.blit(surf, (x, y))
 
-            #all_data = [{'nav':[],'drop':[]}] * FLAGS.episodes #each entry is an episode, sorted into nav or drop steps
-            all_data = [{'nav':[],'stuck':False} for x in range(FLAGS.episodes)]
-            step_data = {}
             dictionary = {}
             running = True
+            ''' EPISODE LOOP '''
             while runner.episode_counter <= (FLAGS.episodes - 1) and running==True:
                 print('Episode: ', runner.episode_counter)
 
                 # Init storage structures
                 dictionary[runner.episode_counter] = {}
-                mb_obs = []
                 mb_actions = []
                 mb_action_probs = []
-                mb_flag = []
                 mb_fc = []
                 mb_rewards = []
                 mb_values = []
-                mb_drone_pos = []
-                mb_heading = []
-                mb_crash = []
-                mb_map_volume = [] # obs[0]['volume']==envs.map_volume
-                mb_ego = []
+                if FLAGS.policy_type == 'FactoredPolicy' or FLAGS.policy_type == 'FactoredPolicy_PhaseI' or FLAGS.policy_type == 'FactoredPolicy_PhaseII':
+                    mb_values_goal = []
+                    mb_values_fire = []
+                mb_burn = []
+                mb_map = []
 
                 runner.reset_demo()  # Cauz of differences in the arrangement of the dictionaries
-                # STORE THE INIT HEADING AND ALT FOR NAMING THE FILE (yes it will ovewrite it num_epis times withe the same values)
-                drone_head_alt = str(runner.envs.heading) + '-' + str(runner.envs.altitude)
-                map_xy = runner.envs.map_image
-                map_alt = runner.envs.alt_view
+                map_xy = runner.latest_obs['rgb_screen'][0]
                 process_img(map_xy, 20, 20)
-                process_img(map_alt, 20, 400)
                 pygame.display.update()
 
-                dictionary[runner.episode_counter]['hiker_pos'] = runner.envs.hiker_position
-                dictionary[runner.episode_counter]['map_name'] = str(runner.envs._map[0]) + '-' + str(runner.envs._map[1])
-                # dictionary[nav_runner.episode_counter]['map_volume'] = map_xy
-
-                # Quit pygame if the (X) button is pressed on the top left of the window
-                # Seems that without this for event quit doesnt show anything!!!
-                # Also it seems that the pygame.event.get() is responsible to REALLY updating the screen contents
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         running = False
                 sleep(sleep_time)
                 # Timestep counter
                 t=0
-
-                drop_flag = 0
-                stuck_flag = 0
                 done = 0
-
+                ''' TIMESTEP LOOP '''
                 while done==0:
 
-                    mb_obs.append(runner.latest_obs)
-                    # mb_flag.append(drop_flag)
-                    mb_heading.append(runner.envs.heading)
-
-                    drone_pos = np.where(runner.envs.map_volume['vol'] == runner.envs.map_volume['feature_value_map']['drone'][runner.envs.altitude]['val'])
-                    mb_drone_pos.append(drone_pos)
-                    mb_map_volume.append(runner.envs.map_volume) # what is contained here?
-                    mb_ego.append(runner.envs.ego)
-
-                    step_data = {'stuck':False}
-                    #I need the egocentric view + hiker's position
-                    #then drone steps, need action
-                    step_data['volume'] = np.array(runner.envs.map_volume['vol'],copy=True)
-                    step_data['heading'] = runner.envs.heading
-                    step_data['hiker'] = runner.envs.hiker_position
-                    step_data['altitude'] = runner.envs.altitude
-                    step_data['drone'] = np.where(step_data['volume'] == runner.envs.map_volume['feature_value_map']['drone'][runner.envs.altitude]['val'])
-
-
-                    # dictionary[nav_runner.episode_counter]['observations'].append(nav_runner.latest_obs)
-                    # dictionary[nav_runner.episode_counter]['flag'].append(drop_flag)
+                    # mb_obs.append(runner.latest_obs)
+                    # state = runner.envs.renderEnv()
+                    # mb_map.append(state['small'])
 
                     # INTERACTION
-                    obs, action, value, reward, done, info, fc, action_probs = runner.run_trained_batch()
+                    if FLAGS.policy_type == 'FactoredPolicy' or FLAGS.policy_type == 'FactoredPolicy_PhaseI' or FLAGS.policy_type == 'FactoredPolicy_PhaseII':
+                        obs, action, value, value_goal, value_fire, reward, done, info, fc, action_probs = runner.run_trained_factored_batch()
+                    else:
+                        obs, action, value, reward, done, info, fc, action_probs = runner.run_trained_batch()
 
-                    if done and not info['success']:
-                        mb_crash.append(runner.envs.crash)
-                        print('Crash, terminate episode')
-                        break # Also we prevent new data for the new time step to be saved
+                    # if done and not info['success']:
+                    #     # mb_crash.append(runner.envs.crash)
+                    #     print('Crash, terminate episode')
+                    #     break # Also we prevent new data for the new time step to be saved
 
                     mb_actions.append(action)
                     mb_action_probs.append(action_probs)
                     mb_rewards.append(reward)
                     mb_fc.append(fc)
                     mb_values.append(value)
-                    mb_crash.append(runner.envs.crash)
-
-                    step_data['action'] = action
-                    step_data['reward'] = reward
-                    step_data['fc'] = fc
-                    step_data['action_probs'] = action_probs
-
-                    all_data[runner.episode_counter]['nav'].append(step_data)
+                    if FLAGS.policy_type == 'FactoredPolicy' or FLAGS.policy_type == 'FactoredPolicy_PhaseI' or FLAGS.policy_type == 'FactoredPolicy_PhaseII':
+                        mb_values_goal.append(value_goal)
+                        mb_values_fire.append(value_fire)
+                    if reward<0: mb_burn.append(1)
+                    else: mb_burn.append(0)
 
 
                     screen_mssg_variable("Value    : ", np.round(value,3), (168, 350))
@@ -397,27 +360,18 @@ def main():
                     pygame.event.get()
                     sleep(sleep_time)
 
-                    if action==15:
-                        drop_flag = 1
-                        # dictionary[runner.episode_counter]['pack-hiker_dist'] = runner.envs.pack_dist
-                        # dictionary[runner.episode_counter]['pack condition'] = runner.envs.package_state
-                        screen_mssg_variable("Package state:", runner.envs.package_state, (20, 350)) # The update of the text will be at the same time with the update of state
-                        pygame.display.update()
-                        pygame.event.get()  # Update the screen
-                        sleep(sleep_time)
-                    mb_flag.append(drop_flag)
-
-                    if done:
-                        score = sum(mb_rewards)
-                        print(">>>>>>>>>>>>>>>>>>>>>>>>>>> episode %d ended in %d steps. Score %f" % (runner.episode_counter, t, score))
-
                     # BLIT!!!
                     # First Background covering everyything from previous session
                     gameDisplay.fill(DARK_BLUE)
-                    map_xy = obs[0]['img']
-                    map_alt = obs[0]['nextstepimage']
+                    map_xy = obs[0]#['img']
                     process_img(map_xy, 20, 20)
-                    process_img(map_alt, 20, 400)
+                    if FLAGS.policy_type == 'FactoredPolicy' or FLAGS.policy_type == 'FactoredPolicy_PhaseI' or FLAGS.policy_type == 'FactoredPolicy_PhaseII':
+                        raw_data, canvas = create_value_hist(np.round(value,3), np.round(value_goal,3), np.round(value_fire,3))
+                        size = canvas.get_width_height()
+                        surf = pygame.image.fromstring(raw_data, size, "RGB")
+                        gameDisplay.blit(surf, (350, 20))
+                    screen_mssg_variable("Value    : ", np.round(value,3), (168, 350))
+                    screen_mssg_variable("Reward: ", np.round(reward,3), (168, 372))
                     # Update finally the screen with all the images you blitted in the run_trained_batch
                     pygame.display.update() # Updates only the blitted parts of the screen, pygame.display.flip() updates the whole screen
                     pygame.event.get() # Show the last state and then reset
@@ -425,44 +379,30 @@ def main():
 
                     t += 1
                     if t == 70:
-                        stuck_flag = 1
-                        step_data['stuck'] = True
-                        all_data[runner.episode_counter]['stuck'] = True
-                        all_data[runner.episode_counter]['nav'].append(step_data)
                         break
-                    # else:
-                    #     stuck_flag = 0
 
-                dictionary[runner.episode_counter]['map_volume'] = mb_map_volume # You might need to save only for epis=0 % YOU NEED THE NEW MAP AT EVERY STEP SO SAVE THE ARRAY (FLAT)
-                dictionary[runner.episode_counter]['ego'] = mb_ego # SHOULD BE SAVED FOR EVERY STEP (THE 5x5 array)
-                dictionary[runner.episode_counter]['flag'] = mb_flag
                 dictionary[runner.episode_counter]['actions'] = mb_actions
-                dictionary[runner.episode_counter]['action_probs'] = mb_action_probs
                 dictionary[runner.episode_counter]['rewards'] = mb_rewards
-                dictionary[runner.episode_counter]['fc'] = mb_fc
                 dictionary[runner.episode_counter]['values'] = mb_values
-                dictionary[runner.episode_counter]['drone_pos'] = mb_drone_pos
-                dictionary[runner.episode_counter]['headings'] = mb_heading # THIS STORES THE HEADINGS
-                dictionary[runner.episode_counter]['crash'] = mb_crash
-                dictionary[runner.episode_counter]['pack-hiker_dist'] = runner.envs.pack_dist if drop_flag==1 else None
-                dictionary[runner.episode_counter]['pack condition'] = runner.envs.package_state if drop_flag==1 else None
-                dictionary[runner.episode_counter]['pack position'] = runner.envs.package_position if drop_flag==1 else None
-                dictionary[runner.episode_counter]['stuck_epis'] = stuck_flag# if stuck_flag else 0
+                if FLAGS.policy_type == 'FactoredPolicy' or FLAGS.policy_type == 'FactoredPolicy_PhaseI' or FLAGS.policy_type == 'FactoredPolicy_PhaseII':
+                    dictionary[runner.episode_counter]['values_goal'] = mb_values_goal
+                    dictionary[runner.episode_counter]['values_fire'] = mb_values_fire
+                dictionary[runner.episode_counter]['burn'] = mb_burn
+                dictionary[runner.episode_counter]['action_probs'] = mb_action_probs
+                # dictionary[runner.episode_counter]['map'] = mb_map
+                dictionary[runner.episode_counter]['fc'] = mb_fc
 
                 runner.episode_counter += 1
                 clock.tick(15)
 
             print("...saving dictionary.")
             #TODO: IMPORT THE onepolicy_analysis.py FILE AND CONVERT IT INTO PANDAS
-            folder = '/Users/constantinos/Documents/Projects/cmu_gridworld/cmu_gym/data/'
-            map_name = str(runner.envs._map[0]) + '-' + str(runner.envs._map[1])#'custom'#str(runner.envs._map[0]) + '-' + str(runner.envs._map[1])
-            drone_init_loc = str(runner.envs.drone[0]) + '-' + str(runner.envs.drone[1])
-            # drone_head_alt = str(runner.envs.heading) + '-' + str(runner.envs.altitude) # THIS IS WRONG AS IT WILL GET THE LAST HEADING AND ALT
-            hiker_loc = str(runner.envs.hiker[0]) + '-' + str(runner.envs.hiker[1])
-            type = '.tj'
-            path = folder + 'MAP' + map_name + '_' + 'D' + drone_init_loc + '_' + 'HeadAlt' + drone_head_alt + '_' + 'H' + hiker_loc + '_' + str(FLAGS.episodes) + type
+            folder = '/Users/constantinos/Documents/Projects/cmu_gridworld/cmu_gym/data/net_vs_pred/'
+            now = datetime.now()
+            timestamp = str(now.strftime("%Y_%b%d_time%H-%M")) # -%S for seconds
+            path = folder + timestamp + '_' + FLAGS.model_name + '.dct'
             pickle_in = open(path,'wb')
-            pickle.dump(dictionary, pickle_in)# Saves a dictionary (seems smaller file)
+            pickle.dump(dictionary, pickle_in)
 
             # with open('./data/all_data' + map_name + '_' + drone_init_loc + '_' + drone_head_alt + '_' + hiker_loc + str(FLAGS.episodes) + '.lst', 'wb') as handle:
             #     pickle.dump(all_data, handle)# Saves a list (seems larger file)

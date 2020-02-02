@@ -1,12 +1,11 @@
-#!/usr/bin/env python
 from __future__ import print_function
 from threading import Thread
 import sys, gym, time
 from pyglet.window import key
 
-import envs.generic_env
-from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
-from envs.core import *
+import envs.generic_env_v2
+from envs.generic_env_v2 import UP, DOWN, LEFT, RIGHT, NOOP
+# from envs.core import *
 from scipy.spatial.distance import cityblock
 from itertools import permutations
 
@@ -17,11 +16,14 @@ import PIL
 
 #A new class to extend old classes
 
-env = envs.generic_env.GenericEnv(map='small-empty',features=[{'class':'feature','type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
+# env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
+env = envs.generic_env_v2.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
+goal = envs.generic_env_v2.Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data')
+player3 = envs.generic_env_v2.HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+# player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
+advisary = envs.generic_env_v2.ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
 #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
 
 
@@ -92,7 +94,7 @@ while running:
     if key_pressed and not game_done:
         player3.action = key_pressed
         if done:
-            #obs = env.reset()
+            obs = env.reset()
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
             display.blit(surf, (0,0))
         else:
@@ -106,7 +108,12 @@ while running:
     pygame.display.update()
     # clock.tick(100)
     if done:
-        break
+        obs = env.reset()
+        obs = PIL.Image.fromarray(obs)
+        size = tuple((np.array(obs.size) * size_factor).astype(int))
+        obs = np.array(obs.resize(size, PIL.Image.NEAREST))
+        surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+        display.blit(surf, (0, 0))
 
 pygame.quit()
 

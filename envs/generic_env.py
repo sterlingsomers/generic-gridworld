@@ -8,7 +8,7 @@ import random
 import itertools
 # import matplotlib
 # matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from common.maps import *
 import numpy as np
 
@@ -24,7 +24,7 @@ RIGHT = 4
 
 
 class GenericEnv(gym.Env):
-    value_to_objects = {1: {'class': 'wall', 'color': 'gray', 'moveTo': 0}}
+    value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0}}
     object_values = [1]
     entities = {} #indexed by object value
     backup_values = {}
@@ -60,6 +60,7 @@ class GenericEnv(gym.Env):
         #add (dynamic, random) features to the map
         self.addMapFeatures(features)
 
+
         #Add agents to the environment (1 required).  Will be placed on reset()
         # for agent in agents:
         #     class_to_use = getattr(sys.modules[__name__], agent['class'])
@@ -92,7 +93,6 @@ class GenericEnv(gym.Env):
         '''An A* algorithm to get from one point to another.
         free_spaces is a list of values that can be traversed.
         start_location and end_location are tuple point values.
-
         Returns a map with path denoted by -1 values. Inteded to use np.where(path == -1).'''
         pathArray = np.full(self.dims,0)
 
@@ -119,12 +119,19 @@ class GenericEnv(gym.Env):
                     if pathArray[self.action_map[direction](test_point)] and pathArray[self.action_map[direction](test_point)] + current_value <= target_value:
                         pathArray[self.action_map[direction](test_point)] = target_value
                         still_looking = True
+                    # if not end_location[0].tolist():
+                    #     print('emtpiness')
                     # print(self.action_map[direction](test_point), end_location)
+                    # print(test_point, end_location, direction)
+                    # try:
                     if self.action_map[direction](test_point) == (int(end_location[0]),int(end_location[1])):
                         pathArray[end_location] = - 1
                         still_looking = True
                         stop = True
                         break
+                    # except Exception:
+                    #     print('ERROR')
+
             if not still_looking:
                 return pathArray
             if stop:
@@ -140,11 +147,22 @@ class GenericEnv(gym.Env):
                     # pathArray[current_point] = -1
                     return pathArray
 
+    def allNeighbors(self,x,y):
+        X = self.current_grid_map.shape[0]
+        Y = self.current_grid_map.shape[1]
+        neighbors = [(x2, y2) for x2 in range(x - 1, x + 2)
+                                  for y2 in range(y - 1, y + 2)
+                                  if (-1 < x <= X and
+                                      -1 < y <= Y and
+                                      (x != x2 or y != y2) and
+                                      (0 <= x2 <= X) and
+                                      (0 <= y2 <= Y))]
+        return neighbors
 
     def getGoalValue(self):
         for value in self.value_to_objects:
-            if 'class' in self.value_to_objects[value]:
-                if self.value_to_objects[value]['class'] == 'goal':
+            if 'entity_type' in self.value_to_objects[value]:
+                if self.value_to_objects[value]['entity_type'] == 'goal':
                     return value
 
     def getNeighbors(self,location):
@@ -173,9 +191,7 @@ class GenericEnv(gym.Env):
     def addMapFeatures(self,features=[]):
         for feature in features:
             n_features = feature['start_number']
-            object_value = self.object_values[-1] + 1
-            self.object_values.append(object_value)
-            self.value_to_objects[object_value] = {'class':feature['type'], 'color':feature['color'], 'moveTo':feature['moveTo']}
+
             # free_spaces = np.where(self.current_grid_map == 0)
             # random_free_space_i = random.choice(free_spaces[0])
             # random_free_space_j = random.choice(free_spaces[1])
@@ -183,6 +199,10 @@ class GenericEnv(gym.Env):
             # self.current_grid_map[random_free_space] = object_value
             #pertubation = np.random.randint(-1, 1, (1,2))
             for i in range(n_features):
+                object_value = self.object_values[-1] + 1
+                self.object_values.append(object_value)
+                self.value_to_objects[object_value] = {'entity_type': feature['entity_type'], 'color': feature['color'],
+                                                       'moveTo': feature['moveTo']}
                 free_spaces = []
                 for free_space in self.free_spaces:
                     found_spaces = np.where(self.current_grid_map == free_space)
@@ -259,6 +279,7 @@ class GenericEnv(gym.Env):
         #     for x,y in list(zip(entity_loc[0],entity_loc[1])):
         #         self.current_grid_map[(x,y)] = 0
 
+        #First, erase them
         for object_value in self.object_values:
             if object_value <= 1:
                 continue
@@ -276,15 +297,19 @@ class GenericEnv(gym.Env):
         #     # free_spaces = list(zip(free_spaces[0], free_spaces[1]))
         #     self.entities[entity].place(position='random-free')
 
-        for object_value in self.object_values:
-            if object_value <= 1:
-                continue
-            free_spaces = []
-            for free_space in self.free_spaces:
-                found_spaces = np.where(self.current_grid_map == free_space)
-                free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
-            the_space = random.choice(free_spaces)
-            self.current_grid_map[the_space] = object_value
+        #then put them back in
+        for entity in self.entities:
+            entity_object = self.entities[entity]
+            entity_object.place(position=entity_object.position)
+        # for object_value in self.object_values:
+        #     if object_value <= 1:
+        #         continue
+        #     free_spaces = []
+        #     for free_space in self.free_spaces:
+        #         found_spaces = np.where(self.current_grid_map == free_space)
+        #         free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
+        #     the_space = random.choice(free_spaces)
+        #     self.current_grid_map[the_space] = object_value
 
         return self._gridmap_to_image()
 
@@ -308,62 +333,68 @@ class GenericEnv(gym.Env):
 
         return image
 
-
     def step(self, action):
         info = {}
         obs = self._gridmap_to_image()
-
+        grid_map = self.current_grid_map
         entity_actions = []
-        count = 0
-        for entity in self.entities:
-            # if self.done:
-            #     print('done1a:',self.done)
-            #     return self._gridmap_to_image(), self.reward, self.done, info
-            if not type(self.entities[entity]) == NetworkAgent:
-                entity_actions.append(self.entities[entity].getAction(obs)) # collect non agent actions
-            else:
-                entity_actions.append(action) # collect agent's actions
 
-        # Execute the list of actions collected above
+        for entity in self.entities:
+            if not type(self.entities[entity]) == NetworkAgent:
+                entity_actions.append(self.entities[entity].getAction(obs))
+            else:
+                entity_actions.append(action)
+        # print('ent_actions:',entity_actions)
+
+        #this loop will carry out what COULD happen
         for entity, an_action in zip(self.entities, entity_actions):
-            if self.done:
-                # print('done1b:',self.done)
-                return self._gridmap_to_image(), self.reward, self.done, info
-            count += 1
+            self.entities[entity].action_chosen = (grid_map.copy(), an_action)
             if an_action == 0:
+                self.entities[entity].intended_position = self.entities[entity].current_position
                 continue
-            # print('action',an_action, 'entity', entity, 'count', count)
-            current_position = np.where(self.current_grid_map == self.entities[entity].value)
+
+            current_position = self.entities[entity].current_position
             position_function = self.action_map[an_action]
             intended_position = position_function(current_position)
-            intended_position_value = self.current_grid_map[intended_position[0], intended_position[1]]
-            current_position_value = self.current_grid_map[current_position[0], current_position[1]]
-            if not len(current_position[0]):
+            self.entities[entity].intended_position = intended_position
+            if self.current_grid_map[intended_position] == 1.0: #hit a wall
+                self.entities[entity].intended_position = self.entities[entity].current_position
+
+            self.current_grid_map[current_position] = 0 #erase the person from their old spot
+
+        #this loop checks for collisions, carries out the consequence
+        for entity in self.entities:
+            entity_object = self.entities[entity]
+            if entity_object.current_position == entity_object.intended_position:
                 continue
-            if intended_position_value == 0.0:
-                self.current_grid_map[current_position[0],current_position[1]] = 0.0
-                self.current_grid_map[intended_position[0],intended_position[1]] = self.entities[entity].value
-            elif intended_position_value == 1.0:
-                pass #do nothing if it's a wall
-            else:
-                if int(intended_position_value) in self.entities:
-                    self.entities[int(intended_position_value)].moveTo(current_position,intended_position)
-                else: # If there is a goal and agent moves to it then moveTo  becomes moveToGoal
-                    moveTo = getattr(self,self.value_to_objects[int(intended_position_value)]['moveTo'])
-                    moveTo(current_position,intended_position)
-                    # continue
-        bv = self.backup_values.copy()
-        for position in bv:
-            grid_value = self.current_grid_map[(position[0],position[1])]
-            if grid_value in self.permanents:
-                self.current_grid_map[(position[0],position[1])] = self.backup_values[(position[0],position[1])]
-                del self.backup_values[(position[0],position[1])]
+            other_entities = [self.entities[x] for x in self.entities if not x == entity]
+            for other_entity_object in other_entities:
+                # if type(entity_object) == NetworkAgent:
+                # print('type',type(entity_object),'entity obj pos=', entity_object.current_position, 'entity obj intended pos=',
+                #       entity_object.intended_position)
+                # print('type',type(other_entity_object),'other entity obj pos=', other_entity_object.current_position, 'other entity obj intended pos=',
+                #       other_entity_object.intended_position)
+                if entity_object.intended_position == other_entity_object.intended_position:
+                    print("intended postions", entity_object, other_entity_object)
+                    other_entity_object.moveToMe(entity_object)
+                    if self.done:
+                        # print("reward", self.reward, self.done)
+                        return self._gridmap_to_image(), self.reward, self.done, info
+                if entity_object.current_position == other_entity_object.intended_position and other_entity_object.current_position == entity_object.intended_position:
+                    other_entity_object.moveToMe(entity_object)
+                    if self.done:
+                        # print("reward", self.reward, self.done)
+                        return self._gridmap_to_image(), self.reward, self.done, info
 
-                # if (int(current_position[0]), int(current_position[1])) in self.backup_values:
-                #     self.current_grid_map[(int(current_position[0]), int(current_position[1]))] = self.backup_values[
-                #         (int(current_position[0]), int(current_position[1]))]
-                #     del self.backup_values[(int(current_position[0]), int(current_position[1]))]
 
-        # print('done2:',self.done)
-        # self.cleanup()
-        return self._gridmap_to_image(), self.reward, self.done, info
+        if not self.done:
+            for entity in self.entities:
+                entity_object = self.entities[entity]
+                entity_object.current_position = entity_object.intended_position
+                # print('entities', entity_object.current_position, 'ent_type', type(entity_object))
+                self.current_grid_map[entity_object.current_position] = entity_object.value
+            # print("reward", self.reward, self.done)
+            return self._gridmap_to_image(), self.reward, self.done, info
+        else:
+            # print("reward", self.reward, self.done)
+            return self._gridmap_to_image(), self.reward, self.done, info

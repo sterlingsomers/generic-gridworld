@@ -12,15 +12,17 @@ DOWN = 1
 UP = 2
 LEFT = 3
 RIGHT = 4
+directions = [NOOP, DOWN, UP, LEFT, RIGHT]
 
 class Entity:
     current_position = (0,0)
+    action_chosen = None
 
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
-        if env.unwrapped:
-            self.env = env.env
-        else:
+        if env.__class__.__name__ == 'GenericEnv':
             self.env = env
+        else:
+            self.env = env.env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
@@ -29,6 +31,7 @@ class Entity:
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
+        self.position = position
         self.active = True
 
     # def register_environment
@@ -60,6 +63,23 @@ class Entity:
             the_space = random.choice(free_spaces)
             self.env.current_grid_map[the_space] = self.value
             self.current_position = the_space
+        if position == 'near-goal':
+            goal_value = self.env.getGoalValue()
+            goal_locations = np.where(self.env.current_grid_map == goal_value)
+            goal_locations = list(zip(goal_locations[0], goal_locations[1]))
+            specific_goal_location = random.choice(goal_locations)
+            neighbors = self.env.allNeighbors(specific_goal_location[0],specific_goal_location[1])
+            free_spaces = []
+            for free_space in self.env.free_spaces:
+                found_spaces = np.where(self.env.current_grid_map == free_space)
+                free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
+            intersection_of_spaces = [x for x in neighbors if x in free_spaces]
+            the_space = random.choice(intersection_of_spaces)
+            self.env.current_grid_map[the_space] = self.value
+            self.current_position = the_space
+
+
+
 
     def update(self):
         pass
@@ -67,10 +87,10 @@ class Entity:
 
 class Goal(Entity):
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
-        if env.unwrapped:
-            self.env = env.env
-        else:
+        if env.__class__.__name__ == 'GenericEnv':
             self.env = env
+        else:
+            self.env = env.env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
@@ -79,9 +99,14 @@ class Goal(Entity):
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
+        self.position = position
         self.active = True
 
     def moveToMe(self,entity_object):
+        if isinstance(entity_object, Advisary):
+            entity_object.intended_position = entity_object.current_position
+            return 0
+        # print('entity hit goal', entity_object)
         self.env.done = True
         self.env.reward += 1
 
@@ -117,10 +142,10 @@ class Agent(Entity):
 
 class AIAgent(Agent):
     def __init__(self, env, obs_type='data',entity_type='', color='', position='random-free',pygame='None'):
-        if env.unwrapped:
-            self.env = env.env
-        else:
+        if env.__class__.__name__ == 'GenericEnv':
             self.env = env
+        else:
+            self.env = env.env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
@@ -129,9 +154,15 @@ class AIAgent(Agent):
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
+        self.position = position
         self.pygame = pygame
 
-
+    def moveToMe(self,entity_object):
+        # print('enity', entity_object, 'hit', self)
+        if isinstance(entity_object,Agent):
+            entity_object.intended_position = entity_object.current_position
+            return 1
+        return super().moveToMe(entity_object)
 
     def getAction(self,obs):
         #go straight for the goal
@@ -139,7 +170,7 @@ class AIAgent(Agent):
         goal_val = self.env.getGoalValue()
         goal_location = np.where(self.env.current_grid_map == goal_val)
         path = self.env.getPathTo((my_location[0], my_location[1]), (int(goal_location[0]), goal_location[1]),
-                                  free_spaces=self.env.free_spaces + [4])
+                                  free_spaces=self.env.free_spaces)
         for direction in [UP, DOWN, LEFT, RIGHT]:
             if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
                 #print("diection2", direction)
@@ -151,10 +182,10 @@ class HumanAgent(Agent):
     obs = None
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',pygame='None'):
         self.size_factor = 10
-        if env.unwrapped:
-            self.env = env.env
-        else:
+        if env.__class__.__name__ == 'GenericEnv':
             self.env = env
+        else:
+            self.env = env.env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
@@ -164,7 +195,17 @@ class HumanAgent(Agent):
         self.entity_type = entity_type
         self.obs_type = obs_type
         self.action = 0
+        self.position = position
         self.pygame = pygame
+        self.quit = False
+
+    def moveToMe(self,entity_object):
+        # print('enity', entity_object, 'hit', self)
+        if isinstance(entity_object,Agent):
+            entity_object.intended_position = entity_object.current_position
+            self.intended_position =  self.current_position
+            return 1
+        return super().moveToMe(entity_object)
 
     def getAction(self,obs):
         #this updates the picture
@@ -177,10 +218,15 @@ class HumanAgent(Agent):
                 if event.key == self.pygame.K_RIGHT: key_pressed = RIGHT
                 if event.key == self.pygame.K_DOWN: key_pressed = DOWN
                 if event.key == self.pygame.K_UP: key_pressed = UP
+                if event.key == self.pygame.K_SPACE: key_pressed = NOOP
                 if event.key == self.pygame.K_r: key_pressed = 'reset'
+                if event.key == self.pygame.K_q: key_pressed = 'quit'
 
         if key_pressed == 'reset':
             self.env.reset()
+            return 0
+        if key_pressed == 'quit':
+            self.quit = True
             return 0
         # print("human pressed", key_pressed)
         return key_pressed
@@ -188,6 +234,9 @@ class HumanAgent(Agent):
 
 
 class Advisary(Entity):
+    def moveToMe(self,entity_object):
+        return super().moveToMe(entity_object)
+
     def getAgents(self):
         agents = []
         for entity in self.env.entities:
@@ -255,11 +304,16 @@ class ChasingAdvisary(Advisary):
                 return direction
 
 class ChasingBlockingAdvisary(Advisary):
+    def moveToMe(self,entity_object):
+        # print('CBA: entity', entity_object, 'hit me')
+        super().moveToMe(entity_object)
+
     def getAction(self, obs):
         my_location = np.where(self.env.current_grid_map == self.value)
         goal_val = self.env.getGoalValue()
         # print('goal_val',goal_val)
-
+        directions = [UP, DOWN, LEFT, RIGHT]
+        random.shuffle(directions)
         goal_location = np.where(self.env.current_grid_map == goal_val)
         # if goal_location[0].size==0:
         #     print('DEBUG')
@@ -278,23 +332,41 @@ class ChasingBlockingAdvisary(Advisary):
                 # print("NOOP")
                 return NOOP
             points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            if len(points_in_path) == 0: #no points exist, therefore no path
+                points_in_path_length = 10**10
+            else:
+                points_in_path_length = len(points_in_path)
 
             # print('goalloc', goal_location)
             agent_to_goal = self.env.getPathTo((agent_location[0], agent_location[1]), (goal_location[0], goal_location[1]),
-                                               free_spaces=self.env.free_spaces+ [self.value])
+                                               free_spaces=self.env.free_spaces + [self.value])
             agent_to_goal_points = np.where(agent_to_goal == - 1)
             points_to_goal_path = list(zip(agent_to_goal_points[0], agent_to_goal_points[1]))
 
-            distance_to_agents[agent] = {'dist': len(points_in_path), 'raw_path_to_agent':path_to_agent, 'path_to_agent': points_in_path, 'agent_to_goal':points_to_goal_path}
+            distance_to_agents[agent] = {'dist': points_in_path_length, 'raw_path_to_agent':path_to_agent, 'path_to_agent': points_in_path, 'agent_to_goal':points_to_goal_path}
 
-        #assume we've determined the closest agent
-        #use the only one that exists
-        if distance_to_agents[agents[0]]['dist'] > 3:
+        #distance_to_agents now has the distance to the agent, the path to the agent, AND the points in the agents path to the goal
+        #the first rule is to check if my own location is beyond 5 steps to the goal
+        path_to_goal = self.env.getPathTo((my_location[0],my_location[1]), (int(goal_location[0]),int(goal_location[1])),free_spaces=self.env.free_spaces)
+        path_to_goal_points = np.where(path_to_goal == -1)
+        path_to_goal_points = list(zip(path_to_goal_points[0], path_to_goal_points[1]))
+        if len(path_to_goal_points) > 3:
+            for direction in directions:
+                if path_to_goal[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
+                    # print("diection2", direction)
+                    return direction
+
+        #find the closest agent to intercept
+        distance_list = sorted(distance_to_agents.keys(), key=lambda k: distance_to_agents[k]['dist'])
+        target_agent_val = distance_list[0]
+        # print('target_', target_agent_val)
+
+        if distance_to_agents[target_agent_val]['dist']  > 2:
             #go for the goal
             target_location = (-1, -1)
             goal_location = [int(goal_location[0]), int(goal_location[1])]
-            agent_path = distance_to_agents[agent]['agent_to_goal']
-            directions = [UP, DOWN, LEFT, RIGHT]
+            agent_path = distance_to_agents[target_agent_val]['agent_to_goal']
+
             if (int(my_location[0]),int(my_location[1])) in agent_path:
                 # print("in there....")
                 return NOOP
@@ -321,12 +393,17 @@ class ChasingBlockingAdvisary(Advisary):
                     # print("direction", direction)
                     return direction
         else: #go for the agent
-            path = distance_to_agents[agents[0]]['raw_path_to_agent']
+            path = distance_to_agents[target_agent_val]['raw_path_to_agent']
+            # print("Going for agent")
+            # print(np.array2string(path))
             for direction in [UP, DOWN, LEFT, RIGHT]:
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
                     # print("diection2", direction)
                     return direction
-        return 2
+        # print(np.array2string(self.env.current_grid_map))
+        # print(np.array2string(distance_to_agents[target_agent_val]['raw_path_to_agent']), target_agent_val)
+
+
 
 
 class BlockingAdvisary(Advisary):
@@ -381,11 +458,11 @@ class BlockingAdvisary(Advisary):
 class NetworkAgent(Agent):
 
     def __init__(self,env,obs_type='image', entity_type='', color='', position='random-free'):
-        if env.unwrapped:
-            self.env = env.env
-        else:
+        if env.__class__.__name__ == 'GenericEnv':
             self.env = env
-        self.value = self.env.object_values[-1] + 1
+        else:
+            self.env = env.env
+        self.value = self.env.object_values[-1] + 1 # Weird here: in MAC this works with just env.object... even with the wrapper (and the env. TAB gives no suggestions). But in koalemos works
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
         self.env.entities[self.value] = self
@@ -393,8 +470,41 @@ class NetworkAgent(Agent):
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
+        self.position = position
         self.active = True
 
+
+
     def moveToMe(self,entity_object):
+        self.env.done = True
+        self.env.reward -=1
+
+
+class TrainedAgent(Agent):
+
+    def __init__(self, env, obs_type='image', entity_type='', color='', position='random-free'):
+        if env.__class__.__name__ == 'GenericEnv':
+            self.env = env
+        else:
+            self.env = env.env
+        self.value = self.env.object_values[-1] + 1
+        self.env.object_values.append(self.value)
+        self.env.value_to_objects[self.value] = {'color': color, 'entity_type': entity_type}
+        self.env.entities[self.value] = self
+        self.color = color
+        # self.moveTo = 'moveToDefault'
+        self.entity_type = entity_type
+        self.obs_type = obs_type
+        self.position = position
+        #self.agent = ActorCriticAgent()
+        #self.agent.buid_model()
+        self.active = True
+
+    def getAction(self,obs):
+        pass
+        #network stuff
+        #return action
+
+    def moveToMe(self, entity_object):
         self.env.done = True
         self.env.reward -=1

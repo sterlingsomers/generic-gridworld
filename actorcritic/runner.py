@@ -502,7 +502,7 @@ class Runner(object):
 
         action_ids, value_estimate, fc, action_probs = self.agent.step_eval(latest_obs) # (MINE) AGENT STEP = INPUT TO NN THE CURRENT STATE AND OUTPUT ACTION
         print('|actions:', action_ids)
-        obs_raw = self.envs.step(action_ids) # It will also visualize the next observation if all the episodes have ended as after success it retunrs the obs from reset
+        obs_raw = self.envs.step(action_ids[0]) # It will also visualize the next observation if all the episodes have ended as after success it retunrs the obs from reset
         latest_obs = self.obs_processer.process(obs_raw[0:-3])  # Take only the first element which is the rgb image and ignore the reward, done etc
         print('-->|rewards:', np.round(np.mean(obs_raw[1]), 3))
 
