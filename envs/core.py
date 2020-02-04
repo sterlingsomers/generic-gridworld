@@ -199,8 +199,6 @@ class ACTR(Agent):
         for chunk in self.data:
             self.memory.learn(**chunk)
 
-
-
     def angle_similarity(self,x,y):
         PI = math.pi
         TAU = 2*PI
@@ -261,6 +259,7 @@ class ACTR(Agent):
         chunk_names = []
 
         PjxdSims = {}
+        PI = math.pi
         for feature in feature_list:
             Fk = probe[feature]
             for chunk in history:
@@ -274,7 +273,15 @@ class ACTR(Agent):
                 if Fk == vjk:
                     dSim = 0.0
                 else:
-                    dSim = (vjk - Fk) / abs(Fk - vjk)
+                    if 'rads' in feature:
+                        a_result = np.argmin(((2 * PI) - abs(vjk-Fk), abs(vjk-Fk)))
+                        if a_result:
+                            dSim = (vjk - Fk) / abs(Fk - vjk)
+                        else:
+                            dSim = (Fk - vjk) / abs(Fk - vjk)
+                    else:
+                        dSim = (vjk - Fk) / abs(Fk - vjk)
+
                 # if Fk == vjk:
                 #     dSim = 0
                 # else:
@@ -318,7 +325,15 @@ class ACTR(Agent):
                 if Fk == vik:
                     dSim = 0.0
                 else:
-                    dSim = (vik - Fk) / abs(Fk - vik)
+                    #dSim = (vik - Fk) / abs(Fk - vik)
+                    if 'rads' in feature:
+                        a_result = np.argmin(((2 * PI) - abs(vjk-Fk), abs(vjk-Fk)))
+                        if a_result:
+                            dSim = (vik - Fk) / abs(Fk - vik)
+                        else:
+                            dSim = (Fk - vjk) / abs(Fk - vik)
+                    else:
+                        dSim = (vik - Fk) / abs(Fk - vik)
                 #
                 # if Fk == vik:
                 #     dSim = 0
@@ -353,7 +368,8 @@ class ACTR(Agent):
             blends.append(blend_value)
         # for x,y in zip(possible_actions, blends):
         #     print(x,y)
-        print('argmax', np.argmax(blends), possible_actions[np.argmax(blends)])
+        # if possible_actions[np.argmax(blends)] == 'noop':
+        print('argmax', blends, np.argmax(blends), possible_actions[np.argmax(blends)])
         print(saliences[possible_actions[np.argmax(blends)]])
 
         argmax_action = possible_actions[np.argmax(blends)]

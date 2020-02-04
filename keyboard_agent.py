@@ -32,6 +32,7 @@ class Obstacle(Entity):
 env = envs.generic_env.GenericEnv(dims=(10,10))
 goal = Goal(env,entity_type='goal',color='green')
 human_data = pickle.load(open('symbolic_data_sterling20200128-161543.lst','rb'))
+
 # obstacles = []
 # for i in range(3):
 #     obstacles.append(Obstacle(env, color='yellow'))

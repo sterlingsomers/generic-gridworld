@@ -56,6 +56,7 @@ class GenericEnv(gym.Env):
         self.features = features
         self.dims = dims
         self.record_history = False
+        self.history = {}
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
