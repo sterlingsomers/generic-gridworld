@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import math
+import functools
 from threading import Lock
 # from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
 from scipy.spatial.distance import cityblock
@@ -13,6 +14,15 @@ UP = 2
 LEFT = 3
 RIGHT = 4
 directions = [NOOP, DOWN, UP, LEFT, RIGHT]
+
+
+# def record_action(f):
+#     def _record_action(*args, **kwargs):
+#         action = f(*args, **kwargs)
+#         if args[0].record_history:
+#             args[0].history['steps'].append(action)
+#         return action
+#     return _record_action
 
 class Entity:
     current_position = (0,0)
@@ -97,6 +107,12 @@ class ActiveEntity(Entity):
     def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free'):
         super().__init__(env, obs_type, entity_type, color, position)
         self.env.active_entities[self.value] = self
+
+    def getAction(self, obs):
+        action = self._getAction(obs)
+        if self.record_history:
+            self.history['steps'].append(action)
+        return action
 
 class Goal(Entity):
     def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free'):
@@ -348,7 +364,7 @@ class ACTR(Agent):
         # sorted_results = sorted(result.items(), key=lambda kv: kv[1])
         return result
 
-    def getAction(self,obs):
+    def _getAction(self,obs):
         print('actr action')
         self.memory.activation_history = []
         self.memory.advance(0.1)
@@ -403,7 +419,8 @@ class HumanAgent(Agent):
             return 1
         return super().moveToMe(entity_object)
 
-    def getAction(self,obs):
+
+    def _getAction(self,obs):
         #this updates the picture
         # print("human getAction")
         key_pressed = None
@@ -426,6 +443,10 @@ class HumanAgent(Agent):
             return 0
         # print("human pressed", key_pressed)
         return key_pressed
+
+
+    # @record_action
+
 
 
 
@@ -459,7 +480,7 @@ class Advisary(ActiveEntity):
         self.env.reward = -1
         # print('PREADATOR IS BEING ATTACKED')
 
-    def getAction(self,obs):
+    def _getAction(self,obs):
         agents = self.getAgents()
         target = self.getClosestTarget(agents)
 
@@ -481,7 +502,7 @@ class Advisary(ActiveEntity):
 
 class ChasingAdvisary(Advisary):
 
-    def getAction(self,obs):
+    def _getAction(self,obs):
         my_location = np.where(self.env.current_grid_map == self.value)
 
         agents = self.getAgents()
@@ -504,7 +525,7 @@ class ChasingBlockingAdvisary(Advisary):
         print('CBA: entity', entity_object, 'hit me')
         super().moveToMe(entity_object)
 
-    def getAction(self, obs):
+    def _getAction(self, obs):
         my_location = np.where(self.env.current_grid_map == self.value)
         goal_val = self.env.getGoalValue()
         # print('goal_val',goal_val)
@@ -615,7 +636,7 @@ class BlockingAdvisary(Advisary):
         return target_location
 
 
-    def getAction(self,obs):
+    def _getAction(self,obs):
         my_location = np.where(self.env.current_grid_map == self.value)
         agents = self.getAgents()
 
@@ -691,7 +712,7 @@ class TrainedAgent(Agent):
         #self.agent.buid_model()
         self.active = True
 
-    def getAction(self,obs):
+    def _getAction(self,obs):
         pass
         #network stuff
         #return action

@@ -6,6 +6,7 @@ from gym import spaces
 from gym.utils import seeding
 import random
 import itertools
+import functools
 # import matplotlib
 # matplotlib.use('TkAgg')
 # import matplotlib.pyplot as plt
@@ -21,6 +22,26 @@ DOWN = 1
 UP = 2
 LEFT = 3
 RIGHT = 4
+
+def step_wrapper(f):
+    def _record_step(*args, **kwargs):
+        grid, reward, done, info = f(*args, **kwargs)
+        if args[0].record_history:
+            args[0].history['observations'].append(args[0].current_grid_map.copy())
+            args[0].history['reward'].append(reward)
+            args[0].history['done'].append(done)
+
+        return grid, reward, done, info
+    return _record_step
+
+
+# def record_action(f):
+#     def _record_action(*args, **kwargs):
+#         action = f(*args, **kwargs)
+#         if args[0].record_history:
+#             args[0].history['steps'].append(action)
+#         return f(*args, **kwargs)
+#     return _record_action
 
 
 class GenericEnv(gym.Env):
@@ -92,7 +113,7 @@ class GenericEnv(gym.Env):
         #Run the dynamic environment
         #self.run()
 
-    def setRecordHistory(self,on=True,history_dict={'observations':[],'value_to_objects':0}):
+    def setRecordHistory(self,on=True,history_dict={'observations':[],'value_to_objects':0,'reward':[],'done':[]}):
         self.record_history = True
         self.history = history_dict
         self.history['value_to_objects'] = self.value_to_objects
@@ -348,21 +369,22 @@ class GenericEnv(gym.Env):
 
         return image
 
+    @step_wrapper
     def step(self, action):
         print('step')
         info = {}
         obs = self._gridmap_to_image()
         grid_map = self.current_grid_map
-        if self.record_history:
-            self.history['observations'].append(self.current_grid_map.copy())
+        # if self.record_history:
+        #     self.history['observations'].append(self.current_grid_map.copy())
         entity_actions = []
 
         for entity in self.active_entities:
             if not type(self.entities[entity]) == NetworkAgent:
                 action_chosen = self.active_entities[entity].getAction(obs)
                 entity_actions.append(action_chosen)
-                if self.active_entities[entity].record_history:
-                    self.active_entities[entity].history['steps'].append(action_chosen)
+                # if self.active_entities[entity].record_history:
+                #     self.active_entities[entity].history['steps'].append(action_chosen)
             else:
                 entity_actions.append(action)
         # print('ent_actions:',entity_actions)

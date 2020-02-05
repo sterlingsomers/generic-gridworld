@@ -74,7 +74,7 @@ import math
 
 data = {'environment_episode_data':[],'player_episode_data':[]}
 episodes = 100
-human = 'sterling'
+human = 'jen'
 
 clock = pygame.time.Clock()
 while not player3.quit:
