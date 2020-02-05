@@ -25,9 +25,10 @@ RIGHT = 4
 
 def step_wrapper(f):
     def _record_step(*args, **kwargs):
+        obs_before_step = args[0].current_grid_map.copy()
         grid, reward, done, info = f(*args, **kwargs)
         if args[0].record_history:
-            args[0].history['observations'].append(args[0].current_grid_map.copy())
+            args[0].history['observations'].append(obs_before_step)
             args[0].history['reward'].append(reward)
             args[0].history['done'].append(done)
 
