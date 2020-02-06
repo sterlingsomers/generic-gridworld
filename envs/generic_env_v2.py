@@ -313,10 +313,12 @@ class GenericEnv(gym.Env):
         #         free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
         #     the_space = random.choice(free_spaces)
         #     self.current_grid_map[the_space] = object_value
-
-        return self._gridmap_to_image()
-
-
+        obs_ = {}
+        obs_['img'] = self._gridmap_to_image()
+        obs_['map'] = self.current_grid_map.copy()
+        # obs_['agent_id'] = 0 #
+        obs_['objects_id'] = self.value_to_objects
+        return obs_
 
     def _gridmap_to_image(self):
         image = np.zeros((self.dims[0],self.dims[1],3), dtype=np.uint8)
@@ -338,6 +340,7 @@ class GenericEnv(gym.Env):
 
     def step(self, action):
         info = {}
+        obs_ = {}
         obs = self._gridmap_to_image()
         grid_map = self.current_grid_map
         entity_actions = []
@@ -383,12 +386,18 @@ class GenericEnv(gym.Env):
                     other_entity_object.moveToMe(entity_object)
                     if self.done:
                         # print("reward", self.reward, self.done)
-                        return self._gridmap_to_image(), self.reward, self.done, info
+                        obs_['img'] = self._gridmap_to_image()
+                        obs_['map'] = self.current_grid_map.copy()
+                        obs_['objects_id'] = self.value_to_objects
+                        return obs_, self.reward, self.done, info
                 if entity_object.current_position == other_entity_object.intended_position and other_entity_object.current_position == entity_object.intended_position:
                     other_entity_object.moveToMe(entity_object)
                     if self.done:
                         # print("reward", self.reward, self.done)
-                        return self._gridmap_to_image(), self.reward, self.done, info
+                        obs_['img'] = self._gridmap_to_image()
+                        obs_['map'] = self.current_grid_map.copy()
+                        obs_['objects_id'] = self.value_to_objects
+                        return obs_, self.reward, self.done, info
 
 
         if not self.done:
@@ -398,7 +407,13 @@ class GenericEnv(gym.Env):
                 # print('entities', entity_object.current_position, 'ent_type', type(entity_object))
                 self.current_grid_map[entity_object.current_position] = entity_object.value
             # print("reward", self.reward, self.done)
-            return self._gridmap_to_image(), self.reward, self.done, info
+            obs_['img'] = self._gridmap_to_image()
+            obs_['map'] = self.current_grid_map.copy()
+            obs_['objects_id'] = self.value_to_objects
+            return obs_, self.reward, self.done, info
         else:
             # print("reward", self.reward, self.done)
-            return self._gridmap_to_image(), self.reward, self.done, info
+            obs_['img'] = self._gridmap_to_image()
+            obs_['map'] = self.current_grid_map.copy()
+            obs_['objects_id'] = self.value_to_objects
+            return obs_, self.reward, self.done, info

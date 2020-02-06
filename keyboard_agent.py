@@ -3,32 +3,34 @@ from threading import Thread
 import sys, gym, time
 from pyglet.window import key
 
-import envs.generic_env_v2
+from envs.generic_env_v2 import GenericEnv
 from envs.generic_env_v2 import UP, DOWN, LEFT, RIGHT, NOOP
-# from envs.core import *
+from envs.core_v2 import *
 from scipy.spatial.distance import cityblock
 from itertools import permutations
-
+# import matplotlib
+# matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import pickle
 import pygame
 import numpy as np
 
 import PIL
 
-#A new class to extend old classes
 
-# env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
-env = envs.generic_env_v2.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
-goal = envs.generic_env_v2.Goal(env,entity_type='goal',color='green')
+env = GenericEnv(dims=(10,10))
+goal = Goal(env,entity_type='goal',color='green')
+
+# obstacles = []
+# for i in range(3):
+#     obstacles.append(Obstacle(env, color='yellow'))
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-player3 = envs.generic_env_v2.HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-# player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
-advisary = envs.generic_env_v2.ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
-#advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
-
-
-
-
+human = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame)
+# player3 = ACTR(env,data = human_data,mismatch_penalty=6)
+# player4 = AIAgent(env,entity_type='agent',color='orange')
+# player4 = AIAgent(env,entity_type='agent',color='pink')
+advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
 
 human_agent_action = 0
 human_wants_restart = False
@@ -52,16 +54,17 @@ pygame.display.update()
 game_done = False
 running = True
 
-# t = Thread(target=run_player2)
-# t.start()
+# dictionary[episode_counter] = {}
+# mb_obs = []
+# mb_actions = []
+# mb_rewards = []
+
 clock = pygame.time.Clock()
 while running:
     pygame.display.update()
     key_pressed = 0
-    pygame.time.delay(50)
-    # free_spaces = env.free_spaces + list(env.entities.keys()) + [3]
-    # free_spaces.remove(advisary.value)
-    # env.getPathTo((1,1),(18,6),free_spaces=free_spaces)
+    # pygame.time.delay(500)
+
     obs, r, done, info = env.step([])
 
     obs = PIL.Image.fromarray(obs)
@@ -70,38 +73,6 @@ while running:
     surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
     display.blit(surf, (0, 0))
     pygame.display.update()
-    for event in pygame.event.get():
-
-
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT: key_pressed = LEFT
-            if event.key == pygame.K_RIGHT: key_pressed = RIGHT
-            if event.key == pygame.K_DOWN: key_pressed = DOWN
-            if event.key == pygame.K_UP: key_pressed = UP
-            if event.key == pygame.K_r:
-                key_pressed = True
-                obs = env.reset()
-                obs = PIL.Image.fromarray(obs)
-                size = tuple((np.array(obs.size) * size_factor).astype(int))
-                obs = np.array(obs.resize(size, PIL.Image.NEAREST))
-                surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-                display.blit(surf, (0, 0))
-                game_done = False
-                break
-
-    if key_pressed and not game_done:
-        player3.action = key_pressed
-        if done:
-            obs = env.reset()
-            surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-            display.blit(surf, (0,0))
-        else:
-            #pygame.surfarray.blit_array(background,obs)
-            surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs),0))
-            #pygame.transform.rotate(surf,180)
-            display.blit(surf, (0,0))
 
 
     # pygame.time.delay(100)

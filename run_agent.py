@@ -32,19 +32,19 @@ from envs.core_v2 import *
 
 FLAGS = flags.FLAGS
 flags.DEFINE_bool("visualize", True, "Whether to render with pygame.")
-flags.DEFINE_float("sleep_time", 0.8, "Time-delay in the demo")
+flags.DEFINE_float("sleep_time", 0.0, "Time-delay in the demo")
 flags.DEFINE_integer("resolution",8, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 100, "Game steps per agent step.")
 flags.DEFINE_integer("step2save", 500, "Game step to save the model.") #A2C every 1000, PPO 250, 500
-flags.DEFINE_integer("n_envs", 100, "Number of environments to run in parallel")
-flags.DEFINE_integer("episodes", 10, "Number of complete episodes for test mode")
+flags.DEFINE_integer("n_envs", 2, "Number of environments to run in parallel")
+flags.DEFINE_integer("episodes", 500, "Number of complete episodes for test mode")
 flags.DEFINE_integer("n_steps_per_batch", 16,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!! You need them cauz you dont want to run till it finds the beacon especially at first episodes - will take forever
 flags.DEFINE_integer("all_summary_freq", 10, "Record all summaries every n batch")
 flags.DEFINE_integer("scalar_summary_freq", 5, "Record scalar summaries every n batch")
 flags.DEFINE_string("checkpoint_path", "_files/models", "Path for agent checkpoints")
 flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard summaries") #A2C_custom_maps#A2C-science-allmaps - BEST here for one policy
-flags.DEFINE_string("model_name", "dokimib", "Name for checkpoints and tensorboard summaries") # net_vs_pred DONT touch TESTING is the best (take out normalization layer in order to work! -- check which parts exist in the restore session if needed)
+flags.DEFINE_string("model_name", "net_vs_pred_02", "Name for checkpoints and tensorboard summaries") # net_vs_pred DONT touch TESTING is the best (take out normalization layer in order to work! -- check which parts exist in the restore session if needed)
 flags.DEFINE_integer("K_batches", 100500, # Batch is like a training epoch!
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "DefeatRoaches", "Name of a map to use.")
@@ -63,7 +63,7 @@ flags.DEFINE_integer("ppo_batch_size", None, "batch size for ppo, if None use n_
 flags.DEFINE_integer("ppo_epochs", 3, "epochs per update")
 flags.DEFINE_enum("policy_type", "FullyConv", ["MetaPolicy", "FullyConv", "FactoredPolicy",
                                                           "FactoredPolicy_PhaseI", 'FactoredPolicy_PhaseII',
-                                                          "Relational", "AlloAndAlt", "FullyConv3D"], "Which type of Policy to use")
+                                                          "Relational", "AlloAndAlt", "FullyConv3D", 'Imitation_ACTUP'], "Which type of Policy to use")
 flags.DEFINE_enum("agent_mode", ACMode.A2C, [ACMode.A2C, ACMode.PPO], "if should use A2C or PPO")
 
 FLAGS(sys.argv)
@@ -243,6 +243,8 @@ def main():
                     runner.run_meta_batch()
                 elif FLAGS.policy_type == 'FactoredPolicy' or FLAGS.policy_type == 'FactoredPolicy_PhaseI' or FLAGS.policy_type == 'FactoredPolicy_PhaseII':
                     runner.run_factored_batch()
+                elif FLAGS.policy_type == 'Imitation_ACTUP':
+                    runner.run_imitation_batch()
                 else:
                     runner.run_batch()  # (MINE) HERE WE RUN MAIN LOOP for while true
                 #runner.run_batch_solo_env()
@@ -301,6 +303,7 @@ def main():
 
                 # Init storage structures
                 dictionary[runner.episode_counter] = {}
+                mb_obs = []
                 mb_actions = []
                 mb_action_probs = []
                 mb_fc = []
@@ -328,6 +331,8 @@ def main():
                 while done==0:
 
                     # mb_obs.append(runner.latest_obs)
+                    obs_map = envs.current_grid_map.copy()
+                    mb_obs.append(obs_map)
                     # state = runner.envs.renderEnv()
                     # mb_map.append(state['small'])
 
@@ -381,6 +386,7 @@ def main():
                     if t == 70:
                         break
 
+                dictionary[runner.episode_counter]['obs'] = mb_obs
                 dictionary[runner.episode_counter]['actions'] = mb_actions
                 dictionary[runner.episode_counter]['rewards'] = mb_rewards
                 dictionary[runner.episode_counter]['values'] = mb_values
@@ -397,7 +403,7 @@ def main():
 
             print("...saving dictionary.")
             #TODO: IMPORT THE onepolicy_analysis.py FILE AND CONVERT IT INTO PANDAS
-            folder = '/Users/constantinos/Documents/Projects/cmu_gridworld/cmu_gym/data/net_vs_pred/'
+            folder = '/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/'
             now = datetime.now()
             timestamp = str(now.strftime("%Y_%b%d_time%H-%M")) # -%S for seconds
             path = folder + timestamp + '_' + FLAGS.model_name + '.dct'

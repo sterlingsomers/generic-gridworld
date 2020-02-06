@@ -9,17 +9,11 @@ from actorcritic.policy import FullyConvPolicy, MetaPolicy, RelationalPolicy,\
     FullyConvPolicyAlt, FullyConv3DPolicy, FactoredPolicy, FactoredPolicy_PhaseI, FactoredPolicy_PhaseII#, LSTM
 from common.preprocess import ObsProcesser, FEATURE_KEYS, AgentInputTuple
 from common.util import weighted_random_sample, select_from_each_row, ravel_index_pairs
-import tensorboard.plugins.beholder as beholder_lib
-# import saliency
 from pyactup import *
 import pickle
 import math
-
-NOOP = 0
-DOWN = 1
-UP = 2
-LEFT = 3
-RIGHT = 4
+import tensorboard.plugins.beholder as beholder_lib
+# import saliency
 
 #LOG_DIRECTORY = '/tmp/beholder-demo/SCII'
 LOG_DIRECTORY = '_files/summaries/Test'
@@ -191,8 +185,7 @@ class ActorCriticAgent:
             self.policy = FactoredPolicy_PhaseI
         elif policy == 'FactoredPolicy_PhaseII':
             self.policy = FactoredPolicy_PhaseII
-        else: #print('Unknown Policy')
-            self.policy = FullyConvPolicy
+        else: print('Unknown Policy')
 
         # assert (self.policy_type == 'MetaPolicy') and not (self.mode == ACMode.PPO) # For now the policy in PPO is not calculated taken into account recurrencies
 
@@ -211,28 +204,26 @@ class ActorCriticAgent:
             pars = optimiser_pars
         self.optimiser = opt_class(**pars)
 
-        # sterling's stuff
-        if policy == 'Imitation_ACTUP':
-            self.memory = Memory(noise=0.0, decay=0.0, temperature=1.0, threshold=-100.0, mismatch=10,
-                                 optimized_learning=False)
-            set_similarity_function(self.angle_similarity, *['goal_rads', 'adisary_rads'])
-            set_similarity_function(self.distance_similarity, *['goal_disdtance', 'advisary_distance'])
+        #sterling's stuff
+        self.memory = Memory(noise=0.0,decay=0.0,temperature=t,threshold=-100.0,mismatch=10,optimized_learning=False)
+        set_similarity_function(self.angle_similarity, *['goal_rads', 'adisary_rads'])
+        set_similarity_function(self.distance_similarity, *['goal_disdtance', 'advisary_distance'])
 
-            self.data = pickle.load(open('/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/symbolic_data_sterling20200128-161543.lst', 'rb'))
-            # Before using the distances, they have to be normalized (0 to 1)
-            # Normalize by dividing by the max in the data
-            distances = []
-            for x in self.data:
-                distances.append(x['goal_distance'])
-                distances.append(x['advisary_distance'])
-            # distances = [x['goal_distance'],x['advisary_distance'] for x in self.data]
-            self.max_distance = max(distances)
-            for datum in self.data:
-                datum['goal_distance'] = datum['goal_distance'] / self.max_distance
-                datum['advisary_distance'] = datum['advisary_distance'] / self.max_distance
+        self.data = pickle.load(open('...','rb'))
+        #Before using the distances, they have to be normalized (0 to 1)
+        #Normalize by dividing by the max in the data
+        distances = []
+        for x in self.data:
+            distances.append(x['goal_distance'])
+            distances.append(x['advisary_distance'])
+        #distances = [x['goal_distance'],x['advisary_distance'] for x in self.data]
+        self.max_distance = max(distances)
+        for datum in self.data:
+            datum['goal_distance'] = datum['goal_distance'] / self.max_distance
+            datum['advisary_distance'] = datum['advisary_distance'] / self.max_distance
 
-            for chunk in self.data:
-                self.memory.learn(**chunk)
+        for chunk in self.data:
+            self.memory.learn(**chunk)
 
     def angle_similarity(self, x, y):
         PI = math.pi
@@ -252,71 +243,6 @@ class ActorCriticAgent:
         # print("sim distance", result, x, y)
         return result
 
-    def getPathTo(self, grid, start_location, end_location, free_spaces=[]):
-        '''An A* algorithm to get from one point to another.
-        free_spaces is a list of values that can be traverseAd.
-        start_location and end_location are tuple point values.
-
-        Returns a map with path denoted by -1 values. Inteded to use np.where(path == -1).'''
-        pathArray = np.full(grid.shape, 0)
-        action_map = {1: lambda x: ((x[0] + 1) % grid.shape[0], (x[1]) % grid.shape[1]),
-                      2: lambda x: ((x[0] - 1) % grid.shape[0], (x[1]) % grid.shape[1]),
-                      3: lambda x: (x[0] % grid.shape[0], (x[1] - 1) % grid.shape[1]),
-                      4: lambda x: (x[0] % grid.shape[0], (x[1] + 1) % grid.shape[1]),
-                      0: lambda x: (x[0], x[1])}
-
-        for free_space in free_spaces:
-            zeros = np.where(grid == free_space)
-            zeros = list(zip(zeros[0], zeros[1]))
-            for point in zeros:
-                pathArray[point] = 1
-
-        # Because we started with true (1), we start with a current value of 1 (which will increase to two)
-        current_value = 1
-        target_value = 0
-        pathArray[start_location] = 2
-        directions = [UP, DOWN, LEFT, RIGHT]
-        stop = False
-        while True:
-            current_value += 1
-            target_value = current_value + 1
-            test_points = np.where(pathArray == current_value)
-            test_points = list(zip(test_points[0], test_points[1]))
-            still_looking = False
-            for test_point in test_points:
-                for direction in directions:
-                    if pathArray[action_map[direction](test_point)] and pathArray[
-                        action_map[direction](test_point)] + current_value <= target_value:
-                        pathArray[action_map[direction](test_point)] = target_value
-                        still_looking = True
-                    # if not end_location[0].tolist():
-                    #     print('emtpiness')
-                    # print(self.action_map[direction](test_point), end_location)
-                    # print(test_point, end_location, direction)
-                    # try:
-                    if action_map[direction](test_point) == (int(end_location[0]), int(end_location[1])):
-                        pathArray[end_location] = - 1
-                        still_looking = True
-                        stop = True
-                        break
-                    # except Exception:
-                    #     print('ERROR')
-
-            if not still_looking:
-                return pathArray
-            if stop:
-                break
-        current_point = end_location
-        while True:
-            for direction in directions:
-                if pathArray[action_map[direction](current_point)] == target_value - 1:
-                    pathArray[current_point] = -1
-                    current_point = action_map[direction](current_point)
-                    target_value -= 1
-                if current_point == start_location:
-                    # pathArray[current_point] = -1
-                    return pathArray
-
     def gridmap_to_symbols(self, gridmap, agent, value_to_objects):
         agent_location = np.where(gridmap == agent)
         agent_location = (int(agent_location[0]), int(agent_location[1]))
@@ -332,7 +258,7 @@ class ActorCriticAgent:
         if goal_location:
             goal_location = (int(goal_location[0]), int(goal_location[1]))
             goal_rads = math.atan2(goal_location[0] - agent_location[0], goal_location[1] - agent_location[1])
-            path_agent_to_goal = self.getPathTo(gridmap, agent_location, goal_location, free_spaces=[0])
+            path_agent_to_goal = self.env.getPathTo(agent_location, goal_location, free_spaces=[0])
             points_in_path = np.where(path_agent_to_goal == -1)
             points_in_path = list(zip(points_in_path[0], points_in_path[1]))
             return_dict['goal_rads'] = goal_rads
@@ -341,7 +267,7 @@ class ActorCriticAgent:
             advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
             advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
                                        advisary_location[1] - agent_location[1])
-            path_agent_to_advisary = self.getPathTo(gridmap,agent_location, advisary_location, free_spaces=[0])
+            path_agent_to_advisary = self.env.getPathTo(agent_location, advisary_location, free_spaces=[0])
             points_in_path = np.where(path_agent_to_advisary == -1)
             points_in_path = list(zip(points_in_path[0], points_in_path[1]))
             return_dict['advisary_rads'] = advisary_rads
@@ -351,12 +277,13 @@ class ActorCriticAgent:
 
         return return_dict
 
-    def actup_step(self, grid_map, self_value, value_to_objects):
+
+    def actup_step(self,grid_map, self_value, value_to_objects):
         self.memory.advance(0.1)
-        possible_actions = ['noop', 'down', 'up', 'left', 'right']
+        possible_actions = ['noop','down','up','left','right']
         blends = []
         for action in possible_actions:
-            probe_chunk = self.gridmap_to_symbols(grid_map, self_value, value_to_objects)
+            probe_chunk = self.gridmap_to_symbols(grid_map, self_value,value_to_objects)
             blend_value = self.memory.blend(action, **probe_chunk)
             blends.append(blend_value)
         return blends
@@ -576,13 +503,14 @@ class ActorCriticAgent:
         #self.beholder = beholder_lib.Beholder(logdir=LOG_DIRECTORY)
         #tf.summary.image('spatial policy', tf.reshape(self.theta.spatial_action_logits, [-1, 32, 32, 1]))
 
-        ''' Necessary for Policy Saliencies'''
+    ''' Necessary for Policy Saliencies'''
         # Below: Get the pi(at|st)
         # logits = self.graph.get_tensor_by_name('theta/action_id/Softmax:0')  # form of tensors <op name>:<out indx>
         # self.neuron_selector = tf.placeholder(tf.int64)
         # pi_at = logits[0][
         #     self.neuron_selector]  # logits is (?,5), logits[0 or 1] is (5,) dims and logits[0][smth] will return 1 of the 5
         # self.pi_at = tf.reshape(pi_at, [1])
+
 
     def _input_to_feed_dict(self, input_dict):
         return {k + ":0": v for k, v in input_dict.items()} # Add the :0 after the name of each feature
@@ -614,22 +542,6 @@ class ActorCriticAgent:
         # )
         ########
         #self.summary_writer.add_summary(images[2]) # seems not working cauz of merging all
-
-        return action_id, value_estimate
-
-    def step_imitate(self, obs, grid, objects_id):
-        # (MINE) Pass the observations through the net
-
-        feed_dict = self._input_to_feed_dict(obs)
-
-        action_id, value_estimate = self.sess.run(
-            [self.sampled_action_id, self.value_estimate],
-            feed_dict=feed_dict
-        )
-
-        actup_probs = []
-        for i in range(self.num_envs):
-            actup_probs.append(self.actup_step(grid[i], 3, objects_id[i]))
 
         return action_id, value_estimate
 

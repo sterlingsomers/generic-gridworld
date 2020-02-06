@@ -229,6 +229,7 @@ class HumanAgent(Agent):
             self.quit = True
             return 0
         # print("human pressed", key_pressed)
+        self.action = key_pressed
         return key_pressed
 
 
