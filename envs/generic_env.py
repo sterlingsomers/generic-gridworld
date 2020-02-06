@@ -333,6 +333,8 @@ class GenericEnv(gym.Env):
 
         #then put them back in and deal with history
         self.history['observations'] = []
+        self.history['reward'] = []
+        self.history['done'] = []
 
         for entity in self.entities:
             entity_object = self.entities[entity]
