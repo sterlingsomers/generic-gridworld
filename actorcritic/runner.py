@@ -524,6 +524,7 @@ class Runner(object):
         # The reset is happening through Monitor (except the first one of the first batch (is in hte run_agent)
         mb_actions = []
         mb_obs = []
+        mb_actup_probs = np.zeros((self.envs.num_envs, self.n_steps, self.envs.action_space.n), dtype=np.float32)
         mb_values = np.zeros((self.envs.num_envs, self.n_steps + 1), dtype=np.float32)
         mb_rewards = np.zeros((self.envs.num_envs, self.n_steps), dtype=np.float32)
         mb_done = np.zeros((self.envs.num_envs, self.n_steps), dtype=np.int32)
@@ -535,17 +536,19 @@ class Runner(object):
         for n in range(self.n_steps):
             # could calculate value estimate from obs when do training
             # but saving values here will make n step reward calculation a bit easier
-            action_ids, value_estimate = self.agent.step_imitate(latest_obs, grid_map, objects_id)
+            action_ids, value_estimate, actup_probs = self.agent.step_imitate(latest_obs, grid_map, objects_id)
             # print('|step:', n, '|actions:', action_ids)  # (MINE) If you put it after the envs.step the SUCCESS appears at the envs.step so it will appear oddly
             # (MINE) Store actions and value estimates for all steps
             mb_values[:, n] = value_estimate
             mb_obs.append(latest_obs)
             mb_actions.append((action_ids))
+            mb_actup_probs[:, n, :] = [t for t in actup_probs]
             # (MINE)  do action, return it to environment, get new obs and reward, store reward
             #actions_pp = self.action_processer.process(action_ids) # Actions have changed now need to check: BEFORE: actions.FunctionCall(actions.FUNCTIONS.no_op.id, []) NOW: actions.FUNCTIONS.no_op()
             obs_raw = self.envs.step(action_ids)
             #obs_raw.reward = reward
             latest_obs = self.obs_processer.process(obs_raw[0]['img']) # For obs_raw as tuple! #(MINE) =state(t+1). Processes all inputs/obs from all timesteps (and envs)
+            grid_map = obs_raw[0]['map']
             #print('-->|rewards:', np.round(np.mean(obs_raw[1]), 3))
             mb_rewards[:, n] = [t for t in obs_raw[1]]
             mb_done[:, n] = [t for t in obs_raw[2]]
@@ -608,7 +611,8 @@ class Runner(object):
             # these are transposed because action/obs
             # processers return [time, env, ...] shaped arrays CHECK THIS OUT!!!YOU HAVE ALREADY THE TIMESTEP DIM!!!
             FEATURE_KEYS.advantage: n_step_advantage.transpose(),#, G.transpose()
-            FEATURE_KEYS.value_target: (n_step_advantage + mb_values[:, :-1]).transpose()# R.transpose()# (we left out the last element) if you add to the advantage the value you get the target for your value function training. Check onenote in cmu_gym/Next Steps
+            FEATURE_KEYS.value_target: (n_step_advantage + mb_values[:, :-1]).transpose(),# R.transpose()# (we left out the last element) if you add to the advantage the value you get the target for your value function training. Check onenote in cmu_gym/Next Steps
+            FEATURE_KEYS.actup_probs: mb_actup_probs
         }
         #(MINE) Probably we combine all experiences from every worker below
         full_input.update(self.action_processer.combine_batch(mb_actions))

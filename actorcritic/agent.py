@@ -23,7 +23,7 @@ RIGHT = 4
 
 #LOG_DIRECTORY = '/tmp/beholder-demo/SCII'
 LOG_DIRECTORY = '_files/summaries/Test'
-def _get_placeholders(spatial_dim, nsteps, nenvs, policy_type, obs_d):
+def _get_placeholders(spatial_dim, nsteps, nenvs, policy_type, obs_d, num_actions):
     sd = spatial_dim
     if policy_type == 'MetaPolicy':
         feature_list = [
@@ -90,6 +90,7 @@ def _get_placeholders(spatial_dim, nsteps, nenvs, policy_type, obs_d):
             (FEATURE_KEYS.altitudes, tf.int32, [None]),
             (FEATURE_KEYS.image_vol, tf.float32, [None, 5, 100, 100, 3]),
             (FEATURE_KEYS.joined, tf.float32, [None, 100, 200, 3]),
+            (FEATURE_KEYS.actup_probs, tf.float32, [None, num_actions]),
         ]
     return AgentInputTuple(
         **{name: tf.placeholder(dtype, shape, name) for name, dtype, shape in feature_list}
@@ -169,13 +170,13 @@ class ActorCriticAgent:
         self.train_step = 0
         self.max_gradient_norm = max_gradient_norm
         self.clip_epsilon = clip_epsilon
-        self.num_actions= num_actions
+        self.num_actions= num_actions # comes from run_agent.py when we specify the Agent class params
         self.num_envs = num_envs
         self.nsteps = nsteps
         self.obs_dims = obs_dim
         self.policy_type = policy
         # self.policy = FullyConvPolicy if ( (policy == 'FullyConv') or (policy == 'Relational')) else MetaPolicy
-        if policy == 'FullyConv':
+        if policy == 'FullyConv' or policy == 'Imitation_ACTUP':
             self.policy = FullyConvPolicy
         elif policy == 'Relational':
             self.policy = RelationalPolicy
@@ -191,8 +192,8 @@ class ActorCriticAgent:
             self.policy = FactoredPolicy_PhaseI
         elif policy == 'FactoredPolicy_PhaseII':
             self.policy = FactoredPolicy_PhaseII
-        else: #print('Unknown Policy')
-            self.policy = FullyConvPolicy
+        else:
+            print('Unknown Policy')
 
         # assert (self.policy_type == 'MetaPolicy') and not (self.mode == ACMode.PPO) # For now the policy in PPO is not calculated taken into account recurrencies
 
@@ -213,12 +214,13 @@ class ActorCriticAgent:
 
         # sterling's stuff
         if policy == 'Imitation_ACTUP':
-            self.memory = Memory(noise=0.0, decay=0.0, temperature=1.0, threshold=-100.0, mismatch=10,
+            self.memory = Memory(noise=0.2, decay=0.0, temperature=1.0, threshold=-100.0, mismatch=20,
                                  optimized_learning=False)
             set_similarity_function(self.angle_similarity, *['goal_rads', 'adisary_rads'])
             set_similarity_function(self.distance_similarity, *['goal_disdtance', 'advisary_distance'])
 
-            self.data = pickle.load(open('/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/symbolic_data_sterling20200128-161543.lst', 'rb'))
+            # self.data = pickle.load(open('/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/symbolic_data_sterling20200128-161543.lst', 'rb'))
+            self.data = pickle.load(open('./data/net_vs_pred/symbolic_data_sterling20200128-161543.lst', 'rb'))
             # Before using the distances, they have to be normalized (0 to 1)
             # Normalize by dividing by the max in the data
             distances = []
@@ -380,7 +382,7 @@ class ActorCriticAgent:
             collections=[tf.GraphKeys.SUMMARIES, self._scalar_summary_key])
 
     def build_model(self):
-        self.placeholders = _get_placeholders(self.spatial_dim, self.nsteps, self.num_envs, self.policy_type, self.obs_dims)
+        self.placeholders = _get_placeholders(self.spatial_dim, self.nsteps, self.num_envs, self.policy_type, self.obs_dims, self.num_actions)
         with tf.variable_scope("theta"):
             self.theta = self.policy(self, trainable=True).build() # (MINE) from policy.py you build the net. Theta is
 
@@ -484,6 +486,9 @@ class ActorCriticAgent:
             self.neg_entropy_action_id = tf.reduce_mean(tf.reduce_sum(self.theta.action_id_probs * self.theta.action_id_log_probs, axis=1))
             self.value_loss = tf.losses.mean_squared_error(self.placeholders.value_target, self.theta.value_estimate) # value_target comes from runner/run_batch when you specify the full input
             self.policy_loss = -tf.reduce_mean(selected_log_probs.total * self.placeholders.advantage)
+            if self.policy_type == 'Imitation_ACTUP':
+                self.neg_cross_entropy_action_id = tf.reduce_mean(
+                    tf.reduce_sum(self.placeholders.actup_probs * self.theta.action_id_log_probs, axis=1))
 
         """ Loss function choices """
         if self.policy_type == 'FactoredPolicy':
@@ -500,6 +505,13 @@ class ActorCriticAgent:
                 # + (self.value_loss_fire + self.value_loss_goal)*0.0 # when it was 0.0000 performance was good--so now might affect more? # You should try take them out of the loss equation completely as with symbolic differentiation might get values
         elif self.policy_type == 'FactoredPolicy_PhaseII':
             loss = (self.value_loss_fire + self.value_loss_goal)#* self.loss_value_weight # Not sure if this is needed
+        elif self.policy_type == 'Imitation_ACTUP':
+            loss = (
+                self.policy_loss
+                + self.value_loss * self.loss_value_weight
+                + self.neg_entropy_action_id * self.entropy_weight_action_id
+                - 0.7*self.neg_cross_entropy_action_id
+            )
         else:
             loss = (
                 self.policy_loss
@@ -557,6 +569,8 @@ class ActorCriticAgent:
         self._scalar_summary("loss/policy", self.policy_loss)
 
         self._scalar_summary("loss/neg_entropy_action_id", self.neg_entropy_action_id)
+        if self.policy_type == 'Imitation_ACTUP':
+            self._scalar_summary("loss/neg_cross_entropy_imitation", self.neg_cross_entropy_action_id)
         self._scalar_summary("loss/total", loss)
         # self._scalar_summary("value/advantage", tf.reduce_mean(self.placeholders.advantage)) # You need the corrected one (masked)
         # self._scalar_summary("action/selected_total_log_prob", # You need the corrected one (masked)
@@ -631,7 +645,7 @@ class ActorCriticAgent:
         for i in range(self.num_envs):
             actup_probs.append(self.actup_step(grid[i], 3, objects_id[i]))
 
-        return action_id, value_estimate
+        return action_id, value_estimate, actup_probs
 
     def step_recurrent(self, obs, rnn_state, prev_reward, prev_action):
         # (MINE) Pass the observations through the net

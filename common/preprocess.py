@@ -236,7 +236,8 @@ FEATURE_LIST = (
     "prev_rewards",
     "altitudes",
     "image_vol",
-    "joined"
+    "joined",
+    "actup_probs",
 
 )
 
