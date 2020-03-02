@@ -19,3 +19,11 @@ This is the base class of all non-features.
 ...
 
 ## Version Notes
+This version is expanded to include runnable (trained) network agents in the same way as normal agents. Should be able to load the weights as shown in the example.
+This version also includes a ACTR in the core capable of doing multiproessing (in mac architecture seems stable)
+
+keyboard_agent - 
+
+data_collection_keyboard - 
+
+datacollect_runner - 

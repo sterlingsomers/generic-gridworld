@@ -6,6 +6,7 @@ from gym import spaces
 from gym.utils import seeding
 import random
 import itertools
+import functools
 # import matplotlib
 # matplotlib.use('TkAgg')
 # import matplotlib.pyplot as plt
@@ -27,6 +28,7 @@ class GenericEnv(gym.Env):
     value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0}}
     object_values = [1]
     entities = {} #indexed by object value
+    active_entities = {}
     backup_values = {}
     actions = {}
     reward = 0
@@ -55,6 +57,7 @@ class GenericEnv(gym.Env):
         self.features = features
         self.dims = dims
         self.record_history = False
+        self.history = {}
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
@@ -90,9 +93,10 @@ class GenericEnv(gym.Env):
         #Run the dynamic environment
         #self.run()
 
-    def setRecordHistory(self,value):
+    def setRecordHistory(self,on=True,history_dict={'observations':[],'value_to_objects':0,'reward':[],'done':[]}):
         self.record_history = True
-        self.history = []
+        self.history = history_dict
+        self.history['value_to_objects'] = self.value_to_objects
 
     def getPathTo(self,start_location,end_location, free_spaces=[]):
         '''An A* algorithm to get from one point to another.
@@ -113,12 +117,14 @@ class GenericEnv(gym.Env):
         target_value = 0
         pathArray[start_location] = 2
         directions = [UP, DOWN, LEFT, RIGHT]
+        random.shuffle(directions)
         stop = False
         while True:
             current_value += 1
             target_value = current_value + 1
             test_points = np.where(pathArray == current_value)
             test_points = list(zip(test_points[0],test_points[1]))
+            random.shuffle(test_points)
             still_looking = False
             for test_point in test_points:
                 for direction in directions:
@@ -304,9 +310,15 @@ class GenericEnv(gym.Env):
         #     # free_spaces = list(zip(free_spaces[0], free_spaces[1]))
         #     self.entities[entity].place(position='random-free')
 
-        #then put them back in
+        #then put them back in and deal with history
+        self.history['observations'] = []
+        self.history['reward'] = []
+        self.history['done'] = []
+
         for entity in self.entities:
             entity_object = self.entities[entity]
+            if entity_object.record_history:
+                entity_object.history['actions'] = []
             entity_object.place(position=entity_object.position)
         # for object_value in self.object_values:
         #     if object_value <= 1:
@@ -340,42 +352,57 @@ class GenericEnv(gym.Env):
 
         return image
 
+    @step_wrapper
     def step(self, action):
+        # print('step')
         info = {}
         obs = self._gridmap_to_image()
         grid_map = self.current_grid_map
-        if self.record_history:
-            self.history.append(self.current_grid_map.copy())
+        # if self.record_history:
+        #     self.history['observations'].append(self.current_grid_map.copy())
         entity_actions = []
 
-        for entity in self.entities:
+        for entity in self.active_entities:
             if not type(self.entities[entity]) == NetworkAgent:
-                entity_actions.append(self.entities[entity].getAction(obs))
+                action_chosen = self.active_entities[entity].getAction(obs)
+                entity_actions.append(action_chosen)
+                # if self.active_entities[entity].record_history:
+                #     self.active_entities[entity].history['steps'].append(action_chosen)
             else:
                 entity_actions.append(action)
         # print('ent_actions:',entity_actions)
 
         #this loop will carry out what COULD happen
-        for entity, an_action in zip(self.entities, entity_actions):
+        for entity, an_action in zip(self.active_entities, entity_actions):
             if an_action == 0:
-                self.entities[entity].intended_position = self.entities[entity].current_position
+                self.active_entities[entity].intended_position = self.active_entities[entity].current_position
                 continue
 
-            current_position = self.entities[entity].current_position
+            current_position = self.active_entities[entity].current_position
             position_function = self.action_map[an_action]
             intended_position = position_function(current_position)
-            self.entities[entity].intended_position = intended_position
+            self.active_entities[entity].intended_position = intended_position
             if self.current_grid_map[intended_position] == 1.0: #hit a wall
-                self.entities[entity].intended_position = self.entities[entity].current_position
+                self.active_entities[entity].intended_position = self.active_entities[entity].current_position
 
             self.current_grid_map[current_position] = 0 #erase the person from their old spot
 
+        #this loop carries out any action towards non-active entities (e.g. goals, reactive obstacles)
+        for entity in self.active_entities:
+            other_entities = [x for x in self.entities if x not in self.active_entities]
+            for other in other_entities:
+                if self.active_entities[entity].intended_position == self.entities[other].current_position:
+                    self.entities[other].moveToMe(self.active_entities[entity])
+        if self.done:
+            return self._gridmap_to_image(), self.reward, self.done, info
+
+
         #this loop checks for collisions, carries out the consequence
-        for entity in self.entities:
-            entity_object = self.entities[entity]
+        for entity in self.active_entities:
+            entity_object = self.active_entities[entity]
             if entity_object.current_position == entity_object.intended_position:
                 continue
-            other_entities = [self.entities[x] for x in self.entities if not x == entity]
+            other_entities = [self.active_entities[x] for x in self.active_entities if not x == entity]
             for other_entity_object in other_entities:
                 # if type(entity_object) == NetworkAgent:
                 # print('type',type(entity_object),'entity obj pos=', entity_object.current_position, 'entity obj intended pos=',
@@ -396,7 +423,7 @@ class GenericEnv(gym.Env):
 
 
         if not self.done:
-            for entity in self.entities:
+            for entity in self.active_entities:
                 entity_object = self.entities[entity]
                 entity_object.current_position = entity_object.intended_position
                 # print('entities', entity_object.current_position, 'ent_type', type(entity_object))
