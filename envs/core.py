@@ -392,17 +392,29 @@ class ACTR(Agent):
         if not self.multiprocess:
             for action in possible_actions:
                 probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects)
+                print(np.array2string(self.env.current_grid_map))
+                print("Current Situation:", probe_chunk)
+                blend_results = {}
+                for action in possible_actions:
+                    blend_values = {}
+                    for action2 in possible_actions:
+                        probe_chunk[action2] = int(action == action2)
+
+                    blend_values['rads'] = self.memory.blend('advisary_rads_next',**probe_chunk)
+                    blend_values['distance'] = self.memory.blend('advisary_distance_next', **probe_chunk)
+                    blend_results[action] = blend_values.copy()
+                    print('here')
                 #print('pre-blend')
-                blend_value = self.memory.blend(action, **probe_chunk)
-                #print('post-blend')
-                salience = self.compute_S(self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects),
-                                          [x for x in list(probe_chunk.keys()) if not x == action],
-                                          self.memory.activation_history,
-                                          action,
-                                          self.mismatch_penalty,
-                                          self.temperature)
-                saliences[action] = salience
-                blends.append(blend_value)
+                # blend_value = self.memory.blend(action, **probe_chunk)
+                # #print('post-blend')
+                # salience = self.compute_S(self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects),
+                #                           [x for x in list(probe_chunk.keys()) if not x == action],
+                #                           self.memory.activation_history,
+                #                           action,
+                #                           self.mismatch_penalty,
+                #                           self.temperature)
+                # saliences[action] = salience
+                # blends.append(blend_value)
         else:
             probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value,
                                                   self.env.value_to_objects)

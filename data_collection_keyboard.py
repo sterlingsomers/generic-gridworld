@@ -29,11 +29,11 @@ import time
 
 #A new class to extend old classes
 
-human_data = pickle.load(open('symbolic_data_trainedAgent20200206-130925.lst','rb'))
+human_data = pickle.load(open('combined_sterling.lst','rb'))
 data = {'environment_episode_data':[],'player_episode_data':[],'stuck':[]}
 episodes = 1000
 human = 'ACTR_NET_SALIENCE_1000_to_cluster'
-write_data = True
+write_data = False
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
 env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
@@ -41,7 +41,7 @@ goal = Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
 # player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=True,processes=5)
+player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=False,processes=5)
 #player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
 #player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
 advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
