@@ -29,10 +29,10 @@ import time
 
 #A new class to extend old classes
 
-human_data = pickle.load(open('symbolic_data_trainedAgent20200206-130925.lst','rb'))
-data = {'environment_episode_data':[],'player_episode_data':[],'stuck':[]}
-episodes = 1000
-human = 'ACTR_NET_SALIENCE_1000_to_cluster'
+human_data = pickle.load(open('symbolic_data_sterlingV220200207-152603.lst','rb'))
+data = {'environment_episode_data':[],'player_episode_data':[],'stuck':[],'advisary_episode_data':[]}
+episodes = 2
+outputFileName = 'sterling_model_with_adivsary_data_'
 write_data = True
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
@@ -49,6 +49,7 @@ advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_ty
 
 env.setRecordHistory()
 player3.setRecordHistory(history_dict={'actions':[],'saliences':[],'stuck':[]})
+advisary.setRecordHistory(history_dict={'actions':[]})
 
 
 
@@ -99,8 +100,10 @@ for i in range(episodes):
         if steps > 50:
             data['environment_episode_data'].append(env.history.copy())
             data['player_episode_data'].append(player3.history.copy())
+            data['advisary_episode_data'].append(advisary.history.copy())
             env.setRecordHistory()
             player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
+            advisary.setRecordHistory(history_dict={'actions': []})
 
             episode_done = True
 
@@ -150,8 +153,10 @@ for i in range(episodes):
         if done:
             data['environment_episode_data'].append(env.history.copy())
             data['player_episode_data'].append(player3.history.copy())
+            data['advisary_episode_data'].append(advisary.history.copy())
             env.setRecordHistory()
             player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
+            advisary.setRecordHistory(history_dict={'actions':[]})
             episode_done = True
 
             obs = env.reset()
@@ -164,5 +169,5 @@ for i in range(episodes):
 #print("quitting?", player3.quit)
 timestr = time.strftime("%Y%m%d-%H%M%S")
 if write_data:
-    pickle.dump(data,open(human + timestr + '.dict','wb'))
+    pickle.dump(data,open(outputFileName + timestr + '.dict','wb'))
 pygame.quit()

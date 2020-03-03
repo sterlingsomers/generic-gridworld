@@ -23,6 +23,27 @@ UP = 2
 LEFT = 3
 RIGHT = 4
 
+def step_wrapper(f):
+    def _record_step(*args, **kwargs):
+        obs_before_step = args[0].current_grid_map.copy()
+        grid, reward, done, info = f(*args, **kwargs)
+        if args[0].record_history:
+            args[0].history['observations'].append(obs_before_step)
+            args[0].history['reward'].append(reward)
+            args[0].history['done'].append(done)
+
+        return grid, reward, done, info
+    return _record_step
+
+
+# def record_action(f):
+#     def _record_action(*args, **kwargs):
+#         action = f(*args, **kwargs)
+#         if args[0].record_history:
+#             args[0].history['steps'].append(action)
+#         return f(*args, **kwargs)
+#     return _record_action
+
 
 class GenericEnv(gym.Env):
     value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0}}
@@ -292,7 +313,7 @@ class GenericEnv(gym.Env):
         #         self.current_grid_map[(x,y)] = 0
 
         #First, erase them
-        self.history = []
+
         for object_value in self.object_values:
             if object_value <= 1:
                 continue
