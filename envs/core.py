@@ -391,19 +391,35 @@ class ACTR(Agent):
         possible_actions = ['up','down','left','right','noop']
         if not self.multiprocess:
             for action in possible_actions:
+                probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value,
+                                                      self.env.value_to_objects)
+                blend_value = self.memory.blend(action, **probe_chunk)
+                salience = 0
+                blends.append(blend_value)
+
+            for action in possible_actions:
                 probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects)
                 print(np.array2string(self.env.current_grid_map))
                 print("Current Situation:", probe_chunk)
+
                 blend_results = {}
+
+
                 for action in possible_actions:
                     blend_values = {}
                     for action2 in possible_actions:
                         probe_chunk[action2] = int(action == action2)
+                    for advisary_action in ['advisary_up', 'advisary_down', 'advisary_noop', 'advisary_left','advisary_right']:
+                        blend_values[advisary_action] = self.memory.blend(advisary_action, **probe_chunk)
+                        # print('here')
+                    # blend_values['rads'] = self.memory.blend('advisary_rads_next',**probe_chunk)
+                    # blend_values['distance'] = self.memory.blend('advisary_distance_next', **probe_chunk)
+                    #blend_results[action] = blend_values.copy()
+                    blend_results[action] = {**probe_chunk, **blend_values}
+            for action in blend_results:
+                print(action, blend_results[action])
 
-                    blend_values['rads'] = self.memory.blend('advisary_rads_next',**probe_chunk)
-                    blend_values['distance'] = self.memory.blend('advisary_distance_next', **probe_chunk)
-                    blend_results[action] = blend_values.copy()
-                    print('here')
+            print('here')
                 #print('pre-blend')
                 # blend_value = self.memory.blend(action, **probe_chunk)
                 # #print('post-blend')
@@ -451,7 +467,7 @@ class ACTR(Agent):
         argmax_action = possible_actions[np.argmax(blends)]
         action_value = eval(argmax_action.upper())
 
-        return {'actions':round(action_value),'saliences':saliences[possible_actions[np.argmax(blends)]],'stuck':self.stuck}
+        return {'actions':round(action_value),'saliences':0,'stuck':self.stuck}
 
 
     def moveToMe(self,entity_object):

@@ -29,7 +29,7 @@ import time
 
 #A new class to extend old classes
 
-human_data = pickle.load(open('combined_sterling.lst','rb'))
+human_data = pickle.load(open('sterling_model_advisary.lst','rb'))
 data = {'environment_episode_data':[],'player_episode_data':[],'stuck':[]}
 episodes = 1000
 human = 'ACTR_NET_SALIENCE_1000_to_cluster'
@@ -41,7 +41,7 @@ goal = Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
 # player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=False,processes=5)
+player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.0,multiprocess=False,processes=5)
 #player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
 #player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
 advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
