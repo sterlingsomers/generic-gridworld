@@ -111,6 +111,18 @@ class GenericEnv(gym.Env):
         self.action_space = spaces.Discrete(5)
         self.reward_range = (-float('inf'), float('inf')) # or self.reward_range = (0,1)
 
+        #edges
+        edges = []
+        left = 0
+        right = self.current_grid_map.shape[0]
+        top = 0
+        bottom = self.current_grid_map.shape[1]
+        left_edges = [(0, x) for x in range(bottom)]
+        right_edges = [(right, x) for x in range(bottom)]
+        top_edges = [(x, 0) for x in range(right)]
+        bottom_edges = [(bottom, x) for x in range(right)]
+        self.edges = left_edges + right_edges + top_edges + bottom_edges
+
         #Run the dynamic environment
         #self.run()
 
@@ -126,6 +138,9 @@ class GenericEnv(gym.Env):
 
         Returns a map with path denoted by -1 values. Inteded to use np.where(path == -1).'''
         pathArray = np.full(self.dims,0)
+        if start_location[0] == end_location[0] and start_location[1] == end_location[1]:
+            pathArray[start_location] = -1
+            return pathArray
 
         for free_space in free_spaces:
             zeros = np.where(self.current_grid_map == free_space)

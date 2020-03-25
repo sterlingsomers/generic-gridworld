@@ -58,7 +58,12 @@ class Entity:
         else:
             return 0
 
-
+    def getAgents(self):
+        agents = []
+        for entity in self.env.entities:
+            if isinstance(self.env.entities[entity],Agent):
+                agents.append(entity)
+        return agents
 
     def moveTo(self,current_position,intended_position):
         current_position_value = self.env.current_grid_map[current_position[0], current_position[1]]
@@ -454,10 +459,22 @@ class ACTR(Agent):
 
 class HumanAgent(Agent):
     obs = None
-    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',pygame='None'):
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'}):
+        self.mapping = mapping
         super().__init__(env, obs_type, entity_type, color, position)
+
         self.pygame = pygame
+        self.keymappings = {}
+        self.pygame.font.init()
+        self.font = self.pygame.font.SysFont('Arial', 30)
+        self.display = 0
+
+
         self.quit = False
+
+    def setDisplay(self,display):
+        self.display = display
+
 
     def moveToMe(self,entity_object):
         print('enity', entity_object, 'hit', self)
@@ -471,17 +488,26 @@ class HumanAgent(Agent):
     def _getAction(self,obs):
         #this updates the picture
         # print("human getAction")
+        if self.display:
+            snapshot = self.display.copy()
+            textsurface = self.font.render(self.color, False, (255,255,255))
+            size = self.pygame.display.get_surface().get_size()
+            self.display.blit(textsurface, (10,220))
+            self.pygame.display.update()
+
         key_pressed = None
         while key_pressed == None:
             event = self.pygame.event.wait()
             if event.type == self.pygame.KEYDOWN:
-                if event.key == self.pygame.K_LEFT: key_pressed = LEFT
-                if event.key == self.pygame.K_RIGHT: key_pressed = RIGHT
-                if event.key == self.pygame.K_DOWN: key_pressed = DOWN
-                if event.key == self.pygame.K_UP: key_pressed = UP
-                if event.key == self.pygame.K_SPACE: key_pressed = NOOP
-                if event.key == self.pygame.K_r: key_pressed = 'reset'
-                if event.key == self.pygame.K_q: key_pressed = 'quit'
+                 if event.unicode in self.mapping:
+                    key_pressed = self.mapping[event.unicode]
+                # if event.key == self.pygame.K_LEFT: key_pressed = LEFT
+                # if event.key == self.pygame.K_RIGHT: key_pressed = RIGHT
+                # if event.key == self.pygame.K_DOWN: key_pressed = DOWN
+                # if event.key == self.pygame.K_UP: key_pressed = UP
+                # if event.key == self.pygame.K_SPACE: key_pressed = NOOP
+                # if event.key == self.pygame.K_r: key_pressed = 'reset'
+                # if event.key == self.pygame.K_q: key_pressed = 'quit'
 
         if key_pressed == 'reset':
             self.env.reset()
@@ -490,6 +516,9 @@ class HumanAgent(Agent):
             self.quit = True
             return 0
         # print("human pressed", key_pressed)
+        if self.display:
+            self.display.blit(snapshot, (0,0))
+            self.pygame.display.update()
         return {'actions':key_pressed}
 
 
@@ -546,6 +575,73 @@ class Advisary(ActiveEntity):
             return 2
         else:
             return 3
+
+class RunAwayGoal(ActiveEntity):
+
+    def getAgents(self):
+        agents = []
+        for entity in self.env.entities:
+            if isinstance(self.env.entities[entity], Agent):
+                agents.append(self.env.entities[entity])
+        return agents
+
+    def _getAction(self,obs):
+        #find the closest agent
+        # print("here")
+        directions = [UP, DOWN, LEFT, RIGHT]
+        agents = self.getAgents()
+        distance_to_agent = {}
+        for agent in agents:
+            agent_location = agent.current_position
+            path_to_agent = self.env.getPathTo(self.current_position, agent.current_position, free_spaces=self.env.free_spaces)
+            points_in_path = np.where(path_to_agent == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            distance_to_agent[agent] = len(points_in_path)
+
+        min_agent = min(distance_to_agent, key=distance_to_agent.get)
+        #min_agent (should be) the closest agent (in steps)
+        #now I want the edge that is furthest away from that agent and I want to go there
+        #find the edges, and then find which edge is the furthest PATH for that agent to get to
+        #go there
+        # print("here2")
+        edges = self.env.edges
+        edge_distances = {}
+        edge_paths = {}
+        for edge in edges:
+            # print('get edge path', min_agent.current_position, edge )
+            path_to_edge = self.env.getPathTo(min_agent.current_position, edge, free_spaces=self.env.free_spaces + [self.value])
+            points_in_path = np.where(path_to_edge == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            # print('pip', points_in_path)
+            if len(points_in_path) == 0:
+                # print('if')
+                edge_distances[edge] = -1
+                edge_paths[edge] = path_to_edge
+
+            else:
+                # print('else')
+                edge_distances[edge] = len(points_in_path)
+                edge_paths[edge] = path_to_edge
+
+        # print('max')
+        max_point = max(edge_distances, key=edge_distances.get)
+        # print('here3')
+        #max_point should be the point most distant from the closest agent
+        # print('max points', max_point)
+        target_path = self.env.getPathTo(self.current_position, max_point, free_spaces=self.env.free_spaces)
+
+        print(target_path)
+        random.shuffle(directions)
+        for direction in directions:
+            if target_path[self.env.action_map[direction]((self.current_position[0], self.current_position[1]))] == -1:
+                return {'actions':direction}
+
+        return {'actions':0}
+
+    def moveToMe(self,entity_object):
+        super().moveToMe(entity_object)
+
+
 
 
 class ChasingAdvisary(Advisary):
