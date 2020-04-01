@@ -36,13 +36,14 @@ outputFileName = 'sterling_model_with_adivsary_data_'
 write_data = False
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
-env = envs.generic_env.GenericEnv(map='small-portals')#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
-# goal = RunAwayGoal(env, obs_type='data',entity_type='moving_goal',color='green')
+env = envs.generic_env.GenericEnv(map='pacman-default')#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
+goal = RunAwayGoal(env, obs_type='data',entity_type='moving_goal',color='green')
 player1 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
 player2 = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame)
-player3 = HumanAgent(env,entity_type='agent',color='green',pygame=pygame)
+# player3 = HumanAgent(env,entity_type='agent',color='green',pygame=pygame)
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
+
 
 # player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=True,processes=5)
 #player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
@@ -73,7 +74,7 @@ pygame.init()
 display = pygame.display.set_mode((initial_img.shape[0], initial_img.shape[1] + 100))#initial_img.shape[:2],0,32)
 player1.setDisplay(display)
 player2.setDisplay(display)
-player3.setDisplay(display)
+# player3.setDisplay(display)
 background = pygame.surfarray.make_surface(initial_img)
 background = background.convert()
 display.blit(background,(0,0))
