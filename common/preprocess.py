@@ -94,6 +94,8 @@ class ObsProcesser:
         # }
         pp_obs = {
             FEATURE_KEYS.rgb_screen: timestep,#['img'],
+            # FEATURE_KEYS.map: timestep['map'],
+            # FEATURE_KEYS.objects_id: timestep['objects_id'],
             # FEATURE_KEYS.alt_view: timestep['nextstepimage'],
             # FEATURE_KEYS.altitudes: timestep['altitude'],
             # FEATURE_KEYS.image_vol: timestep['image_volume'],
@@ -238,6 +240,8 @@ FEATURE_LIST = (
     "image_vol",
     "joined",
     "actup_probs",
+    'map',
+    'objects_id',
 
 )
 

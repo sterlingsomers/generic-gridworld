@@ -38,6 +38,7 @@ class Entity:
     def moveToMe(self,entity_object):
         self.env.done = True
         self.env.reward -= 1
+        self.env.info['fire'] = -1 # someone moves to the predator which is an Advisary which is an Entity
 
     def getAction(self,obs):
         if self.active:
@@ -79,8 +80,6 @@ class Entity:
             self.current_position = the_space
 
 
-
-
     def update(self):
         pass
         # print("regular update")
@@ -109,6 +108,7 @@ class Goal(Entity):
         # print('entity hit goal', entity_object)
         self.env.done = True
         self.env.reward += 1
+        self.env.info['goal'] = 1
 
     def moveTo(self,current_position,intended_position):
         current_position_value = self.env.current_grid_map[current_position[0], current_position[1]]
@@ -304,6 +304,7 @@ class ChasingAdvisary(Advisary):
             if path[self.env.action_map[direction]((my_location[0],my_location[1]))] == -1:
                 return direction
 
+
 class ChasingBlockingAdvisary(Advisary):
     def moveToMe(self,entity_object):
         # print('CBA: entity', entity_object, 'hit me')
@@ -405,8 +406,6 @@ class ChasingBlockingAdvisary(Advisary):
         # print(np.array2string(distance_to_agents[target_agent_val]['raw_path_to_agent']), target_agent_val)
 
 
-
-
 class BlockingAdvisary(Advisary):
     def getGoal(self,obs):
         target_value = None
@@ -476,9 +475,11 @@ class NetworkAgent(Agent):
 
 
 
-    def moveToMe(self,entity_object):
+    def moveToMe(self,entity_object): # Means smth moves to the network
         self.env.done = True
         self.env.reward -=1
+        # print('net being captured')
+        self.env.info['fire'] = -1
 
 
 class TrainedAgent(Agent):

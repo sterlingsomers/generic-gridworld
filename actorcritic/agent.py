@@ -91,6 +91,8 @@ def _get_placeholders(spatial_dim, nsteps, nenvs, policy_type, obs_d, num_action
             (FEATURE_KEYS.image_vol, tf.float32, [None, 5, 100, 100, 3]),
             (FEATURE_KEYS.joined, tf.float32, [None, 100, 200, 3]),
             (FEATURE_KEYS.actup_probs, tf.float32, [None, num_actions]),
+            (FEATURE_KEYS.map, tf.float32, [None, obs_d[0], obs_d[1]]),
+            (FEATURE_KEYS.objects_id, tf.float32, [None, 1]),
         ]
     return AgentInputTuple(
         **{name: tf.placeholder(dtype, shape, name) for name, dtype, shape in feature_list}
@@ -694,7 +696,7 @@ class ActorCriticAgent:
         # feed_dict = {'rgb_screen:0' : obs['rgb_screen']},
         #              # 'alt_view:0': obs['alt_view']}
         feed_dict = self._input_to_feed_dict(obs) # FireGrid
-
+        # feed_dict['rgb_screen:0'] = np.expand_dims(feed_dict['rgb_screen:0'], axis=0)
         action_id, value_estimate, fc, action_probs = self.sess.run(
             [self.sampled_action_id, self.value_estimate, self.theta.fc1, self.theta.action_id_probs],
             feed_dict=feed_dict

@@ -35,6 +35,9 @@ class GenericEnv(gym.Env):
     to_clean = []
     permanents = []
     free_spaces = [0]
+    info = {}
+    info['fire'] = 0
+    info['goal'] = 0
 
     colors = {
         'red': (252, 3, 3),
@@ -47,7 +50,10 @@ class GenericEnv(gym.Env):
         'white': (255,255,255),
         'aqua': (0,255,255),
         'black': (0, 0, 0),
-        'gray' : (96,96,96)
+        'gray' : (96,96,96),
+        'dark_aqua': (55, 90, 185),
+        'dark_orange': (199, 142, 27),
+        'dark_green': (67, 105, 18)
     }
 
     def __init__(self,dims=(10,10),map='',agents=[],features=[], entities = []):
@@ -257,7 +263,6 @@ class GenericEnv(gym.Env):
         self.current_grid_map[current_position] = 0.0
         self.current_grid_map[intended_position] = current_position_value
 
-
         return 0
 
     def moveToGoal(self,current_position,intended_position):
@@ -292,6 +297,8 @@ class GenericEnv(gym.Env):
 
         self.done = False
         self.reward = 0
+        self.info['goal'] = 0
+        self.info['fire'] = 0
 
 
         self.base_grid_map = np.copy(self.current_grid_map)
@@ -318,7 +325,7 @@ class GenericEnv(gym.Env):
         obs_['map'] = self.current_grid_map.copy()
         # obs_['agent_id'] = 0 #
         obs_['objects_id'] = self.value_to_objects
-        return obs_
+        return self._gridmap_to_image()#obs_
 
     def _gridmap_to_image(self):
         image = np.zeros((self.dims[0],self.dims[1],3), dtype=np.uint8)
@@ -334,12 +341,10 @@ class GenericEnv(gym.Env):
             obj = np.where(self.current_grid_map == obj_val)
             image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
 
-
-
         return image
 
     def step(self, action):
-        info = {}
+        # info = {}
         obs_ = {}
         obs = self._gridmap_to_image()
         grid_map = self.current_grid_map
@@ -386,18 +391,18 @@ class GenericEnv(gym.Env):
                     other_entity_object.moveToMe(entity_object)
                     if self.done:
                         # print("reward", self.reward, self.done)
-                        obs_['img'] = self._gridmap_to_image()
-                        obs_['map'] = self.current_grid_map.copy()
-                        obs_['objects_id'] = self.value_to_objects
-                        return obs_, self.reward, self.done, info
+                        # obs_['img'] = self._gridmap_to_image()
+                        # obs_['map'] = self.current_grid_map.copy()
+                        # obs_['objects_id'] = self.value_to_objects
+                        return self._gridmap_to_image(), self.reward, self.done, self.info # obs_
                 if entity_object.current_position == other_entity_object.intended_position and other_entity_object.current_position == entity_object.intended_position:
                     other_entity_object.moveToMe(entity_object)
                     if self.done:
                         # print("reward", self.reward, self.done)
-                        obs_['img'] = self._gridmap_to_image()
-                        obs_['map'] = self.current_grid_map.copy()
-                        obs_['objects_id'] = self.value_to_objects
-                        return obs_, self.reward, self.done, info
+                        # obs_['img'] = self._gridmap_to_image()
+                        # obs_['map'] = self.current_grid_map.copy()
+                        # obs_['objects_id'] = self.value_to_objects
+                        return self._gridmap_to_image(), self.reward, self.done, self.info # obs_
 
 
         if not self.done:
@@ -407,13 +412,13 @@ class GenericEnv(gym.Env):
                 # print('entities', entity_object.current_position, 'ent_type', type(entity_object))
                 self.current_grid_map[entity_object.current_position] = entity_object.value
             # print("reward", self.reward, self.done)
-            obs_['img'] = self._gridmap_to_image()
-            obs_['map'] = self.current_grid_map.copy()
-            obs_['objects_id'] = self.value_to_objects
-            return obs_, self.reward, self.done, info
+            # obs_['img'] = self._gridmap_to_image()
+            # obs_['map'] = self.current_grid_map.copy()
+            # obs_['objects_id'] = self.value_to_objects
+            return self._gridmap_to_image(), self.reward, self.done, self.info
         else:
             # print("reward", self.reward, self.done)
-            obs_['img'] = self._gridmap_to_image()
-            obs_['map'] = self.current_grid_map.copy()
-            obs_['objects_id'] = self.value_to_objects
-            return obs_, self.reward, self.done, info
+            # obs_['img'] = self._gridmap_to_image()
+            # obs_['map'] = self.current_grid_map.copy()
+            # obs_['objects_id'] = self.value_to_objects
+            return self._gridmap_to_image(), self.reward, self.done, self.info

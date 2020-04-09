@@ -74,9 +74,9 @@ class Runner(object):
     def reset(self):
         #self.score = 0.0
         obs = self.envs.reset()
-        self.latest_obs = self.obs_processer.process(obs['img'])
-        self.grid_map = obs['map']
-        self.objects_id = obs['objects_id']
+        self.latest_obs = self.obs_processer.process(obs) # we use [] as the processor expects a list and not a dictionary.
+        # self.grid_map = self.latest_obs['rgb_screen'][0]['map'] # There are significant differences between monitor newest version with the older one that you used in the drone domain
+        # self.objects_id = self.latest_obs['rgb_screen'][0]['objects_id']
 
     def reset_demo(self):
         #self.score = 0.0
