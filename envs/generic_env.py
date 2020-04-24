@@ -126,7 +126,6 @@ class GenericEnv(gym.Env):
 
         Returns a map with path denoted by -1 values. Inteded to use np.where(path == -1).'''
         pathArray = np.full(self.dims,0)
-
         for free_space in free_spaces:
             zeros = np.where(self.current_grid_map == free_space)
             zeros = list(zip(zeros[0],zeros[1]))
