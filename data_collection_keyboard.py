@@ -30,10 +30,16 @@ import time
 #A new class to extend old classes
 
 human_data = pickle.load(open('sterling_model_advisary.lst','rb'))
-data = {'environment_episode_data':[],'player_episode_data':[],'stuck':[]}
-episodes = 1000
-human = 'ACTR_NET_SALIENCE_1000_to_cluster'
+
+episodes = 200
+number_of_runs = 20
+human = 'learning_model_v1_encode_everything_EXCEPTNOOP_20percentcutoff'
 write_data = False
+run_data = []
+
+
+data = {'environment_episode_data': [], 'player_episode_data': [], 'stuck': [], 'advisary_episode_data': [],
+        'mismatch': 5, 'decay': 0.5, 'noise': 0.0, 'temperature':0.75}
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
 env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
@@ -41,7 +47,7 @@ goal = Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
 # player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.0,multiprocess=False,processes=5)
+player3 = ACTR(env, data=human_data, mismatch_penalty=data['mismatch'],decay=data['decay'],noise=data['noise'],temperature=data['temperature'],multiprocess=False,processes=5)
 #player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
 #player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
 advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
@@ -49,6 +55,7 @@ advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_ty
 
 env.setRecordHistory()
 player3.setRecordHistory(history_dict={'actions':[],'saliences':[],'stuck':[]})
+advisary.setRecordHistory(history_dict={'actions':[]})
 
 
 
@@ -56,9 +63,10 @@ human_agent_action = 0
 human_wants_restart = False
 human_sets_pause = False
 
-size_factor = 20
+size_factor = 40
 
 initial_image_data = env.reset()
+player3.last_observation = np.zeros(player3.env.current_grid_map.shape)
 initial_img = PIL.Image.fromarray(initial_image_data)
 size = tuple((np.array(initial_img.size) * size_factor).astype(int))
 initial_img = np.array(initial_img.resize(size, PIL.Image.NEAREST))
@@ -84,85 +92,156 @@ import math
 
 done = False
 
-
+advisary_action_map = {'advisary_up': UP, 'advisary_down': DOWN, 'advisary_noop': NOOP, 'advisary_left': LEFT,
+                               'advisary_right': RIGHT}
+goal_neighbours = [(1,0),(1,1),(0,1),(0,-1),(-1,0),(-1,-1),(-1,1),(1,-1)]
 clock = pygame.time.Clock()
-#while not player3.quit:
-for i in range(episodes):
-    print("Episode", i)
-    episode_done = False
-    steps = 0
-    while not episode_done:
-        print('step', steps)
-        steps += 1
-        if steps == 50:
-            player3.stuck = 1
-        if steps > 50:
-            data['environment_episode_data'].append(env.history.copy())
-            data['player_episode_data'].append(player3.history.copy())
-            env.setRecordHistory()
-            player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
-
-            episode_done = True
-
-            obs = env.reset()
-            obs = PIL.Image.fromarray(obs)
-            size = tuple((np.array(obs.size) * size_factor).astype(int))
-            obs = np.array(obs.resize(size, PIL.Image.NEAREST))
-            surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-            display.blit(surf, (0, 0))
-
-        pygame.display.update()
-        key_pressed = 0
-        pygame.time.delay(0)
-
-        obs, r, done, info = env.step([])
+    #while not player3.quit:
+for i in range(number_of_runs):
+    player3.memory.clear()
+    data = {'environment_episode_data': [], 'player_episode_data': [], 'stuck': [], 'advisary_episode_data': [],
+            'mismatch': data['mismatch'], 'decay': data['decay'], 'noise': data['noise'], 'temperature': data['temperature']}
+    for i in range(episodes):
+        print("Episode", i)
+        episode_done = False
+        steps = 0
+        while not episode_done:
+            print('step', steps)
+            steps += 1
+            if steps == 50:
+                player3.stuck = 1
+            if steps > 50:
+                data['environment_episode_data'].append(env.history.copy())
+                data['player_episode_data'].append(player3.history.copy())
+                data['advisary_episode_data'].append(advisary.history.copy())
+                env.setRecordHistory()
+                player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
+                advisary.setRecordHistory(history_dict={'actions': []})
+                episode_done = True
 
 
-        obs = PIL.Image.fromarray(obs)
-        size = tuple((np.array(obs.size) * size_factor).astype(int))
-        obs = np.array(obs.resize(size, PIL.Image.NEAREST))
-        surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-        display.blit(surf, (0, 0))
-        pygame.display.update()
-        for event in pygame.event.get():
+                chunk = {}
+                encode_chunk = True
+                if player3.last_observation.any():
+                    chunk['attack'] = 1
+                    goal_position = goal.current_position
+                    new_predator = advisary.current_position
+                    for transformation in goal_neighbours:
+                        if new_predator == (goal_position[0] + transformation[0], goal_position[1] + transformation[1]):
+                            chunk['attack'] = 0
+                    last_predator = np.where(player3.last_observation == 4)
+                    last_predator = (int(last_predator[0]), int(last_predator[1]))
+
+                    chunk['move_x'] = new_predator[0] - last_predator[0]
+                    chunk['move_y'] = new_predator[1] - last_predator[1]
+
+                    obs_chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value,
+                                                       player3.env.value_to_objects)
+                    for key in obs_chunk:
+                        if 'distance' in key:
+                            obs_chunk[key] = obs_chunk[key] / player3.max_distance
+
+                    chunk = {**obs_chunk, **chunk}
 
 
-            if event.type == pygame.QUIT:
-                running = False
-
-
-        if key_pressed and not game_done:
-            player3.action = key_pressed
-            if done:
+                if chunk:
+                    print('encoding 2', chunk)
+                    player3.memory.learn(**chunk)
                 obs = env.reset()
+                player3.last_observation = np.zeros(player3.env.current_grid_map.shape)
+
+
+                obs = PIL.Image.fromarray(obs)
+                size = tuple((np.array(obs.size) * size_factor).astype(int))
+                obs = np.array(obs.resize(size, PIL.Image.NEAREST))
                 surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-                display.blit(surf, (0,0))
-            else:
-                #pygame.surfarray.blit_array(background,obs)
-                surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs),0))
-                #pygame.transform.rotate(surf,180)
-                display.blit(surf, (0,0))
+                display.blit(surf, (0, 0))
+
+            pygame.display.update()
+            key_pressed = 0
+            pygame.time.delay(0)
+
+            obs, r, done, info = env.step([])
 
 
-        # pygame.time.delay(100)
-        pygame.display.update()
-        # clock.tick(100)
-        if done:
-            data['environment_episode_data'].append(env.history.copy())
-            data['player_episode_data'].append(player3.history.copy())
-            env.setRecordHistory()
-            player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
-            episode_done = True
-
-            obs = env.reset()
             obs = PIL.Image.fromarray(obs)
             size = tuple((np.array(obs.size) * size_factor).astype(int))
             obs = np.array(obs.resize(size, PIL.Image.NEAREST))
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
             display.blit(surf, (0, 0))
+            pygame.display.update()
+            for event in pygame.event.get():
+
+
+                if event.type == pygame.QUIT:
+                    running = False
+
+
+            if key_pressed and not game_done:
+                player3.action = key_pressed
+                if done:
+                    obs = env.reset()
+                    player3.last_observation = np.zeros(player3.env.current_grid_map.shape)
+                    surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+                    display.blit(surf, (0,0))
+                else:
+                    #pygame.surfarray.blit_array(background,obs)
+                    surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs),0))
+                    #pygame.transform.rotate(surf,180)
+                    display.blit(surf, (0,0))
+
+
+            # pygame.time.delay(100)
+            pygame.display.update()
+            # clock.tick(100)
+            if done:
+
+                data['environment_episode_data'].append(env.history.copy())
+                data['player_episode_data'].append(player3.history.copy())
+                data['advisary_episode_data'].append(advisary.history.copy())
+                # if data['environment_episode_data']['reward'][-1] == -1:
+                #     print('why?')
+                env.setRecordHistory()
+                player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
+                advisary.setRecordHistory(history_dict={'actions':[]})
+                episode_done = True
+                chunk = {}
+                encode_chunk = True
+                if player3.last_observation.any():
+                    chunk['attack'] = 1
+                    goal_position = goal.current_position
+                    new_predator = advisary.current_position
+                    for transformation in goal_neighbours:
+                        if new_predator == (goal_position[0] + transformation[0], goal_position[1] + transformation[1]):
+                            chunk['attack'] = 0
+                    last_predator = np.where(player3.last_observation == 4)
+                    last_predator = (int(last_predator[0]), int(last_predator[1]))
+
+                    chunk['move_x'] = new_predator[0] - last_predator[0]
+                    chunk['move_y'] = new_predator[1] - last_predator[1]
+
+                    obs_chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value,
+                                                           player3.env.value_to_objects)
+                    for key in obs_chunk:
+                        if 'distance' in key:
+                            obs_chunk[key] = obs_chunk[key] / player3.max_distance
+
+                    chunk = {**obs_chunk, **chunk}
+
+                if chunk:
+                    print('encoding 3', chunk)
+                    player3.memory.learn(**chunk)
+                obs = env.reset()
+                player3.last_observation = np.zeros(player3.env.current_grid_map.shape)
+                obs = PIL.Image.fromarray(obs)
+                size = tuple((np.array(obs.size) * size_factor).astype(int))
+                obs = np.array(obs.resize(size, PIL.Image.NEAREST))
+                surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+                display.blit(surf, (0, 0))
+    run_data.append(data.copy())
 
 #print("quitting?", player3.quit)
 timestr = time.strftime("%Y%m%d-%H%M%S")
 if write_data:
-    pickle.dump(data,open(human + timestr + '.dict','wb'))
+    pickle.dump(run_data,open(human + '_mismatch_' + repr(data['mismatch']).replace('.','') + '_decay_' + repr(data['decay']).replace('.','') + '_noise_' + repr(data['noise']).replace('.','') + '_temperature_' + repr(data['temperature']).replace('.','') + '_runs_' + repr(number_of_runs) + '_' + timestr + '.dict','wb'))
 pygame.quit()
