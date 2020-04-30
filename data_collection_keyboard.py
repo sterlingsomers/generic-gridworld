@@ -34,7 +34,7 @@ human_data = pickle.load(open('sterling_model_advisary.lst','rb'))
 episodes = 200
 number_of_runs = 20
 human = 'learning_model_v1_encode_everything_EXCEPTNOOP_20percentcutoff'
-write_data = True
+write_data = False
 run_data = []
 
 
@@ -94,7 +94,7 @@ done = False
 
 advisary_action_map = {'advisary_up': UP, 'advisary_down': DOWN, 'advisary_noop': NOOP, 'advisary_left': LEFT,
                                'advisary_right': RIGHT}
-
+goal_neighbours = [(1,0),(1,1),(0,1),(0,-1),(-1,0),(-1,-1),(-1,1),(1,-1)]
 clock = pygame.time.Clock()
     #while not player3.quit:
 for i in range(number_of_runs):
@@ -119,23 +119,38 @@ for i in range(number_of_runs):
                 advisary.setRecordHistory(history_dict={'actions': []})
                 episode_done = True
 
-                obs = env.reset()
+
                 chunk = {}
                 encode_chunk = True
                 if player3.last_observation.any():
+                    chunk['attack'] = 1
+                    goal_position = goal.current_position
+                    new_predator = advisary.current_position
+                    for transformation in goal_neighbours:
+                        if new_predator == (goal_position[0] + transformation[0], goal_position[1] + transformation[1]):
+                            chunk['attack'] = 0
                     last_predator = np.where(player3.last_observation == 4)
                     last_predator = (int(last_predator[0]), int(last_predator[1]))
-                    last_action = data['advisary_episode_data'][-1]['actions'][-1]
-                    chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value,
+
+                    chunk['move_x'] = new_predator[0] - last_predator[0]
+                    chunk['move_y'] = new_predator[1] - last_predator[1]
+
+                    obs_chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value,
                                                        player3.env.value_to_objects)
-                    for advisary_action in advisary_action_map:
-                        chunk[advisary_action] = int((last_action == advisary_action_map[advisary_action]))
-                    for key in chunk:
+                    for key in obs_chunk:
                         if 'distance' in key:
-                            chunk[key] = chunk[key] / player3.max_distance
+                            obs_chunk[key] = obs_chunk[key] / player3.max_distance
+
+                    chunk = {**obs_chunk, **chunk}
+
+
                 if chunk:
+                    print('encoding 2', chunk)
                     player3.memory.learn(**chunk)
+                obs = env.reset()
                 player3.last_observation = np.zeros(player3.env.current_grid_map.shape)
+
+
                 obs = PIL.Image.fromarray(obs)
                 size = tuple((np.array(obs.size) * size_factor).astype(int))
                 obs = np.array(obs.resize(size, PIL.Image.NEAREST))
@@ -191,19 +206,31 @@ for i in range(number_of_runs):
                 advisary.setRecordHistory(history_dict={'actions':[]})
                 episode_done = True
                 chunk = {}
+                encode_chunk = True
                 if player3.last_observation.any():
+                    chunk['attack'] = 1
+                    goal_position = goal.current_position
+                    new_predator = advisary.current_position
+                    for transformation in goal_neighbours:
+                        if new_predator == (goal_position[0] + transformation[0], goal_position[1] + transformation[1]):
+                            chunk['attack'] = 0
                     last_predator = np.where(player3.last_observation == 4)
                     last_predator = (int(last_predator[0]), int(last_predator[1]))
-                    last_action = data['advisary_episode_data'][-1]['actions'][-1]
-                    chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value, player3.env.value_to_objects)
-                    for advisary_action in advisary_action_map:
-                        chunk[advisary_action] = int((last_action == advisary_action_map[advisary_action]))
-                    for key in chunk:
-                        if 'distance' in key:
-                            chunk[key] = chunk[key] / player3.max_distance
-                if chunk:
-                    player3.memory.learn(**chunk)
 
+                    chunk['move_x'] = new_predator[0] - last_predator[0]
+                    chunk['move_y'] = new_predator[1] - last_predator[1]
+
+                    obs_chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value,
+                                                           player3.env.value_to_objects)
+                    for key in obs_chunk:
+                        if 'distance' in key:
+                            obs_chunk[key] = obs_chunk[key] / player3.max_distance
+
+                    chunk = {**obs_chunk, **chunk}
+
+                if chunk:
+                    print('encoding 3', chunk)
+                    player3.memory.learn(**chunk)
                 obs = env.reset()
                 player3.last_observation = np.zeros(player3.env.current_grid_map.shape)
                 obs = PIL.Image.fromarray(obs)
