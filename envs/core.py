@@ -649,6 +649,8 @@ class ACTR(Agent):
                 probe_chunk[axis] = self.memory.blend(axis, **probe_chunk)
 
 
+
+
             #make a pretend map, modify it with the predicted movement of the agent
             imaginary_map = self.env.current_grid_map.copy()
             #but you can only update the pretend map, if you have any basis to predict
