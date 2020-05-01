@@ -523,7 +523,6 @@ class ACTR(Agent):
         chunk = {}
         advisary_action_map = {'advisary_up': UP, 'advisary_down': DOWN, 'advisary_noop': NOOP, 'advisary_left': LEFT,
                                'advisary_right': RIGHT}
-        goal_neighbours = [(1,0),(1,1),(0,1),(0,-1),(-1,0),(-1,-1),(-1,1),(1,-1)]
         encode_chunk = True #used to store only when prediction was wrong
         if self.last_observation.any():
             if self.last_imagined_map.any():
@@ -532,76 +531,22 @@ class ACTR(Agent):
                 for points in imagined_predator_points:
                     if self.env.current_grid_map[points] == 4:
                         encode_chunk = False #if at least one of the predictions was right, no need to store
-            #The chunk encodes what the state was at time t-1, and what the predator did, observed at time t
-
             last_predator = np.where(self.last_observation == 4)
             last_predator = (int(last_predator[0]),int(last_predator[1]))
             new_predator = np.where(self.env.current_grid_map == 4)
             new_predator = (int(new_predator[0]), int(new_predator[1]))
-
-            last_action_category = None
-
-            my_old_position = np.where(self.last_observation == 3)
-            my_old_position = (int(my_old_position[0]), int(my_old_position[1]))
-
-            my_new_position = self.current_position
-
-            old_goal = np.where(self.last_observation == 2)
-            old_pred_to_goal_path = self.getPathTo(self.last_observation,last_predator,old_goal,free_spaces=[0])
-            old_points_in_path_pred_to_goal = np.where(old_pred_to_goal_path == -1)
-            old_points_in_path_pred_to_goal = list(zip(old_points_in_path_pred_to_goal[0], old_points_in_path_pred_to_goal[1]))
-            old_distance_pred_to_goal = len(old_points_in_path_pred_to_goal)
-
-            old_pred_to_me_path = self.getPathTo(self.last_observation,last_predator, my_old_position, free_spaces=[0])
-            points_in_old_pred_to_me_path = np.where(old_pred_to_me_path == -1)
-            points_in_old_pred_to_me_path = list(zip(points_in_old_pred_to_me_path[0], points_in_old_pred_to_me_path[1]))
-            old_distance_pred_to_me = len(points_in_old_pred_to_me_path)
-
-            new_pred_to_me_path = self.getPathTo(self.env.current_grid_map, new_predator, my_new_position)
-            new_points_in_pred_to_me_path = np.where(new_pred_to_me_path == -1)
-            new_points_in_pred_to_me_path = list(zip(new_points_in_pred_to_me_path[0], new_points_in_pred_to_me_path[1]))
-            new_distance_pred_to_me = len(new_points_in_pred_to_me_path)
-
-            new_goal = np.where(self.env.current_grid_map == 2)
-            new_pred_to_goal_path = self.getPathTo(self.env.current_grid_map, new_predator, new_goal)
-            new_points_in_pred_to_goal_path = np.where(new_pred_to_goal_path == -1)
-            new_points_in_pred_to_goal_path = list(zip(new_points_in_pred_to_goal_path[0], new_points_in_pred_to_goal_path[1]))
-            new_distance_pred_to_goal = len(new_points_in_pred_to_goal_path)
-
-            chunk['attack'] = 1 #attack = 1, block = 0
-            #the following checks to see if it stayed next to the goal
-            #we are classifying that as not-attack (attack = 0)
-            for transformation in goal_neighbours:
-                if new_predator == (new_goal[0] + transformation[0], new_goal[1] + transformation[1]):
-                    chunk['attack'] = 0
-
-            #Did the predator move on the x or y axis (or both)
-            #Assume (x,y) - it doesn't really matter
-            chunk['move_x'] = new_predator[0] - last_predator[0]
-            chunk['move_y'] = new_predator[1] - last_predator[1]
-            #COULD use the absolute value above in the undestanding that when we estimate the action,
-            #we already know it will be in the direction consistent
-
-            obs_chunk = self.gridmap_to_symbols(self.last_observation.copy(), self.value, self.env.value_to_objects)
-            for key in obs_chunk:
+            last_action = None
+            for key in self.action_map:
+                movefunc = self.action_map[key]
+                if movefunc(last_predator) == new_predator:
+                    last_action = key
+            chunk = self.gridmap_to_symbols(self.last_observation.copy(), self.value, self.env.value_to_objects)
+            for advisary_action in advisary_action_map:
+                chunk[advisary_action] = int((last_action == advisary_action_map[advisary_action]))
+            for key in chunk:
                 if 'distance' in key:
-                    obs_chunk[key] = obs_chunk[key] / self.max_distance
-
-            chunk = {**obs_chunk, **chunk}
-
-
-            # last_action = None
-            # for key in self.action_map:
-            #     movefunc = self.action_map[key]
-            #     if movefunc(last_predator) == new_predator:
-            #         last_action = key
-            # chunk = self.gridmap_to_symbols(self.last_observation.copy(), self.value, self.env.value_to_objects)
-            # for advisary_action in advisary_action_map:
-            #     chunk[advisary_action] = int((last_action == advisary_action_map[advisary_action]))
-            # for key in chunk:
-            #     if 'distance' in key:
-            #         chunk[key] = chunk[key] / self.max_distance
-            # print('here')
+                    chunk[key] = chunk[key] / self.max_distance
+            print('here')
 
         else:
             self.last_observation = self.env.current_grid_map.copy()
@@ -612,95 +557,64 @@ class ACTR(Agent):
         self.memory.activation_history = []
 
         if chunk:
-            encode_chunk = True
+            encode_chunk = True #encode everything
             if encode_chunk:
-                print('encoding 1' , chunk)
-                self.memory.learn(**chunk)
-        # if chunk:
-        #     encode_chunk = True #encode everything
-        #     if encode_chunk:
-        #         if not chunk['advisary_noop']: #combined with encode_chunk = True - encodes everything except NOOP
-        #             self.memory.learn(**chunk)
-
-        #made the observation, now do the blend
+                if not chunk['advisary_noop']: #combined with encode_chunk = True - encodes everything except NOOP
+                    self.memory.learn(**chunk)
+        blends = []
+        saliences = {}
+        possible_actions = ['up','down','left','right','noop']
         if not self.multiprocess:
             self.memory.advance(0.1)
-            # blend_values = {}
-            # probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value,
-            #                                       self.env.value_to_objects)
-            #
-            # for advisary_action in ['advisary_up', 'advisary_down', 'advisary_noop', 'advisary_left','advisary_right']:
-            #     blend_values[advisary_action] = self.memory.blend(advisary_action, **probe_chunk)
+            blend_values = {}
+            probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value,
+                                                  self.env.value_to_objects)
+
+            for advisary_action in ['advisary_up', 'advisary_down', 'advisary_noop', 'advisary_left','advisary_right']:
+                blend_values[advisary_action] = self.memory.blend(advisary_action, **probe_chunk)
 
             print('Current map. value', self.value)
             print(np.array2string(self.env.current_grid_map))
+            print(blend_values)
 
-            #will the predator attack?
-            probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects)
-            for key in probe_chunk:
-                if 'distance' in key:
-                    probe_chunk[key] = probe_chunk[key] / self.max_distance
-            attack_value = self.memory.blend('attack', **probe_chunk)
-
-            probe_chunk['attack'] = attack_value
-
-            #now, given the attack status, predict the movement
-            for axis in ['move_x', 'move_y']:
-                probe_chunk[axis] = self.memory.blend(axis, **probe_chunk)
-
-
+            #pick the blend
             #make a pretend map, modify it with the predicted movement of the agent
             imaginary_map = self.env.current_grid_map.copy()
-            #but you can only update the pretend map, if you have any basis to predict
-            if probe_chunk['move_x'] or probe_chunk['move_y']:
 
-                threshold = 0.33
-                for axis in ['move_x','move_y']:
-                    predator_position = self.env.active_entities[4].current_position
-                    if probe_chunk[axis] > threshold:
-                        if axis == 'move_x':
-                            imagined_predator_position = (predator_position[0] + 1, predator_position[1])
-                            imaginary_map[imagined_predator_position] = 4
-                            imaginary_map[predator_position] = 0
-                        if axis == 'move_y':
-                            imagined_predator_position = (predator_position[0], predator_position[1] + 1)
-                            imaginary_map[imagined_predator_position] = 4
-                            imaginary_map[predator_position] = 0
-                    if probe_chunk[axis] < -1 * threshold:
-                        if axis == 'move_x':
-                            imagined_predator_position = (predator_position[0] - 1, predator_position[1])
-                            imaginary_map[imagined_predator_position] = 4
-                            imaginary_map[predator_position] = 0
-                        if axis == 'move_y':
-                            imagined_predator_position = (predator_position[0], predator_position[1] - 1)
-                            imaginary_map[imagined_predator_position] = 4
-                            imaginary_map[predator_position] = 0
-
-            ###OLD WAY
-            #
-            # #Second version of projection that uses a blend threshold (40%)
+            #At first, when there are no chunks, the blend will return None
+            #first version of projection that takes max
             # if not blend_values['advisary_up'] == None:
-            #     imaginary_actions = [advisary_action_map[k] for k,v in blend_values.items() if v > 0.20]
-            #     #because we want noop to be processed last (we don't want the current position to become 0.0
-            #     #if another action is selected second -> "imaginary_map[predator_posiiton] = 0.0" would wipe it out
-            #     imaginary_actions.sort(reverse=True)
-            #     if not imaginary_actions:#if nothing is above threshold, imagine SOMETHING
-            #         imaginary_actions = [advisary_action_map[max(blend_values, key=blend_values.get)]]
-            #     for imaginary_action in imaginary_actions:
-            #         predator_position = self.env.active_entities[4].current_position
-            #         #imaginary_action_value = advisary_action_map[imaginary_action]
-            #         position_function = self.action_map[imaginary_action]
-            #         intended_position = position_function(predator_position)
-            #         if self.env.current_grid_map[intended_position] == 0 or self.env.current_grid_map[intended_position] == 3 or self.env.current_grid_map[intended_position] == 4:
-            #             imaginary_map[predator_position] = 0.0
-            #             imaginary_map[intended_position] = 4.0
             #
-            # self.last_imagined_map = imaginary_map
-            ###END OLD WAY
+            #     imaginary_action =
+            #     imaginary_action_value = advisary_action_map[imaginary_action]
+            #
+            #     predator_position = self.env.active_entities[4].current_position
+            #     position_function = self.action_map[imaginary_action_value]
+            #     intended_position = position_function(predator_position)
+            #     imaginary_map[predator_position] = 0.0
+            #     imaginary_map[intended_position] = 4.0
+
+            #Second version of projection that uses a blend threshold (40%)
+            if not blend_values['advisary_up'] == None:
+                imaginary_actions = [advisary_action_map[k] for k,v in blend_values.items() if v > 0.20]
+                #because we want noop to be processed last (we don't want the current position to become 0.0
+                #if another action is selected second -> "imaginary_map[predator_posiiton] = 0.0" would wipe it out
+                imaginary_actions.sort(reverse=True)
+                if not imaginary_actions:#if nothing is above threshold, imagine SOMETHING
+                    imaginary_actions = [advisary_action_map[max(blend_values, key=blend_values.get)]]
+                for imaginary_action in imaginary_actions:
+                    predator_position = self.env.active_entities[4].current_position
+                    #imaginary_action_value = advisary_action_map[imaginary_action]
+                    position_function = self.action_map[imaginary_action]
+                    intended_position = position_function(predator_position)
+                    if self.env.current_grid_map[intended_position] == 0 or self.env.current_grid_map[intended_position] == 3 or self.env.current_grid_map[intended_position] == 4:
+                        imaginary_map[predator_position] = 0.0
+                        imaginary_map[intended_position] = 4.0
+
+            self.last_imagined_map = imaginary_map
 
 
             print("Projected Map")
-            print("assuming:", probe_chunk)
             print(np.array2string(imaginary_map))
 
 
