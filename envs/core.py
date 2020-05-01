@@ -619,6 +619,7 @@ class ACTR(Agent):
 
 
             #Should I go towards the goal? G1
+
             goal_position = np.where(self.env.current_grid_map == 2)
             goal_position = list(zip(goal_position[0], goal_position[1]))
             # #I'll allow the A* to put a path through the predator, then check if the action produced would crash
