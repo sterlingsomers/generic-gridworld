@@ -84,7 +84,7 @@ def calculate_n_step_reward(
     :return:
     """
 
-    discount = discount ** np.arange(one_step_rewards.shape[1], -1, -1)
+    discount = discount ** np.arange(one_step_rewards.shape[1], -1, -1) # From shape[1] to -1 (it will stop to 0) withe step -1: px: 11,-1,-1: 11,10,...0
     reverse_rewards = np.c_[one_step_rewards, last_state_values][:, ::-1]
     full_discounted_reverse_rewards = reverse_rewards * discount
     return (np.cumsum(full_discounted_reverse_rewards, axis=1) / discount)[:, :0:-1]

@@ -152,7 +152,7 @@ def create_my_dataframe(obs, filename):
     # Construct dataframe
     data = np.array(data, dtype=object)  # object helps to keep arbitary type of data
     """ KEEP THE SAME ORDER BETWEEN COLUMNS AND DATA (data.append and columns=[] lines)!!!"""
-    columns = ['episode', 'timestep', 'actions', 'action_label', 'rewards', 'values', 'distTopred', 'distTopGoal', 'map', 'fc']
+    columns = ['episode', 'timestep', 'actions', 'action_label', 'rewards', 'value_state', 'distTopred', 'distTopGoal', 'map', 'fc']
 
     #TODO: Optional, load Tensorboard TSNE data and stack them to the dataframe!!!
     # datab = np.reshape(data, [data.shape[0], data.shape[1]])
