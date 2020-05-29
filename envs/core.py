@@ -639,6 +639,13 @@ class ACTR(Agent):
                                'advisary_right': RIGHT}
         goal_neighbours = [(1,0),(1,1),(0,1),(0,-1),(-1,0),(-1,-1),(-1,1),(1,-1)]
         encode_chunk = True #used to store only when prediction was wrong
+
+
+        p1, p2, p3 = None, None, None
+        my_new_position = self.current_position
+        new_predator = np.where(self.env.current_grid_map == 4)
+        new_predator = (int(new_predator[0]), int(new_predator[1]))
+
         if self.last_observation.any():
             if self.last_imagined_map.any():
                 imagined_predator = np.where(self.last_imagined_map == 4)
@@ -648,7 +655,12 @@ class ACTR(Agent):
                         encode_chunk = False #if at least one of the predictions was right, no need to store
             #The chunk encodes what the state was at time t-1, and what the predator did, observed at time t
             chunk = self.determine_action_chunk(self.last_observation,self.env.current_grid_map)
-
+            old_goal = np.where(self.last_observation == 2)
+            my_old_position = np.where(self.last_observation == 3)
+            my_old_position = (int(my_old_position[0]), int(my_old_position[1]))
+            p0 = [int(old_goal[0]), int(old_goal[1])]
+            p1 = [my_new_position[0], my_new_position[1]]
+            p3 = [new_predator[0], new_predator[1]]
 
 
 
@@ -724,26 +736,7 @@ class ACTR(Agent):
                     #what move will cause the predicted clockwise or counterclockwise motion?
                     clock_move = self.whatmove(self.env.current_grid_map,p1, p0, p3, probe_chunk['clockwise'])
                     counter_clock_move = self.whatmove(self.env.current_grid_map,p1, p0, p3, probe_chunk['counterclockwise'])
-                # for axis in ['move_x','move_y']:
-                #     predator_position = self.env.active_entities[4].current_position
-                #     if probe_chunk[axis] > threshold:
-                #         if axis == 'move_x':
-                #             imagined_predator_position = (predator_position[0] + 1, predator_position[1])
-                #             imaginary_map[imagined_predator_position] = 4
-                #             imaginary_map[predator_position] = 0
-                #         if axis == 'move_y':
-                #             imagined_predator_position = (predator_position[0], predator_position[1] + 1)
-                #             imaginary_map[imagined_predator_position] = 4
-                #             imaginary_map[predator_position] = 0
-                #     if probe_chunk[axis] < -1 * threshold:
-                #         if axis == 'move_x':
-                #             imagined_predator_position = (predator_position[0] - 1, predator_position[1])
-                #             imaginary_map[imagined_predator_position] = 4
-                #             imaginary_map[predator_position] = 0
-                #         if axis == 'move_y':
-                #             imagined_predator_position = (predator_position[0], predator_position[1] - 1)
-                #             imaginary_map[imagined_predator_position] = 4
-                #             imaginary_map[predator_position] = 0
+
 
 
 
