@@ -123,17 +123,7 @@ for i in range(number_of_runs):
                 chunk = {}
                 encode_chunk = True
                 if player3.last_observation.any():
-                    chunk['attack'] = 1
-                    goal_position = goal.current_position
-                    new_predator = advisary.current_position
-                    for transformation in goal_neighbours:
-                        if new_predator == (goal_position[0] + transformation[0], goal_position[1] + transformation[1]):
-                            chunk['attack'] = 0
-                    last_predator = np.where(player3.last_observation == 4)
-                    last_predator = (int(last_predator[0]), int(last_predator[1]))
-
-                    chunk['move_x'] = new_predator[0] - last_predator[0]
-                    chunk['move_y'] = new_predator[1] - last_predator[1]
+                    chunk = player3.determine_action_chunk(player3.last_observation, player3.env.current_grid_map)
 
                     obs_chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value,
                                                        player3.env.value_to_objects)
@@ -208,17 +198,7 @@ for i in range(number_of_runs):
                 chunk = {}
                 encode_chunk = True
                 if player3.last_observation.any():
-                    chunk['attack'] = 1
-                    goal_position = goal.current_position
-                    new_predator = advisary.current_position
-                    for transformation in goal_neighbours:
-                        if new_predator == (goal_position[0] + transformation[0], goal_position[1] + transformation[1]):
-                            chunk['attack'] = 0
-                    last_predator = np.where(player3.last_observation == 4)
-                    last_predator = (int(last_predator[0]), int(last_predator[1]))
-
-                    chunk['move_x'] = new_predator[0] - last_predator[0]
-                    chunk['move_y'] = new_predator[1] - last_predator[1]
+                    chunk = player3.determine_action_chunk(player3.last_observation, player3.env.current_grid_map)
 
                     obs_chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value,
                                                            player3.env.value_to_objects)

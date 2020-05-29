@@ -4,7 +4,7 @@ import math
 import functools
 from threading import Lock
 # from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
-from scipy.spatial.distance import cityblock
+from scipy.spatial.distance import cityblock, cdist
 import PIL
 import time
 import os
@@ -194,20 +194,21 @@ class ACTR(Agent):
         self.noise = noise
         self.decay = decay
         self.memory = self.pyactup.Memory(noise=self.noise,decay=decay,temperature=temperature,threshold=-100.0,mismatch=mismatch_penalty,optimized_learning=False)
-        self.pyactup.set_similarity_function(self.angle_similarity, *['goal_rads','advisary_rads'])
+        self.pyactup.set_similarity_function(self.angle_similarity, *['goal_rads','advisary_rads','clockwise','counterclockwise'])
         self.pyactup.set_similarity_function(self.distance_similarity, *['goal_distance','advisary_distance'])
+        # self.pyactup.set_similarity_function(self.vect_similarity, 'goal_vector')
         self.multiprocess = multiprocess
         self.processes = processes
         self.data = data
         self.last_observation = np.zeros(self.env.current_grid_map.shape)
         self.last_imagined_map = np.zeros(self.env.current_grid_map.shape)
-
+        # print("here205")
         self.action_map = {1: lambda x: ((x[0] + 1) % self.env.dims[0], (x[1]) % self.env.dims[1]),
                            2: lambda x: ((x[0] - 1) % self.env.dims[0], (x[1]) % self.env.dims[1]),
                            3: lambda x: (x[0] % self.env.dims[0], (x[1] - 1) % self.env.dims[1]),
                            4: lambda x: (x[0] % self.env.dims[0], (x[1] + 1) % self.env.dims[1]),
                            0: lambda x: (x[0], x[1])}
-
+        # print('here211')
         self.relative_action_categories = {UP:{'lateral':[LEFT,RIGHT],'away':DOWN},
                                            DOWN:{'lateral':[LEFT,RIGHT],'away':UP},
                                            LEFT:{'lateral':[UP,DOWN],'away':RIGHT},
@@ -230,6 +231,8 @@ class ACTR(Agent):
         #for now, don't add any chunks at all
         # for chunk in self.data:
         #     self.memory.learn(**chunk)
+    def vect_similarity(self,x,y):
+        return 1
 
     def angle_similarity(self,x,y):
         PI = math.pi
@@ -250,37 +253,37 @@ class ACTR(Agent):
         return result
 
 
-    def gridmap_to_symbols(self,gridmap, agent, value_to_objects):
-        agent_location = np.where(gridmap == agent)
-        agent_location = (int(agent_location[0]), int(agent_location[1]))
-        goal_location = 0
-        advisary_location = 0
-        return_dict = {}
-        for stuff in value_to_objects:
-            if 'entity_type' in value_to_objects[stuff]:
-                if value_to_objects[stuff]['entity_type'] == 'goal':
-                    goal_location = np.where(gridmap == stuff)
-                if value_to_objects[stuff]['entity_type'] == 'advisary':
-                    advisary_location = np.where(gridmap == stuff)
-        if goal_location:
-            goal_location = (int(goal_location[0]), int(goal_location[1]))
-            goal_rads = math.atan2(goal_location[0] - agent_location[0], goal_location[1] - agent_location[1])
-            path_agent_to_goal = self.env.getPathTo(agent_location, goal_location, free_spaces=[0])
-            points_in_path = np.where(path_agent_to_goal == -1)
-            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
-            return_dict['goal_rads'] = goal_rads
-            return_dict['goal_distance'] = len(points_in_path) / self.max_distance
-        if advisary_location:
-            advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
-            advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
-                                       advisary_location[1] - agent_location[1])
-            path_agent_to_advisary = self.env.getPathTo(agent_location, advisary_location, free_spaces=[0])
-            points_in_path = np.where(path_agent_to_advisary == -1)
-            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
-            return_dict['advisary_rads'] = advisary_rads
-            return_dict['advisary_distance'] = len(points_in_path) / self.max_distance
-
-        # the distances need to be normalized
+    # def gridmap_to_symbols(self,gridmap, agent, value_to_objects):
+    #     agent_location = np.where(gridmap == agent)
+    #     agent_location = (int(agent_location[0]), int(agent_location[1]))
+    #     goal_location = 0
+    #     advisary_location = 0
+    #     return_dict = {}
+    #     for stuff in value_to_objects:
+    #         if 'entity_type' in value_to_objects[stuff]:
+    #             if value_to_objects[stuff]['entity_type'] == 'goal':
+    #                 goal_location = np.where(gridmap == stuff)
+    #             if value_to_objects[stuff]['entity_type'] == 'advisary':
+    #                 advisary_location = np.where(gridmap == stuff)
+    #     if goal_location:
+    #         goal_location = (int(goal_location[0]), int(goal_location[1]))
+    #         goal_rads = math.atan2(goal_location[0] - agent_location[0], goal_location[1] - agent_location[1])
+    #         path_agent_to_goal = self.env.getPathTo(agent_location, goal_location, free_spaces=[0])
+    #         points_in_path = np.where(path_agent_to_goal == -1)
+    #         points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+    #         return_dict['goal_vect'] = np.array(points_in_path) - np.array([agent_location[0],agent_location[1]])
+    #         return_dict['goal_distance'] = len(points_in_path) / self.max_distance
+    #     if advisary_location:
+    #         advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
+    #         advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
+    #                                    advisary_location[1] - agent_location[1])
+    #         path_agent_to_advisary = self.env.getPathTo(agent_location, advisary_location, free_spaces=[0])
+    #         points_in_path = np.where(path_agent_to_advisary == -1)
+    #         points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+    #         return_dict['advisary_rads'] = advisary_rads
+    #         return_dict['advisary_distance'] = len(points_in_path) / self.max_distance
+    #
+    #     # the distances need to be normalized
 
 
         return return_dict
@@ -473,8 +476,8 @@ class ACTR(Agent):
 
         #agent_location = np.where(gridmap == agent)
         agent_location = self.env.active_entities[agent].current_position#(int(agent_location[0]), int(agent_location[1]))
-        goal_location = 0
-        advisary_location = 0
+        goal_location = []
+        advisary_location = []
         return_dict = {}
         for stuff in value_to_objects:
             if 'entity_type' in value_to_objects[stuff]:
@@ -484,22 +487,36 @@ class ACTR(Agent):
                     advisary_location = np.where(gridmap == stuff)
         if goal_location:
             goal_location = (int(goal_location[0]), int(goal_location[1]))
-            goal_rads = math.atan2(goal_location[0] - agent_location[0], goal_location[1] - agent_location[1])
+            # goal_rads = math.atan2(goal_location[0] - agent_location[0], goal_location[1] - agent_location[1])
             path_agent_to_goal = self.getPathTo(gridmap, agent_location, goal_location, free_spaces=[0])
             points_in_path = np.where(path_agent_to_goal == -1)
             points_in_path = list(zip(points_in_path[0], points_in_path[1]))
-            return_dict['goal_rads'] = goal_rads
+
+            # goal_vector = np.array(list(goal_location)) - np.array([agent_location[0],agent_location[1]])
+            # goal_unit_vector = goal_vector / np.linalg.norm(goal_vector)
+            # return_dict['goal_vector'] = (goal_unit_vector[0], goal_unit_vector[1])
+            # return_dict['goal_vector'] = tuple((np.array(goal_location) - np.array([agent_location[0],agent_location[1]])) / np.linalg.norm(np.array(goal_location) - np.array([agent_location[0],agent_location[1]])))
+            return_dict['goal_rads'] = 0.0
             return_dict['goal_distance'] = len(points_in_path)
-        if advisary_location:
+            # print('here500')
+        if advisary_location:#and goal_location
             advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
-            advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
-                                       advisary_location[1] - agent_location[1])
+            # advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
+            #                            advisary_location[1] - agent_location[1])
             path_agent_to_advisary = self.getPathTo(gridmap, agent_location, advisary_location, free_spaces=[0])
             points_in_path = np.where(path_agent_to_advisary == -1)
             points_in_path = list(zip(points_in_path[0], points_in_path[1]))
-            return_dict['advisary_rads'] = advisary_rads
+            # return_dict['advisary_rads'] = advisary_rads
             return_dict['advisary_distance'] = len(points_in_path)
-
+            p1 = [agent_location[0],agent_location[1]]
+            p0 = [goal_location[0], goal_location[1]]
+            p2 = advisary_location
+            v0 = np.array(p0) - np.array(p1)
+            v1 = np.array(p2) - np.array(p1)
+            angle = np.math.atan2(np.linalg.det([v0,v1]),np.dot(v0,v1)) #in radians
+            # angle = np.degrees(angle)
+            return_dict['advisary_rads'] = angle
+        # print('here517')
         for wall, dir in {'up_wall_distance': 2, 'left_wall_distance': 3, 'down_wall_distance': 1,
                           'right_wall_distance': 4}.items():
             current_position = agent_location
@@ -511,9 +528,106 @@ class ACTR(Agent):
                     return_dict[wall] = dist
                     break
 
-        # the distances need to be normalized
-
+        # the distances need to be normalized (after return)
+        # print('here530')
         return return_dict
+
+    def determine_action_chunk(self,old_obs,new_obs):
+        chunk = {}
+        last_predator = np.where(old_obs == 4)
+        last_predator = (int(last_predator[0]), int(last_predator[1]))
+        new_predator = np.where(new_obs == 4)
+        new_predator = (int(new_predator[0]), int(new_predator[1]))
+
+        last_action_category = None
+
+        my_old_position = np.where(old_obs == 3)
+        my_old_position = (int(my_old_position[0]), int(my_old_position[1]))
+
+        my_new_position = self.current_position
+
+        old_goal = np.where(old_obs == 2)
+        old_pred_to_goal_path = self.getPathTo(old_obs, last_predator, old_goal, free_spaces=[0])
+        old_points_in_path_pred_to_goal = np.where(old_pred_to_goal_path == -1)
+        old_points_in_path_pred_to_goal = list(
+            zip(old_points_in_path_pred_to_goal[0], old_points_in_path_pred_to_goal[1]))
+        old_distance_pred_to_goal = len(old_points_in_path_pred_to_goal)
+
+        old_pred_to_me_path = self.getPathTo(old_obs, last_predator, my_old_position, free_spaces=[0])
+        points_in_old_pred_to_me_path = np.where(old_pred_to_me_path == -1)
+        points_in_old_pred_to_me_path = list(zip(points_in_old_pred_to_me_path[0], points_in_old_pred_to_me_path[1]))
+        old_distance_pred_to_me = len(points_in_old_pred_to_me_path)
+
+        new_pred_to_me_path = self.getPathTo(new_obs, new_predator, my_new_position)
+        new_points_in_pred_to_me_path = np.where(new_pred_to_me_path == -1)
+        new_points_in_pred_to_me_path = list(zip(new_points_in_pred_to_me_path[0], new_points_in_pred_to_me_path[1]))
+        new_distance_pred_to_me = len(new_points_in_pred_to_me_path)
+
+        new_goal = np.where(new_obs == 2)
+        new_pred_to_goal_path = self.getPathTo(new_obs, new_predator, new_goal)
+        new_points_in_pred_to_goal_path = np.where(new_pred_to_goal_path == -1)
+        new_points_in_pred_to_goal_path = list(
+            zip(new_points_in_pred_to_goal_path[0], new_points_in_pred_to_goal_path[1]))
+        new_distance_pred_to_goal = len(new_points_in_pred_to_goal_path)
+
+        chunk['attack'] = 1  # attack = 1, block = 0
+        # the following checks to see if it stayed next to the goal
+        # we are classifying that as not-attack (attack = 0)
+        goal_position = [int(new_goal[0]), int(new_goal[1])]
+        predator_position = (int(new_predator[0]), int(new_predator[1]))
+        X = 10
+        Y = 10  # size of board...
+        neighbors = lambda x, y: [(x2, y2) for x2 in range(x - 1, x + 2)
+                                  for y2 in range(y - 1, y + 2)
+                                  if (-1 < x <= X and
+                                      -1 < y <= Y and
+                                      (x != x2 or y != y2) and
+                                      (0 <= x2 <= X) and
+                                      (0 <= y2 <= Y))]
+        neighs = neighbors(goal_position[0], goal_position[1])
+        if predator_position in neighs:
+            chunk['attack'] = 0
+
+        p1 = [my_old_position[0], my_old_position[1]]
+        p0 = [int(old_goal[0]), int(old_goal[1])]
+        p2 = [last_predator[0], last_predator[1]]
+        p3 = [new_predator[0], new_predator[1]]
+        v0 = np.array(p0) - np.array(p1)
+        v1 = np.array(p2) - np.array(p1)
+        v2 = np.array(p3) - np.array(p1)
+        angle1 = np.math.atan2(np.linalg.det([v1, v2]), np.dot(v1, v2))
+        # angle2 = np.math.atan2(np.linalg.det([v0,v2]),np.dot(v0,v2))
+        # diffangle = angle2 - angle1
+        chunk['clockwise'] = angle1 if angle1 < 0 else 0
+        chunk['counterclockwise'] = angle1 if angle1 > 0 else 0
+        chunk['direct'] = 1 if angle1 == 0 else 0
+
+        return chunk
+
+    def whatmove(self,gridmap,me,goal,predator,desired_rads):
+        if desired_rads == 0:
+            return 0
+        action_map = {1: lambda x: ((x[0] + 1) % gridmap.shape[0], (x[1]) % gridmap.shape[1]),
+                      2: lambda x: ((x[0] - 1) % gridmap.shape[0], (x[1]) % gridmap.shape[1]),
+                      3: lambda x: (x[0] % gridmap.shape[0], (x[1] - 1) % gridmap.shape[1]),
+                      4: lambda x: (x[0] % gridmap.shape[0], (x[1] + 1) % gridmap.shape[1]),
+                      0: lambda x: (x[0], x[1])}
+        move_to_rads = {UP:0, DOWN:0, LEFT:0, RIGHT:0}
+        v0 = np.array(goal) - np.array(me)
+        v1 = np.array(predator) - np.array(me)
+
+        for move_func in action_map:
+            new_pred = action_map[move_func](predator)
+            v2 = np.array(new_pred) - np.array(me)
+            move_to_rads[move_func] = np.math.atan2(np.linalg.det([v1,v2]),np.dot(v1,v2))
+
+        sorted_move = sorted(move_to_rads.items(), key=lambda kv: abs(kv[1]-desired_rads))
+
+        return sorted_move[0][0]
+
+
+
+
 
     def _getAction(self,obs):
         # print('actr action')
@@ -533,54 +647,11 @@ class ACTR(Agent):
                     if self.env.current_grid_map[points] == 4:
                         encode_chunk = False #if at least one of the predictions was right, no need to store
             #The chunk encodes what the state was at time t-1, and what the predator did, observed at time t
+            chunk = self.determine_action_chunk(self.last_observation,self.env.current_grid_map)
 
-            last_predator = np.where(self.last_observation == 4)
-            last_predator = (int(last_predator[0]),int(last_predator[1]))
-            new_predator = np.where(self.env.current_grid_map == 4)
-            new_predator = (int(new_predator[0]), int(new_predator[1]))
 
-            last_action_category = None
 
-            my_old_position = np.where(self.last_observation == 3)
-            my_old_position = (int(my_old_position[0]), int(my_old_position[1]))
 
-            my_new_position = self.current_position
-
-            old_goal = np.where(self.last_observation == 2)
-            old_pred_to_goal_path = self.getPathTo(self.last_observation,last_predator,old_goal,free_spaces=[0])
-            old_points_in_path_pred_to_goal = np.where(old_pred_to_goal_path == -1)
-            old_points_in_path_pred_to_goal = list(zip(old_points_in_path_pred_to_goal[0], old_points_in_path_pred_to_goal[1]))
-            old_distance_pred_to_goal = len(old_points_in_path_pred_to_goal)
-
-            old_pred_to_me_path = self.getPathTo(self.last_observation,last_predator, my_old_position, free_spaces=[0])
-            points_in_old_pred_to_me_path = np.where(old_pred_to_me_path == -1)
-            points_in_old_pred_to_me_path = list(zip(points_in_old_pred_to_me_path[0], points_in_old_pred_to_me_path[1]))
-            old_distance_pred_to_me = len(points_in_old_pred_to_me_path)
-
-            new_pred_to_me_path = self.getPathTo(self.env.current_grid_map, new_predator, my_new_position)
-            new_points_in_pred_to_me_path = np.where(new_pred_to_me_path == -1)
-            new_points_in_pred_to_me_path = list(zip(new_points_in_pred_to_me_path[0], new_points_in_pred_to_me_path[1]))
-            new_distance_pred_to_me = len(new_points_in_pred_to_me_path)
-
-            new_goal = np.where(self.env.current_grid_map == 2)
-            new_pred_to_goal_path = self.getPathTo(self.env.current_grid_map, new_predator, new_goal)
-            new_points_in_pred_to_goal_path = np.where(new_pred_to_goal_path == -1)
-            new_points_in_pred_to_goal_path = list(zip(new_points_in_pred_to_goal_path[0], new_points_in_pred_to_goal_path[1]))
-            new_distance_pred_to_goal = len(new_points_in_pred_to_goal_path)
-
-            chunk['attack'] = 1 #attack = 1, block = 0
-            #the following checks to see if it stayed next to the goal
-            #we are classifying that as not-attack (attack = 0)
-            for transformation in goal_neighbours:
-                if new_predator == (new_goal[0] + transformation[0], new_goal[1] + transformation[1]):
-                    chunk['attack'] = 0
-
-            #Did the predator move on the x or y axis (or both)
-            #Assume (x,y) - it doesn't really matter
-            chunk['move_x'] = new_predator[0] - last_predator[0]
-            chunk['move_y'] = new_predator[1] - last_predator[1]
-            #COULD use the absolute value above in the undestanding that when we estimate the action,
-            #we already know it will be in the direction consistent
 
             obs_chunk = self.gridmap_to_symbols(self.last_observation.copy(), self.value, self.env.value_to_objects)
             for key in obs_chunk:
@@ -590,18 +661,7 @@ class ACTR(Agent):
             chunk = {**obs_chunk, **chunk}
 
 
-            # last_action = None
-            # for key in self.action_map:
-            #     movefunc = self.action_map[key]
-            #     if movefunc(last_predator) == new_predator:
-            #         last_action = key
-            # chunk = self.gridmap_to_symbols(self.last_observation.copy(), self.value, self.env.value_to_objects)
-            # for advisary_action in advisary_action_map:
-            #     chunk[advisary_action] = int((last_action == advisary_action_map[advisary_action]))
-            # for key in chunk:
-            #     if 'distance' in key:
-            #         chunk[key] = chunk[key] / self.max_distance
-            # print('here')
+
 
         else:
             self.last_observation = self.env.current_grid_map.copy()
@@ -645,8 +705,8 @@ class ACTR(Agent):
             probe_chunk['attack'] = attack_value
 
             #now, given the attack status, predict the movement
-            for axis in ['move_x', 'move_y']:
-                probe_chunk[axis] = self.memory.blend(axis, **probe_chunk)
+            for direction in ['direct', 'clockwise', 'counterclockwise']:
+                probe_chunk[direction] = self.memory.blend(direction, **probe_chunk)
 
 
 
@@ -654,51 +714,38 @@ class ACTR(Agent):
             #make a pretend map, modify it with the predicted movement of the agent
             imaginary_map = self.env.current_grid_map.copy()
             #but you can only update the pretend map, if you have any basis to predict
-            if probe_chunk['move_x'] or probe_chunk['move_y']:
+            if not probe_chunk['attack'] == None:
 
                 threshold = 0.33
-                for axis in ['move_x','move_y']:
-                    predator_position = self.env.active_entities[4].current_position
-                    if probe_chunk[axis] > threshold:
-                        if axis == 'move_x':
-                            imagined_predator_position = (predator_position[0] + 1, predator_position[1])
-                            imaginary_map[imagined_predator_position] = 4
-                            imaginary_map[predator_position] = 0
-                        if axis == 'move_y':
-                            imagined_predator_position = (predator_position[0], predator_position[1] + 1)
-                            imaginary_map[imagined_predator_position] = 4
-                            imaginary_map[predator_position] = 0
-                    if probe_chunk[axis] < -1 * threshold:
-                        if axis == 'move_x':
-                            imagined_predator_position = (predator_position[0] - 1, predator_position[1])
-                            imaginary_map[imagined_predator_position] = 4
-                            imaginary_map[predator_position] = 0
-                        if axis == 'move_y':
-                            imagined_predator_position = (predator_position[0], predator_position[1] - 1)
-                            imaginary_map[imagined_predator_position] = 4
-                            imaginary_map[predator_position] = 0
+                if probe_chunk['attack'] == 0 and probe_chunk['direct']:
+                    #noop
+                    pass
+                elif probe_chunk['attack'] == 0 and probe_chunk['direct'] == 0:
+                    #what move will cause the predicted clockwise or counterclockwise motion?
+                    clock_move = self.whatmove(self.env.current_grid_map,p1, p0, p3, probe_chunk['clockwise'])
+                    counter_clock_move = self.whatmove(self.env.current_grid_map,p1, p0, p3, probe_chunk['counterclockwise'])
+                # for axis in ['move_x','move_y']:
+                #     predator_position = self.env.active_entities[4].current_position
+                #     if probe_chunk[axis] > threshold:
+                #         if axis == 'move_x':
+                #             imagined_predator_position = (predator_position[0] + 1, predator_position[1])
+                #             imaginary_map[imagined_predator_position] = 4
+                #             imaginary_map[predator_position] = 0
+                #         if axis == 'move_y':
+                #             imagined_predator_position = (predator_position[0], predator_position[1] + 1)
+                #             imaginary_map[imagined_predator_position] = 4
+                #             imaginary_map[predator_position] = 0
+                #     if probe_chunk[axis] < -1 * threshold:
+                #         if axis == 'move_x':
+                #             imagined_predator_position = (predator_position[0] - 1, predator_position[1])
+                #             imaginary_map[imagined_predator_position] = 4
+                #             imaginary_map[predator_position] = 0
+                #         if axis == 'move_y':
+                #             imagined_predator_position = (predator_position[0], predator_position[1] - 1)
+                #             imaginary_map[imagined_predator_position] = 4
+                #             imaginary_map[predator_position] = 0
 
-            ###OLD WAY
-            #
-            # #Second version of projection that uses a blend threshold (40%)
-            # if not blend_values['advisary_up'] == None:
-            #     imaginary_actions = [advisary_action_map[k] for k,v in blend_values.items() if v > 0.20]
-            #     #because we want noop to be processed last (we don't want the current position to become 0.0
-            #     #if another action is selected second -> "imaginary_map[predator_posiiton] = 0.0" would wipe it out
-            #     imaginary_actions.sort(reverse=True)
-            #     if not imaginary_actions:#if nothing is above threshold, imagine SOMETHING
-            #         imaginary_actions = [advisary_action_map[max(blend_values, key=blend_values.get)]]
-            #     for imaginary_action in imaginary_actions:
-            #         predator_position = self.env.active_entities[4].current_position
-            #         #imaginary_action_value = advisary_action_map[imaginary_action]
-            #         position_function = self.action_map[imaginary_action]
-            #         intended_position = position_function(predator_position)
-            #         if self.env.current_grid_map[intended_position] == 0 or self.env.current_grid_map[intended_position] == 3 or self.env.current_grid_map[intended_position] == 4:
-            #             imaginary_map[predator_position] = 0.0
-            #             imaginary_map[intended_position] = 4.0
-            #
-            # self.last_imagined_map = imaginary_map
-            ###END OLD WAY
+
 
 
             print("Projected Map")
