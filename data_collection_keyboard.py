@@ -27,12 +27,23 @@ import pickle
 import PIL
 import time
 
+#some imports for the participant stuff
+import glob, os
+
 #A new class to extend old classes
 
-human_data = pickle.load(open('symbolic_data_sterlingV220200207-152603.lst','rb'))
+# human_data = pickle.load(open('symbolic_data_sterlingV220200207-152603.lst','rb'))
+os.chdir('./participant_data')
+#determine the participant number
+participant_files = []
+for file in glob.glob('*.ptd'):
+    participant_files.append(file)
+participantNumber = len(participant_files)
+
+
 data = {'environment_episode_data':[],'player_episode_data':[],'stuck':[],'advisary_episode_data':[]}
-episodes = 2
-outputFileName = 'sterling_model_with_adivsary_data_'
+episodes = 100
+outputFileName = 'participant-'
 write_data = True
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
@@ -40,8 +51,8 @@ env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obsta
 goal = Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-# player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=True,processes=5)
+player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+# player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=True,processes=5)
 #player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
 #player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
 advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
@@ -53,11 +64,24 @@ advisary.setRecordHistory(history_dict={'actions':[]})
 
 
 
+wins = 0
+losses = 0
+scoreboard_font_wins = pygame.font.Font('freesansbold.ttf',16)
+scoreboard_font_losses = pygame.font.Font('freesansbold.ttf',16)
+txtX = 30
+txtY = 300
+def show_score(display,wins,losses,x,y):
+
+    wins_txt = scoreboard_font_wins.render("Wins: " + repr(wins), True, (255,255,255))
+    losses_txt = scoreboard_font_losses.render("Losses: " + repr(losses), True, (255,255,255))
+    display.blit(wins_txt, (x,y))
+    display.blit(losses_txt,(x,y+15))
+
 human_agent_action = 0
 human_wants_restart = False
 human_sets_pause = False
 
-size_factor = 20
+size_factor = 30
 
 initial_image_data = env.reset()
 initial_img = PIL.Image.fromarray(initial_image_data)
@@ -67,11 +91,13 @@ initial_img = np.array(initial_img.resize(size, PIL.Image.NEAREST))
 initial_img = np.flip(np.rot90(initial_img),0)
 #one noop
 pygame.init()
-display = pygame.display.set_mode(initial_img.shape[:2],0,32)
+window_size = (initial_img.shape[:2][0]+0, initial_img.shape[:2][1]+50)
+display = pygame.display.set_mode(window_size,0,32)
 background = pygame.surfarray.make_surface(initial_img)
 background = background.convert()
 display.blit(background,(0,0))
 pygame.display.update()
+show_score(display, wins, losses, txtX, txtY)
 game_done = False
 running = True
 
@@ -86,6 +112,10 @@ import math
 done = False
 
 
+
+
+
+
 clock = pygame.time.Clock()
 #while not player3.quit:
 for i in range(episodes):
@@ -93,6 +123,7 @@ for i in range(episodes):
     episode_done = False
     steps = 0
     while not episode_done:
+
         print('step', steps)
         steps += 1
         if steps == 50:
@@ -112,7 +143,10 @@ for i in range(episodes):
             size = tuple((np.array(obs.size) * size_factor).astype(int))
             obs = np.array(obs.resize(size, PIL.Image.NEAREST))
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+            display.fill((0,0,0))
             display.blit(surf, (0, 0))
+            pygame.display.update()
+            show_score(display, wins, losses, txtX, txtY)
 
         pygame.display.update()
         key_pressed = 0
@@ -125,8 +159,10 @@ for i in range(episodes):
         size = tuple((np.array(obs.size) * size_factor).astype(int))
         obs = np.array(obs.resize(size, PIL.Image.NEAREST))
         surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+        display.fill((0, 0, 0))
         display.blit(surf, (0, 0))
         pygame.display.update()
+        show_score(display, wins, losses, txtX, txtY)
         for event in pygame.event.get():
 
 
@@ -139,21 +175,28 @@ for i in range(episodes):
             if done:
                 obs = env.reset()
                 surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+                display.fill((0, 0, 0))
                 display.blit(surf, (0,0))
+                show_score(display, wins, losses, txtX, txtY)
             else:
                 #pygame.surfarray.blit_array(background,obs)
                 surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs),0))
                 #pygame.transform.rotate(surf,180)
+                display.fill((0, 0, 0))
                 display.blit(surf, (0,0))
+                show_score(display, wins, losses, txtX, txtY)
 
 
         # pygame.time.delay(100)
         pygame.display.update()
+        show_score(display,wins,losses,txtX, txtY)
         # clock.tick(100)
         if done:
             data['environment_episode_data'].append(env.history.copy())
             data['player_episode_data'].append(player3.history.copy())
             data['advisary_episode_data'].append(advisary.history.copy())
+            wins = wins + data['environment_episode_data'][-1]['reward'][-1] if data['environment_episode_data'][-1]['reward'][-1] > 0 else wins
+            losses = losses + 1 if data['environment_episode_data'][-1]['reward'][-1] < 0 else losses
             env.setRecordHistory()
             player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
             advisary.setRecordHistory(history_dict={'actions':[]})
@@ -164,10 +207,14 @@ for i in range(episodes):
             size = tuple((np.array(obs.size) * size_factor).astype(int))
             obs = np.array(obs.resize(size, PIL.Image.NEAREST))
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+            display.fill((0, 0, 0))
             display.blit(surf, (0, 0))
+            pygame.display.update()
+            show_score(display, wins, losses, txtX, txtY)
+
 
 #print("quitting?", player3.quit)
 timestr = time.strftime("%Y%m%d-%H%M%S")
 if write_data:
-    pickle.dump(data,open(outputFileName + timestr + '.dict','wb'))
+    pickle.dump(data,open(timestr + '_' + outputFileName + repr(participantNumber) + '.ptd','wb'))
 pygame.quit()
