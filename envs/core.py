@@ -24,7 +24,7 @@ class Entity:
     current_position = (0,0)
     action_chosen = None
 
-    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
+    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',position_coords=[]):
         if env.__class__.__name__ == 'GenericEnv':
             self.env = env
         else:
@@ -33,6 +33,7 @@ class Entity:
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
         self.env.entities[self.value] = self
+        self.position_coords = position_coords
         self.color = color
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
@@ -47,6 +48,12 @@ class Entity:
         self.record_history = on
         self.history = history_dict
         self.history['agent_value'] = self.value
+
+    def hitWall(self):
+        return 0
+
+    def stepCheck(self):
+        return 0
 
     def moveToMe(self,entity_object):
         self.env.done = True
@@ -73,7 +80,7 @@ class Entity:
         self.active = False
         return 1
 
-    def place(self, position='random-free'):
+    def place(self, position='random-free',position_coords=[]):
         # self.history['steps'] = []
 
         if position == 'random-free':
@@ -100,14 +107,19 @@ class Entity:
             the_space = random.choice(intersection_of_spaces)
             self.env.current_grid_map[the_space] = self.value
             self.current_position = the_space
+        if position == 'specific':
+            if not position_coords:
+                raise ValueError("Coordinates must be specified")
+            self.env.current_grid_map[position_coords] = self.value
+            self.current_position = position_coords
 
 
     def update(self):
         pass
 
 class ActiveEntity(Entity):
-    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
         self.env.active_entities[self.value] = self
 
     def getAction(self, obs):
@@ -119,8 +131,8 @@ class ActiveEntity(Entity):
         return record_dict['actions']
 
 class Goal(Entity):
-    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
     def moveToMe(self,entity_object):
         if isinstance(entity_object, Advisary):
@@ -141,10 +153,33 @@ class Goal(Entity):
     def getAction(self,obs):
         return 0
 
+class CountingGoal(Goal):
+    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
+        self.env.active_entities[self.value] = self
+        self.count = 0
+
+    def stepCheck(self):
+        if self.count == 1:
+            self.env.done = True
+            self.env.reward = - 1
+            self.count = 0
+
+
+    def moveToMe(self,entity_object):
+        self.count += 1
+        if self.count >= 2:
+            self.env.done = True
+            self.env.reward += 1
+
+    def getAction(self,obs):
+        return 0
+
+
 
 class Agent(ActiveEntity):
-    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
     def moveToMe(self,entity_object):
         self.env.done = True
@@ -164,8 +199,8 @@ class Agent(ActiveEntity):
         return 1
 
 class AIAgent(Agent):
-    def __init__(self, env, obs_type='image', entity_type='agent', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image', entity_type='agent', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
 
     def moveToMe(self,entity_object):
@@ -459,15 +494,16 @@ class ACTR(Agent):
 
 class HumanAgent(Agent):
     obs = None
-    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'}):
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[],pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'}):
         self.mapping = mapping
-        super().__init__(env, obs_type, entity_type, color, position)
+        super().__init__(env, obs_type, entity_type, color, position,position_coords)
 
         self.pygame = pygame
         self.keymappings = {}
         self.pygame.font.init()
         self.font = self.pygame.font.SysFont('Arial', 30)
         self.display = 0
+        self.walls_hit = 0
 
 
         self.quit = False
@@ -475,6 +511,14 @@ class HumanAgent(Agent):
     def setDisplay(self,display):
         self.display = display
 
+    def stepCheck(self):
+        if self.walls_hit:
+            self.env.done = True
+            self.env.reward = - 1
+            self.walls_hit = 0
+
+    def hitWall(self):
+        self.walls_hit += 1
 
     def moveToMe(self,entity_object):
         print('enity', entity_object, 'hit', self)

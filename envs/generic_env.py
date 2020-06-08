@@ -355,7 +355,7 @@ class GenericEnv(gym.Env):
             entity_object = self.entities[entity]
             if entity_object.record_history:
                 entity_object.history['actions'] = []
-            entity_object.place(position=entity_object.position)
+            entity_object.place(position=entity_object.position,position_coords=entity_object.position_coords)
         # for object_value in self.object_values:
         #     if object_value <= 1:
         #         continue
@@ -398,6 +398,12 @@ class GenericEnv(gym.Env):
         #     self.history['observations'].append(self.current_grid_map.copy())
         entity_actions = []
 
+        for entity in self.entities:
+            ent_obj = self.entities[entity]
+            ent_obj.stepCheck()
+        if self.done:
+            return self._gridmap_to_image(), self.reward, self.done, info
+
         for entity in self.active_entities:
             if not type(self.entities[entity]) == NetworkAgent:
                 action_chosen = self.active_entities[entity].getAction(obs)
@@ -419,6 +425,7 @@ class GenericEnv(gym.Env):
             intended_position = position_function(current_position)
             self.active_entities[entity].intended_position = intended_position
             if self.current_grid_map[intended_position] == 1.0: #hit a wall
+                self.active_entities[entity].hitWall()
                 self.active_entities[entity].intended_position = self.active_entities[entity].current_position
 
             self.current_grid_map[current_position] = 0 #erase the person from their old spot
