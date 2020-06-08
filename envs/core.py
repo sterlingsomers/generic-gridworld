@@ -164,6 +164,7 @@ class CountingGoal(Goal):
             self.env.done = True
             self.env.reward = - 1
             self.count = 0
+        self.count = 0
 
 
     def moveToMe(self,entity_object):

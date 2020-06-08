@@ -31,7 +31,7 @@ import time
 
 
 
-episodes = 100
+episodes = 10
 
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
