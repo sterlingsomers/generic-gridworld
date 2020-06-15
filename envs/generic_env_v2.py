@@ -339,6 +339,7 @@ class GenericEnv(gym.Env):
 
         for obj_val in self.object_values:
             obj = np.where(self.current_grid_map == obj_val)
+            # print('obj', obj, '\n')
             image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
 
         return image

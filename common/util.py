@@ -76,6 +76,7 @@ def calc_rewards(self, rewards, state_values, next_state_values, dones, gamma):
 def calculate_n_step_reward(
         one_step_rewards: np.ndarray,
         discount: float,
+        dones: np.ndarray,
         last_state_values: np.ndarray):
     """
     :param one_step_rewards: [n_env, n_timesteps]
@@ -83,8 +84,8 @@ def calculate_n_step_reward(
     :param last_state_values: [n_env], bootstrap from these if not done
     :return:
     """
-
-    discount = discount ** np.arange(one_step_rewards.shape[1], -1, -1) # From shape[1] to -1 (it will stop to 0) withe step -1: px: 11,-1,-1: 11,10,...0
+    # Below: after you hit the done=1 all rewards after this will be 0 as the epis would have ended (given NO RESET followed) so you don't care if it is added.
+    discount = (1-dones)*discount ** np.arange(one_step_rewards.shape[1], -1, -1) # From shape[1] to -1 (it will stop to index 0) withe step -1: px: 11,-1,-1: 11,10,...0
     reverse_rewards = np.c_[one_step_rewards, last_state_values][:, ::-1]
     full_discounted_reverse_rewards = reverse_rewards * discount
     return (np.cumsum(full_discounted_reverse_rewards, axis=1) / discount)[:, :0:-1]

@@ -58,8 +58,9 @@ class A2C(object):
         # self.sess = tf.InteractiveSession(graph = self.graph)
         self.sess = tf.Session(graph=self.graph)
 
-    def test(self,
-             data):  # you can add a generic get_tensor_by_name("import/%s:0"%layer) and add layer as an input after data
+    def test(self, data):
+        # you can add a generic get_tensor_by_name("import/%s:0"%layer) and add layer as an input after
+        # data. You can check the way Ludis feature visualization does it.
 
         # Know your output node name
         value_tensor = self.graph.get_tensor_by_name("import/theta/value/BiasAdd:0")

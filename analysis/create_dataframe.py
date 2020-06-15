@@ -112,7 +112,7 @@ def create_my_dataframe(obs, filename):
             ''' ACTIONS NAME (STRING) '''
             action_label = act_label(actions)
             # ''' ACTIONS PROB DISTR (NUMPY VEC) '''
-            # action_dstr = obs['player_episode_data'][epis]['action_probs'][timestep]
+            action_dstr = obs[epis]['action_probs'][timestep]
             ''' REWARD '''
             reward = round(obs[epis]['rewards'][timestep],2)
             ''' DISTANCE AGENT-PREDATOR IN MOVES'''
@@ -147,12 +147,12 @@ def create_my_dataframe(obs, filename):
             ''' FC (VECTOR) '''
             fc_rep = obs[epis]['fc'][timestep]
 
-            data.append([episode, tstep, actions, action_label, round(reward,3), values, dist, distg, map, fc_rep])
+            data.append([episode, tstep, actions, action_label, round(reward,3), values, dist, distg, action_dstr, map, fc_rep])
 
     # Construct dataframe
     data = np.array(data, dtype=object)  # object helps to keep arbitary type of data
     """ KEEP THE SAME ORDER BETWEEN COLUMNS AND DATA (data.append and columns=[] lines)!!!"""
-    columns = ['episode', 'timestep', 'actions', 'action_label', 'rewards', 'value_state', 'distTopred', 'distTopGoal', 'map', 'fc']
+    columns = ['episode', 'timestep', 'actions', 'action_label', 'rewards', 'value_state', 'distTopred', 'distTopGoal', 'policy', 'map', 'fc']
 
     #TODO: Optional, load Tensorboard TSNE data and stack them to the dataframe!!!
     # datab = np.reshape(data, [data.shape[0], data.shape[1]])
@@ -253,24 +253,24 @@ def create_my_dataframe(obs, filename):
 # plt.show()
 # Change the name of the file and run this till the end
 path = '/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/'
-filename = '2020_Mar24_time22-38_net_vs_pred_best_noop_dark'#'2020_Mar08_time12-46_net_vs_pred_best_noop'
+filename = '2020_Apr15_time17-48_net_vs_pred_best_noop'#'2020_Mar24_time22-38_net_vs_pred_best_noop_dark'#'2020_Mar08_time12-46_net_vs_pred_best_noop'
 pickle_in = open(path + filename + '.dct', 'rb')
 obs = pickle.load(pickle_in)
 create_my_dataframe(obs, filename)
 
-# Below we create an image for every position on the map that the agent can take (USE ONLY COPIES!!!)
-#%%
-# Load Dataframe created above
-df = pd.read_pickle(path + filename + '.df')
-im=df['map'][36].copy()
-im[np.where(im==3)] = 0 # or take out the np.where it works without it
-points = np.where(im==0) # Empty points
-
-maps = []
-for i in range(points[0].size):
-    imagio = im.copy()
-    imagio[points[0][i],points[1][i]] = 3
-    maps.append(imagio)
-
-pickle_in = open('/Users/constantinos/Documents/Projects/genreal_grid/analysis/maps_dark.lst', 'wb')
-pickle.dump(maps, pickle_in)
+# # Below we create an image for every position on the map that the agent can take (USE ONLY COPIES!!!)
+# #%%
+# # Load Dataframe created above
+# df = pd.read_pickle(path + filename + '.df')
+# im=df['map'][36].copy()
+# im[np.where(im==3)] = 0 # or take out the np.where it works without it
+# points = np.where(im==0) # Empty points
+#
+# maps = []
+# for i in range(points[0].size):
+#     imagio = im.copy()
+#     imagio[points[0][i],points[1][i]] = 3
+#     maps.append(imagio)
+#
+# pickle_in = open('/Users/constantinos/Documents/Projects/genreal_grid/analysis/maps_dark.lst', 'wb')
+# pickle.dump(maps, pickle_in)

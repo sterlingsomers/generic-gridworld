@@ -159,7 +159,7 @@ plt.show() # COMMENT THIS IF YOU WANT TO SAVE!!!
 #         #textcoords='offset points') # REMOVE the textcoords as it sends the annotations far away!!!
 # plt.show()
 
-# IBL-MFEC predator domain
+# IBL-MFEC predator domain (MFEC02orig folder)
 # from matplotlib import pyplot as plt
 # import pandas as pd
 # import numpy as np
