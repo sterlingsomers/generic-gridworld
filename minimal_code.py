@@ -77,7 +77,10 @@ class A2C(object):
             feed_dict={self.input: data})
 
         return output
-
+# Specify the path and load the model
 m = A2C(model_filepath = 'networkb.pb')
+# incoming observation
 img = np.random.random([1,10,10,3]) # Should be 0-255 float. You can feed a batch and the results will also going to be batched.
+# By getting the policy you can select actions according to np.argmax(policy, axis=1) or with random choice with
+# p=policy
 value, policy, fc2, conv1, conv2, conv3, fc2_logit_W, logits_pre_bias, conv1W = m.test(data=img)
