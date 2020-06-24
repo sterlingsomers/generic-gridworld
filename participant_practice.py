@@ -27,11 +27,27 @@ import pickle
 import PIL
 import time
 
+#some imports for the participant stuff
+import glob, os
+
+#A new class to extend old classes
+
+# human_data = pickle.load(open('symbolic_data_sterlingV220200207-152603.lst','rb'))
+os.chdir('./practice_data')
+#determine the participant number
+participant_files = []
+for file in glob.glob('*.ptd'):
+    participant_files.append(file)
+participantNumber = len(participant_files)
+
+
+data = {'environment_episode_data':[],'player_episode_data':[],'stuck':[],'AI_episode_data':[]}
+episodes = 3
+outputFileName = 'practice-'
+write_data = True
 
 
 
-
-episodes = 10
 
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
@@ -46,7 +62,9 @@ player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame,positi
 player4 = AIAgent(env,entity_type='agent',color='blue',obs_type='data',position='specific',position_coords=(5,1))
 #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
 
-
+env.setRecordHistory()
+player3.setRecordHistory(history_dict={'actions':[],'saliences':[],'stuck':[]})
+player4.setRecordHistory(history_dict={'actions':[]})
 
 
 
@@ -89,8 +107,6 @@ running = True
 
 import math
 
-# t = Thread(target=run_player2)
-# t.start()
 
 
 
@@ -157,6 +173,13 @@ for i in range(episodes):
         show_score(display,wins,losses,txtX, txtY)
         # clock.tick(100)
         if done:
+            data['environment_episode_data'].append(env.history.copy())
+            data['player_episode_data'].append(player3.history.copy())
+            data['AI_episode_data'].append(player4.history.copy())
+            env.setRecordHistory()
+            player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
+            player4.setRecordHistory(history_dict={'actions':[]})
+            episode_done = True
 
             obs = env.reset()
             obs = PIL.Image.fromarray(obs)
