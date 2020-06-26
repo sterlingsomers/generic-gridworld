@@ -24,7 +24,7 @@ class Entity:
     current_position = (0,0)
     action_chosen = None
 
-    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
+    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',position_coords=[]):
         if env.__class__.__name__ == 'GenericEnv':
             self.env = env
         else:
@@ -33,6 +33,7 @@ class Entity:
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
         self.env.entities[self.value] = self
+        self.position_coords = position_coords
         self.color = color
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
@@ -47,6 +48,12 @@ class Entity:
         self.record_history = on
         self.history = history_dict
         self.history['agent_value'] = self.value
+
+    def hitWall(self):
+        return 0
+
+    def stepCheck(self):
+        return 0
 
     def moveToMe(self,entity_object):
         self.env.done = True
@@ -73,7 +80,7 @@ class Entity:
         self.active = False
         return 1
 
-    def place(self, position='random-free'):
+    def place(self, position='random-free',position_coords=[]):
         # self.history['steps'] = []
 
         if position == 'random-free':
@@ -100,14 +107,19 @@ class Entity:
             the_space = random.choice(intersection_of_spaces)
             self.env.current_grid_map[the_space] = self.value
             self.current_position = the_space
+        if position == 'specific':
+            if not position_coords:
+                raise ValueError("Coordinates must be specified")
+            self.env.current_grid_map[position_coords] = self.value
+            self.current_position = position_coords
 
 
     def update(self):
         pass
 
 class ActiveEntity(Entity):
-    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
         self.env.active_entities[self.value] = self
 
     def getAction(self, obs):
@@ -119,8 +131,8 @@ class ActiveEntity(Entity):
         return record_dict['actions']
 
 class Goal(Entity):
-    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
     def moveToMe(self,entity_object):
         if isinstance(entity_object, Advisary):
@@ -141,10 +153,34 @@ class Goal(Entity):
     def getAction(self,obs):
         return 0
 
+class CountingGoal(Goal):
+    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
+        self.env.active_entities[self.value] = self
+        self.count = 0
+
+    def stepCheck(self):
+        if self.count == 1:
+            self.env.done = True
+            self.env.reward = - 1
+            self.count = 0
+        self.count = 0
+
+
+    def moveToMe(self,entity_object):
+        self.count += 1
+        if self.count >= 2:
+            self.env.done = True
+            self.env.reward += 1
+
+    def getAction(self,obs):
+        return 0
+
+
 
 class Agent(ActiveEntity):
-    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
     def moveToMe(self,entity_object):
         self.env.done = True
@@ -164,8 +200,8 @@ class Agent(ActiveEntity):
         return 1
 
 class AIAgent(Agent):
-    def __init__(self, env, obs_type='image', entity_type='agent', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image', entity_type='agent', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
 
     def moveToMe(self,entity_object):
@@ -459,15 +495,16 @@ class ACTR(Agent):
 
 class HumanAgent(Agent):
     obs = None
-    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'}):
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[],pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'}):
         self.mapping = mapping
-        super().__init__(env, obs_type, entity_type, color, position)
+        super().__init__(env, obs_type, entity_type, color, position,position_coords)
 
         self.pygame = pygame
         self.keymappings = {}
         self.pygame.font.init()
         self.font = self.pygame.font.SysFont('Arial', 30)
         self.display = 0
+        self.walls_hit = 0
 
 
         self.quit = False
@@ -475,6 +512,14 @@ class HumanAgent(Agent):
     def setDisplay(self,display):
         self.display = display
 
+    def stepCheck(self):
+        if self.walls_hit:
+            self.env.done = True
+            self.env.reward = - 1
+            self.walls_hit = 0
+
+    def hitWall(self):
+        self.walls_hit += 1
 
     def moveToMe(self,entity_object):
         print('enity', entity_object, 'hit', self)
@@ -840,80 +885,149 @@ class NetworkAgent(Agent):
 
 
 class TrainedAgent(Agent):
-
-    def __init__(self, env, obs_type='image', entity_type='', color='', position='random-free',model_name=''):
-        import tensorflow
-        from actorcritic.agent import ActorCriticAgent, ACMode
-        from actorcritic.runner import Runner, PPORunParams
+    def __init__(self, env, model_filepath, obs_type='image', entity_type='agent',color='', position='random-free'):
+        import tensorflow as tf
+        self.tf = tf
+        self.model_filepath = model_filepath
+        self.load_graph(model_filepath=model_filepath)
 
         super().__init__(env, obs_type, entity_type, color, position)
 
-        self.tf = tensorflow
+    def load_graph(self, model_filepath):
+        print('loading model...')
+        self.graph = self.tf.Graph()
 
-        self.ActorCriticAgent = ActorCriticAgent
-        self.ACMode = ACMode
+        with self.tf.gfile.GFile(model_filepath, 'rb') as f:
+            self.graph_def = self.tf.GraphDef()
+            self.graph_def.ParseFromString(f.read())
 
-        self.Runner = Runner
-        self.PPORunParams = PPORunParams
+        print('Check out the input placeholders:')
+        nodes = [n.name + ' => ' + n.op for n in self.graph_def.node if n.op in ('Placeholder')]
+        for node in nodes:
+            print(node)
 
-        self.full_checkpoint_path = os.path.join("_files/models", model_name)
+        with self.graph.as_default():
+            # Define input tensor
+            self.input = self.tf.placeholder(np.float32, shape=[None, 10, 10, 3], name='rgb_screen')
+            # self.dropout_rate = tf.placeholder(tf.float32, shape = [], name = 'dropout_rate')
+            self.tf.import_graph_def(self.graph_def, {'rgb_screen': self.input})
 
+        self.graph.finalize()  # Graph is read-only after this statement
 
-        self.obs_type = obs_type
-        self.position = position
-        #self.agent = ActorCriticAgent()
-        #self.agent.buid_model()
-        self.active = True
-        self.record_history = False
+        print('Model loading complete!')
 
+        # Get layer names
+        layers = [op.name for op in self.graph.get_operations()]
+        for layer in layers:
+            print(layer)
 
-        self.tf.reset_default_graph()
-        self.config = self.tf.ConfigProto()
-        self.config.gpu_options.allow_growth = True
-        self.sess = self.tf.Session(config=self.config)
+        # In this version, tf.InteractiveSession and tf.Session could be used interchangeably.
+        # self.sess = tf.InteractiveSession(graph = self.graph)
+        self.sess = self.tf.Session(graph=self.graph)
 
-        self.agent = ActorCriticAgent(
-            mode=self.ACMode.A2C,
-            sess=self.sess,
-            spatial_dim=8,
-            unit_type_emb_dim=5,
-            loss_value_weight=0.5,
-            entropy_weight_action_id=0.01,
-            entropy_weight_spatial=0.00000001,
-            scalar_summary_freq=5,
-            all_summary_freq=10,
-            summary_path='_files/summaries',
-            max_gradient_norm=10.0,
-            num_actions=5,
-            num_envs=1,
-            nsteps=16,
-            obs_dim=(10,10),
-            policy="FullyConv"
-        )
-        self.agent.build_model()
+    def getAction(self, obs):
+        # you can add a generic get_tensor_by_name("import/%s:0"%layer) and add layer as an input after
+        # data. You can check the way Ludis feature visualization does it.
 
-        if os.path.exists(self.full_checkpoint_path):
-            self.agent.load(self.full_checkpoint_path, False)
+        # Know your output node name
+        value_tensor = self.graph.get_tensor_by_name("import/theta/value/BiasAdd:0")
+        policy_tensor = self.graph.get_tensor_by_name("import/theta/action_id/Softmax:0")
+        fc2 = self.graph.get_tensor_by_name("import/theta/fc2/Relu:0")
+        conv1 = self.graph.get_tensor_by_name("import/theta/screen_network/conv1/Relu:0")
+        conv2 = self.graph.get_tensor_by_name("import/theta/screen_network/conv2/Relu:0")
+        conv3 = self.graph.get_tensor_by_name("import/theta/screen_network/conv3/Relu:0")
+        fc2_logit_W = self.graph.get_tensor_by_name("import/theta/action_id/weights:0")
+        logits_pre_bias = self.graph.get_tensor_by_name("import/theta/action_id/MatMul:0")
+        conv1W = self.graph.get_tensor_by_name("import/theta/screen_network/conv1/weights:0")
+        output = self.sess.run(
+            [value_tensor, policy_tensor, fc2, conv1, conv2, conv3, fc2_logit_W, logits_pre_bias, conv1W],
+            feed_dict={self.input: obs})
 
-        self.runner = Runner(
-            envs=self.env,
-            agent=self.agent,
-            discount=0.95,
-            n_steps=16,
-            do_training=False,
-            ppo_par=None,
-            policy_type="FullyConv",
-            n_envs=1
-        )
-
-
-    def _getAction(self,obs):
-        print('getaction called...')
-        obs = self.runner.obs_processer.process([obs])
-        action_ids, value_estimate, fc, action_probs = self.agent.step_eval(obs)
-        print('action_ids',action_ids)
-        return action_ids[0]
+        return int(np.argmax(output[1],axis=1))
 
     def moveToMe(self, entity_object):
+        #If anything hits me, game over.
         self.env.done = True
         self.env.reward -= 1
+
+
+
+
+# class TrainedAgent(Agent):
+#
+#     def __init__(self, env, obs_type='image', entity_type='', color='', position='random-free',model_name=''):
+#         import tensorflow
+#         from actorcritic.agent import ActorCriticAgent, ACMode
+#         from actorcritic.runner import Runner, PPORunParams
+#
+#         super().__init__(env, obs_type, entity_type, color, position)
+#
+#         self.tf = tensorflow
+#
+#         self.ActorCriticAgent = ActorCriticAgent
+#         self.ACMode = ACMode
+#
+#         self.Runner = Runner
+#         self.PPORunParams = PPORunParams
+#
+#         self.full_checkpoint_path = os.path.join("_files/models", model_name)
+#
+#
+#         self.obs_type = obs_type
+#         self.position = position
+#         #self.agent = ActorCriticAgent()
+#         #self.agent.buid_model()
+#         self.active = True
+#         self.record_history = False
+#
+#
+#         self.tf.reset_default_graph()
+#         self.config = self.tf.ConfigProto()
+#         self.config.gpu_options.allow_growth = True
+#         self.sess = self.tf.Session(config=self.config)
+#
+#         self.agent = ActorCriticAgent(
+#             mode=self.ACMode.A2C,
+#             sess=self.sess,
+#             spatial_dim=8,
+#             unit_type_emb_dim=5,
+#             loss_value_weight=0.5,
+#             entropy_weight_action_id=0.01,
+#             entropy_weight_spatial=0.00000001,
+#             scalar_summary_freq=5,
+#             all_summary_freq=10,
+#             summary_path='_files/summaries',
+#             max_gradient_norm=10.0,
+#             num_actions=5,
+#             num_envs=1,
+#             nsteps=16,
+#             obs_dim=(10,10),
+#             policy="FullyConv"
+#         )
+#         self.agent.build_model()
+#
+#         if os.path.exists(self.full_checkpoint_path):
+#             self.agent.load(self.full_checkpoint_path, False)
+#
+#         self.runner = Runner(
+#             envs=self.env,
+#             agent=self.agent,
+#             discount=0.95,
+#             n_steps=16,
+#             do_training=False,
+#             ppo_par=None,
+#             policy_type="FullyConv",
+#             n_envs=1
+#         )
+#
+#
+#     def _getAction(self,obs):
+#         print('getaction called...')
+#         obs = self.runner.obs_processer.process([obs])
+#         action_ids, value_estimate, fc, action_probs = self.agent.step_eval(obs)
+#         print('action_ids',action_ids)
+#         return action_ids[0]
+#
+#     def moveToMe(self, entity_object):
+#         self.env.done = True
+#         self.env.reward -= 1
