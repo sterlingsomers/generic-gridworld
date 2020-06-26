@@ -1,4 +1,4 @@
-# Generic Gridworld Gym for Reinforcement Learning/ Multiagent Learning and more 
+# Intelligent Adversaries: Generic Gridworld Gym for Reinforcement Learning/ Multiagent Learning
 (readme not in final version)
 ## Intention
 The intention of this project is to make a generic gridworld that can be (easily) setup for whatever
