@@ -13,6 +13,10 @@ import dill as pickle
 from multiprocessing import Pool
 from functools import partial
 
+import ccm
+log = ccm.log()
+from ccm.lib.actr import *
+
 NOOP = 0
 DOWN = 1
 UP = 2
@@ -24,7 +28,7 @@ class Entity:
     current_position = (0,0)
     action_chosen = None
 
-    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free'):
+    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',position_coords=[]):
         if env.__class__.__name__ == 'GenericEnv':
             self.env = env
         else:
@@ -33,6 +37,7 @@ class Entity:
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
         self.env.entities[self.value] = self
+        self.position_coords = position_coords
         self.color = color
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
@@ -48,6 +53,12 @@ class Entity:
         self.history = history_dict
         self.history['agent_value'] = self.value
 
+    def hitWall(self):
+        return 0
+
+    def stepCheck(self):
+        return 0
+
     def moveToMe(self,entity_object):
         self.env.done = True
         self.env.reward -= 1
@@ -58,7 +69,12 @@ class Entity:
         else:
             return 0
 
-
+    def getAgents(self):
+        agents = []
+        for entity in self.env.entities:
+            if isinstance(self.env.entities[entity],Agent):
+                agents.append(entity)
+        return agents
 
     def moveTo(self,current_position,intended_position):
         current_position_value = self.env.current_grid_map[current_position[0], current_position[1]]
@@ -68,7 +84,7 @@ class Entity:
         self.active = False
         return 1
 
-    def place(self, position='random-free',positions=[]):
+    def place(self, position='random-free',position_coords=[]):
         # self.history['steps'] = []
 
         if position == 'random-free':
@@ -95,14 +111,19 @@ class Entity:
             the_space = random.choice(intersection_of_spaces)
             self.env.current_grid_map[the_space] = self.value
             self.current_position = the_space
+        if position == 'specific':
+            if not position_coords:
+                raise ValueError("Coordinates must be specified")
+            self.env.current_grid_map[position_coords] = self.value
+            self.current_position = position_coords
 
 
     def update(self):
         pass
 
 class ActiveEntity(Entity):
-    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
         self.env.active_entities[self.value] = self
 
     def getAction(self, obs):
@@ -114,8 +135,8 @@ class ActiveEntity(Entity):
         return record_dict['actions']
 
 class Goal(Entity):
-    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
     def moveToMe(self,entity_object):
         if isinstance(entity_object, Advisary):
@@ -136,10 +157,33 @@ class Goal(Entity):
     def getAction(self,obs):
         return 0
 
+class CountingGoal(Goal):
+    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
+        self.env.active_entities[self.value] = self
+        self.count = 0
+
+    def stepCheck(self):
+        if self.count == 1:
+            self.env.done = True
+            self.env.reward = - 1
+            self.count = 0
+        self.count = 0
+
+
+    def moveToMe(self,entity_object):
+        self.count += 1
+        if self.count >= 2:
+            self.env.done = True
+            self.env.reward += 1
+
+    def getAction(self,obs):
+        return 0
+
 
 class Agent(ActiveEntity):
-    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
     def moveToMe(self,entity_object):
         self.env.done = True
@@ -159,8 +203,8 @@ class Agent(ActiveEntity):
         return 1
 
 class AIAgent(Agent):
-    def __init__(self, env, obs_type='image', entity_type='agent', color='', position='random-free'):
-        super().__init__(env, obs_type, entity_type, color, position)
+    def __init__(self, env, obs_type='image', entity_type='agent', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
 
     def moveToMe(self,entity_object):
@@ -183,7 +227,7 @@ class AIAgent(Agent):
                 return direction
         return random.choice([UP,DOWN,LEFT,RIGHT])
 
-class ACTR(Agent):
+class ACTR_AGENT(Agent):
     import pyactup
 
 
@@ -276,7 +320,7 @@ class ACTR(Agent):
     #     if advisary_location:
     #         advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
     #         advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
-    #                                    advisary_location[1] - agent_location[1])
+    #                                    advisary_location[1] - agent_lotight cation[1])
     #         path_agent_to_advisary = self.env.getPathTo(agent_location, advisary_location, free_spaces=[0])
     #         points_in_path = np.where(path_agent_to_advisary == -1)
     #         points_in_path = list(zip(points_in_path[0], points_in_path[1]))
@@ -286,7 +330,7 @@ class ACTR(Agent):
     #     # the distances need to be normalized
 
 
-        return return_dict
+        # return return_dict
 
     def multiprocess_blend_salience(self,probe_chunk,action):
         this_history = []
@@ -879,6 +923,283 @@ class ACTR(Agent):
         self.env.reward = - 1
             # return 1
         # return super().moveToMe(entity_object)
+
+class pythonACTR(Agent):
+
+    import pyactup
+    class EnvironmentWrapper(ccm.Model):
+        #forget the visi
+        goal = ccm.Model(isa='goal',rads=0,distance=0)
+        adversary = ccm.Model(isa='adversary',rads=0,distance=0)
+
+
+    class VisionModule(ccm.Model):
+        pass
+
+    class ACTUP_AGENT(ACTR):
+        fact1 = {'up': 1, 'down': 0}
+        fact2 = {'up': 0, 'down': 1}
+        fact3 = {'up': 0.8, 'down': 0.1}
+        fact4 = {'up': 0.2, 'down': 1}
+        facts = [fact1, fact2, fact3, fact4]
+        focus = Buffer()
+        DMbuffer = Buffer()
+        DM = ACTUP(DMbuffer, noise=0.0, temperature=1, learning_time_increment=0, retrieval_time_increment=0.0,
+                   mismatch=5, decay=0.5, threshold=-10.00)
+        # pyactup.set_similarity_function(up_similarity, 'up')
+        # pyactup.set_similarity_function(up_similarity, 'down')
+
+        def init():
+            for afact in facts:
+                DM.learn(**afact)
+            # DM.advance()
+            focus.set('step:do_nothing')
+
+        #we don't need a vision module. for simplicity, just assume the environment is visible
+        def do_nothing(focus='step:do_nothing'):
+            print('do nothing', self.parent)
+            self.external_reference.action_to_forward = 1
+            focus.set('step:request')
+
+        def request(focus='step:request'):
+            DM.blend('down', up=1.0)
+            focus.set('step:recall')
+
+    def __init__(self, env, obs_type='image',entity_type='agent', color='orange', position='random-free',data=[],mismatch_penalty=1,temperature=1,noise=0.0,decay=0.0,multiprocess=False,processes=4):
+        super().__init__(env, obs_type, entity_type, color, position)
+        self.mismatch_penalty = mismatch_penalty
+        self.temperature = temperature
+        self.noise = noise
+        self.decay = decay
+        self.memory = self.pyactup.Memory(noise=self.noise,decay=decay,temperature=temperature,threshold=-100.0,mismatch=mismatch_penalty,optimized_learning=False)
+        # self.pyactup.set_similarity_function(self.angle_similarity, *['goal_rads','advisary_rads','clockwise','counterclockwise'])
+        # self.pyactup.set_similarity_function(self.distance_similarity, *['goal_distance','advisary_distance'])
+        # self.pyactup.set_similarity_function(self.vect_similarity, 'goal_vector')
+        self.multiprocess = multiprocess
+        self.processes = processes
+        self.data = data
+        self.last_observation = np.zeros(self.env.current_grid_map.shape)
+        self.last_imagined_map = np.zeros(self.env.current_grid_map.shape)
+        # print("here205")
+        self.action_map = {1: lambda x: ((x[0] + 1) % self.env.dims[0], (x[1]) % self.env.dims[1]),
+                           2: lambda x: ((x[0] - 1) % self.env.dims[0], (x[1]) % self.env.dims[1]),
+                           3: lambda x: (x[0] % self.env.dims[0], (x[1] - 1) % self.env.dims[1]),
+                           4: lambda x: (x[0] % self.env.dims[0], (x[1] + 1) % self.env.dims[1]),
+                           0: lambda x: (x[0], x[1])}
+        # print('here211')
+        self.relative_action_categories = {UP:{'lateral':[LEFT,RIGHT],'away':DOWN},
+                                           DOWN:{'lateral':[LEFT,RIGHT],'away':UP},
+                                           LEFT:{'lateral':[UP,DOWN],'away':RIGHT},
+                                           RIGHT:{'lateral':[UP,DOWN],'away':LEFT}}
+
+        self.action_to_forward = 0
+
+
+        #Before using the distances, they have to be normalized (0 to 1)
+        #Normalize by dividing by the max in the data
+        distances = []
+        for x in self.data:
+            distances.append(x['goal_distance'])
+            distances.append(x['advisary_distance'])
+        #distances = [x['goal_distance'],x['advisary_distance'] for x in self.data]
+        if distances:
+            self.max_distance = max(distances)
+            for datum in self.data:
+                datum['goal_distance'] = datum['goal_distance'] / self.max_distance
+                datum['advisary_distance'] = datum['advisary_distance'] / self.max_distance
+
+        self.production_system = self.ACTUP_AGENT()
+        self.production_system.external_environment = self.env
+        self.production_system.external_reference = self
+        self.production_environment = self.EnvironmentWrapper()
+        self.production_environment.agent = self.production_system
+        ccm.log_everything(self.production_system)
+
+    def getPathTo(self,map,start_location,end_location, free_spaces=[], exclusion_points=[]):
+        '''An A* algorithm to get from one point to another.
+        free_spaces is a list of values that can be traversed.
+        start_location and end_location are tuple point values.
+
+        Returns a map with path denoted by -1 values. Inteded to use np.where(path == -1).'''
+        pathArray = np.full(map.shape,0)
+
+        for free_space in free_spaces:
+            zeros = np.where(map == free_space)
+            zeros = list(zip(zeros[0],zeros[1]))
+            for point in zeros:
+                pathArray[point] = 1
+
+        #Because we started with true (1), we start with a current value of 1 (which will increase to two)
+        current_value = 1
+        target_value = 0
+        pathArray[start_location] = 2
+        directions = [UP, DOWN, LEFT, RIGHT]
+        random.shuffle(directions)
+        stop = False
+        while True:
+            current_value += 1
+            target_value = current_value + 1
+            test_points = np.where(pathArray == current_value)
+            test_points = list(zip(test_points[0],test_points[1]))
+            random.shuffle(test_points)
+            still_looking = False
+            for test_point in test_points:
+                for direction in directions:
+                    if self.action_map[direction](test_point) in exclusion_points:
+                        continue
+                    if pathArray[self.action_map[direction](test_point)] and pathArray[self.action_map[direction](test_point)] + current_value <= target_value:
+                        pathArray[self.action_map[direction](test_point)] = target_value
+                        still_looking = True
+                    # if not end_location[0].tolist():
+                    #     print('emtpiness')
+                    # print(self.action_map[direction](test_point), end_location)
+                    # print(test_point, end_location, direction)
+                    # try:
+                    #exclusion points
+                    if self.action_map[direction](test_point) in exclusion_points:
+                        continue
+
+                    if self.action_map[direction](test_point) == (int(end_location[0]),int(end_location[1])):
+                        pathArray[end_location] = - 1
+                        still_looking = True
+                        stop = True
+                        break
+                    # except Exception:
+                    #     print('ERROR')
+
+            if not still_looking:
+                return pathArray
+            if stop:
+                break
+        current_point = end_location
+        while True:
+            for direction in directions:
+                if pathArray[self.action_map[direction](current_point)] == target_value - 1:
+                    pathArray[current_point] = -1
+                    current_point = self.action_map[direction](current_point)
+                    target_value -= 1
+                if current_point == start_location:
+                    # pathArray[current_point] = -1
+                    return pathArray
+
+    def gridmap_to_symbols(self, gridmap, agent, value_to_objects):
+        action_map = {1: lambda x: ((x[0] + 1) % gridmap.shape[0], (x[1]) % gridmap.shape[1]),
+                      2: lambda x: ((x[0] - 1) % gridmap.shape[0], (x[1]) % gridmap.shape[1]),
+                      3: lambda x: (x[0] % gridmap.shape[0], (x[1] - 1) % gridmap.shape[1]),
+                      4: lambda x: (x[0] % gridmap.shape[0], (x[1] + 1) % gridmap.shape[1]),
+                      0: lambda x: (x[0], x[1])}
+
+        #agent_location = np.where(gridmap == agent)
+        agent_location = self.env.active_entities[agent].current_position#(int(agent_location[0]), int(agent_location[1]))
+        goal_location = []
+        advisary_location = []
+        return_dict = {}
+        for stuff in value_to_objects:
+            if 'entity_type' in value_to_objects[stuff]:
+                if value_to_objects[stuff]['entity_type'] == 'goal':
+                    goal_location = np.where(gridmap == stuff)
+                if value_to_objects[stuff]['entity_type'] == 'advisary':
+                    advisary_location = np.where(gridmap == stuff)
+        if goal_location:
+            goal_location = (int(goal_location[0]), int(goal_location[1]))
+            # goal_rads = math.atan2(goal_location[0] - agent_location[0], goal_location[1] - agent_location[1])
+            path_agent_to_goal = self.getPathTo(gridmap, agent_location, goal_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_goal == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+
+            # goal_vector = np.array(list(goal_location)) - np.array([agent_location[0],agent_location[1]])
+            # goal_unit_vector = goal_vector / np.linalg.norm(goal_vector)
+            # return_dict['goal_vector'] = (goal_unit_vector[0], goal_unit_vector[1])
+            # return_dict['goal_vector'] = tuple((np.array(goal_location) - np.array([agent_location[0],agent_location[1]])) / np.linalg.norm(np.array(goal_location) - np.array([agent_location[0],agent_location[1]])))
+            return_dict['goal_rads'] = 0.0
+            return_dict['goal_distance'] = len(points_in_path)
+            # print('here500')
+        if advisary_location:#and goal_location
+            advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
+            # advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
+            #                            advisary_location[1] - agent_location[1])
+            path_agent_to_advisary = self.getPathTo(gridmap, agent_location, advisary_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_advisary == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            # return_dict['advisary_rads'] = advisary_rads
+            return_dict['advisary_distance'] = len(points_in_path)
+            p1 = [agent_location[0],agent_location[1]]
+            p0 = [goal_location[0], goal_location[1]]
+            p2 = advisary_location
+            v0 = np.array(p0) - np.array(p1)
+            v1 = np.array(p2) - np.array(p1)
+            angle = np.math.atan2(np.linalg.det([v0,v1]),np.dot(v0,v1)) #in radians
+            # angle = np.degrees(angle)
+            return_dict['advisary_rads'] = angle
+        # print('here517')
+        for wall, dir in {'up_wall_distance': 2, 'left_wall_distance': 3, 'down_wall_distance': 1,
+                          'right_wall_distance': 4}.items():
+            current_position = agent_location
+            dist = 0
+            while True:
+                dist += 1
+                current_position = action_map[dir](current_position)
+                if gridmap[current_position] == 1:
+                    return_dict[wall] = dist
+                    break
+
+        # the distances need to be normalized (after return)
+        # print('here530')
+        return return_dict
+
+    def gridmap_to_symbols(self,gridmap, agent, value_to_objects):
+        agent_location = np.where(gridmap == agent)
+        agent_location = (int(agent_location[0]), int(agent_location[1]))
+        goal_location = 0
+        advisary_location = 0
+        return_dict = {}
+        for stuff in value_to_objects:
+            if 'entity_type' in value_to_objects[stuff]:
+                if value_to_objects[stuff]['entity_type'] == 'goal':
+                    goal_location = np.where(gridmap == stuff)
+                if value_to_objects[stuff]['entity_type'] == 'advisary':
+                    advisary_location = np.where(gridmap == stuff)
+        if goal_location:
+            goal_location = (int(goal_location[0]), int(goal_location[1]))
+            goal_rads = math.atan2(goal_location[0] - agent_location[0], goal_location[1] - agent_location[1])
+            path_agent_to_goal = self.env.getPathTo(agent_location, goal_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_goal == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            return_dict['goal_rads'] = goal_rads
+            return_dict['goal_distance'] = len(points_in_path) / self.max_distance
+        if advisary_location:
+            advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
+            advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
+                                       advisary_location[1] - agent_location[1])
+            path_agent_to_advisary = self.env.getPathTo(agent_location, advisary_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_advisary == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            return_dict['adversary_rads'] = advisary_rads
+            return_dict['adversary_distance'] = len(points_in_path) / self.max_distance
+
+        # the distances need to be normalized
+
+
+        return return_dict
+
+    def _getAction(self,obs):
+        #Update the ennvironment self.production.parent.<property> = <value>
+        #then run the production system for an amount of time self.production_environment.run(seconds.miliseconds)
+
+        environment_dictionary = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value,
+                                                  self.env.value_to_objects)
+        #there is no partial matching in productions in pythonACTR (yet!)
+        #I therefore make the values categorical (left, right, up, down)
+        goal_angle = math.degrees(environment_dictionary['goal_rads'])
+
+
+        self.production_system.parent.goal.rads = environment_dictionary['goal_rads']
+        self.production_system.parent.goal.distance = environment_dictionary['goal_distance']
+        self.production_system.parent.adversary.rads = environment_dictionary['adversary_rads']
+        self.production_system.parent.adversary.distance = environment_dictionary['adversary_distance']
+        self.production_environment.run(0.100)
+        return {'actions':self.action_to_forward,'saliences':0,'stuck':self.stuck}
+
 
 
 
