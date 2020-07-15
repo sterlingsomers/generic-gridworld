@@ -72,14 +72,25 @@ wins = 0
 losses = 0
 scoreboard_font_wins = pygame.font.Font('freesansbold.ttf',16)
 scoreboard_font_losses = pygame.font.Font('freesansbold.ttf',16)
+instructions_font = pygame.font.Font('freesansbold.ttf',14)
 txtX = 30
 txtY = 300
 def show_score(display,wins,losses,x,y):
 
     wins_txt = scoreboard_font_wins.render("Wins: " + repr(wins), True, (255,255,255))
     losses_txt = scoreboard_font_losses.render("Losses: " + repr(losses), True, (255,255,255))
+    instruction_txt = instructions_font.render('Arrive at (green) goal at the', True, (240, 252, 3))
+    instruction_txt2 = instructions_font.render('same time as blue square.', True, (240, 252, 3))
+    instruction_txt3 = instructions_font.render('Use arrow keys to move.', True, (240, 252, 3))
+    instruction_txt4 = instructions_font.render('Use spacebar to issue non-move.', True, (240, 252, 3))
+    display.blit(instruction_txt, (x,y+15+15+15))
+    display.blit(instruction_txt2, (x, y +15 + 15 + 15+15))
+    display.blit(instruction_txt3, (x, y + 15 + 15 + 15 + 15+15))
+    display.blit(instruction_txt4, (x, y + 15 + 15 + 15 + 15+15+15))
     display.blit(wins_txt, (x,y))
     display.blit(losses_txt,(x,y+15))
+
+
 
 human_agent_action = 0
 human_wants_restart = False
@@ -95,7 +106,7 @@ initial_img = np.array(initial_img.resize(size, PIL.Image.NEAREST))
 initial_img = np.flip(np.rot90(initial_img),0)
 #one noop
 pygame.init()
-window_size = (initial_img.shape[:2][0]+0, initial_img.shape[:2][1]+50)
+window_size = (initial_img.shape[:2][0]+0, initial_img.shape[:2][1]+120)
 display = pygame.display.set_mode(window_size,0,32)
 background = pygame.surfarray.make_surface(initial_img)
 background = background.convert()
