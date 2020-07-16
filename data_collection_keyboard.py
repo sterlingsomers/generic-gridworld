@@ -39,10 +39,9 @@ write_data = False
 env = envs.generic_env.GenericEnv(map='small-portals')#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
 goal = RunAwayGoal(env, obs_type='data',entity_type='moving_goal',color='green')
 player1 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame,mapping={'i':UP,'j':LEFT,'k':DOWN,'l':RIGHT,'m':NOOP})
-player2 = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame,mapping={'i':UP,'j':LEFT,'k':DOWN,'l':RIGHT,'m':NOOP})
+player2 = AIAgent(env,entity_type='agent',color='pink')#,pygame=pygame,mapping={'i':UP,'j':LEFT,'k':DOWN,'l':RIGHT,'m':NOOP})
 
-# player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
-# player2 = Agent(env,entity_type='agent',color='orange')
+
 
 
 # player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=True,processes=5)
@@ -73,7 +72,7 @@ initial_img = np.flip(np.rot90(initial_img),0)
 pygame.init()
 display = pygame.display.set_mode((initial_img.shape[0], initial_img.shape[1] + 100))#initial_img.shape[:2],0,32)
 player1.setDisplay(display)
-player2.setDisplay(display)
+#player2.setDisplay(display)
 # player3.setDisplay(display)
 background = pygame.surfarray.make_surface(initial_img)
 background = background.convert()
