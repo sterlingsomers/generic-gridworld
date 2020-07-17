@@ -72,13 +72,15 @@ class GenericEnv(gym.Env):
         'gray' : (96,96,96)
     }
 
-    def __init__(self,dims=(10,10),map='',agents=[],features=[], entities = []):
+    def __init__(self,dims=(10,10),map='',agents=[],features=[], entities = [],wallrule=False):
 
         self.map = map
         self.features = features
         self.dims = dims
         self.record_history = False
         self.history = {}
+        self.wallrule=wallrule
+
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
@@ -426,7 +428,8 @@ class GenericEnv(gym.Env):
             intended_position = position_function(current_position)
             self.active_entities[entity].intended_position = intended_position
             if self.current_grid_map[intended_position] == 1.0: #hit a wall
-                self.active_entities[entity].hitWall()
+                if self.wallrule:
+                    self.active_entities[entity].hitWall()
                 self.active_entities[entity].intended_position = self.active_entities[entity].current_position
 
             self.current_grid_map[current_position] = 0 #erase the person from their old spot

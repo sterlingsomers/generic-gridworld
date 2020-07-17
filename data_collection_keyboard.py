@@ -36,9 +36,9 @@ outputFileName = 'sterling_model_with_adivsary_data_'
 write_data = False
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
-env = envs.generic_env.GenericEnv(map='small-portals')#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
-goal = RunAwayGoal(env, obs_type='data',entity_type='moving_goal',color='green')
-player1 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame,mapping={'i':UP,'j':LEFT,'k':DOWN,'l':RIGHT,'m':NOOP})
+env = envs.generic_env.GenericEnv(map='small-portals',wallrule=False)#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
+goal = RunAwayGoal(env, obs_type='data',entity_type='goal',color='green')
+player1 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
 player2 = AIAgent(env,entity_type='agent',color='pink')#,pygame=pygame,mapping={'i':UP,'j':LEFT,'k':DOWN,'l':RIGHT,'m':NOOP})
 
 
