@@ -72,7 +72,7 @@ class GenericEnv(gym.Env):
         'gray' : (96,96,96)
     }
 
-    def __init__(self,dims=(10,10),map='',agents=[],features=[], entities = [],wallrule=False):
+    def __init__(self,dims=(10,10),map='',agents=[],features=[],border=True, entities = [],wallrule=False):
 
         self.map = map
         self.features = features
@@ -80,6 +80,7 @@ class GenericEnv(gym.Env):
         self.record_history = False
         self.history = {}
         self.wallrule=wallrule
+        self.border = border
 
         #before anything happens, setup the map
         self.setupMap(map,dims)

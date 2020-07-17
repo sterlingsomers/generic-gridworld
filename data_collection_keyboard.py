@@ -31,7 +31,7 @@ import time
 
 human_data = pickle.load(open('symbolic_data_sterlingV220200207-152603.lst','rb'))
 data = {'environment_episode_data':[],'player_episode_data':[],'stuck':[]}
-episodes = 1
+episodes = 5
 outputFileName = 'sterling_model_with_adivsary_data_'
 write_data = False
 
