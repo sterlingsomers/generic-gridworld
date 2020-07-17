@@ -50,9 +50,13 @@ class Entity:
         self.history['agent_value'] = self.value
 
     def hitWall(self):
+        '''Called by environment when hitwall=True parameter is used. Default behavior, does nothing.
+        Intended behavior, increase agent.walls_hit += 1'''
         return 0
 
     def stepCheck(self):
+        '''A placeholder for whatever maintenance, etc. you might want to do each step (before actions, etc.).
+        Gets called by the environment main loop'''
         return 0
 
     def moveToMe(self,entity_object):
