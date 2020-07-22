@@ -38,8 +38,12 @@ data_dict = {
 # Import datasets here for running the Local version
 IMAGE_DATASETS = "mnist_3000"
 WORD_EMBEDDINGS = ("wikipedia_3000", "twitter_3000")
-df = pd.read_pickle(
-    '/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/2020_Mar08_time12-46_net_vs_pred_best_nooptsne.df') #all_data_tsne3d#all_data_old_TB_tSNE3D
+
+df = pd.read_pickle('/Users/constantinos/GoogleDriveCMU/data/feature_viz/coinrun_tsne2colors_allobs.df')
+df.drop(df.index[[2704]], axis=0, inplace=True) # ONLY for the coinrun!
+
+# df = pd.read_pickle(
+#     '/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/2020_Mar08_time12-46_net_vs_pred_best_nooptsne.df') #all_data_tsne3d#all_data_old_TB_tSNE3D
 
 pickle_in = open('/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/value_to_objects','rb')
 value_to_objects = pickle.load(pickle_in)
@@ -455,14 +459,14 @@ def demo_callbacks(app):
         #
         # figure = go.Figure(data=data, layout=layout)
         if groupbycolor=='values': # every data point is a group so you do not need grouping or a loop for plotting one point at a time plus the color gradient is applied now to all points.
-            figure = go.Figure(data=[go.Scatter3d(
+            figure = go.Figure(data=[go.Scatter(
                 x=df['x_tsne'],
                 y=df['y_tsne'],
-                z=df['z_tsne'],
+                # z=df['z_tsne'],
                 # text=[[idx for idx, val in groups_actions for _ in range(val["x_tsne"].shape[0])]],
                 mode='markers',
                 marker=dict(
-                    size=3,
+                    size=5,# size=3 for 3D and 5 for 2D
                     color=df['values'],  # set color to an array/list of desired values
                     colorscale='Viridis',  # choose a colorscale
                     opacity=0.8,
@@ -473,21 +477,21 @@ def demo_callbacks(app):
         else:
             data = []
             for idx, val in groups:
-                scatter = go.Scatter3d(
+                scatter = go.Scatter(
                     name=idx,
                     # x=val["x"],
                     # y=val["y"],
                     # z=val["z"],
                     x=val['x_tsne'],
                     y=val['y_tsne'],
-                    z=val['z_tsne'],
+                    # z=val['z_tsne'],
                     # text=[idx for _ in range(val["x"].shape[0])],
                     # idx is the label so for every datapoint it will label it according to its label in order for the pop up menu to show x,y,z,label
                     text='value:' + val['values'].astype(str) + '\n' + 'action:' + val['action_label'],
                     # for text by doing [...] you get label with x,y,z and next AND BELOW to it the label. If you do [[..]] you get the label only on the right
                     textposition="top center",
                     mode="markers",
-                    marker=dict(size=3, symbol="circle"),
+                    marker=dict(size=5,symbol="circle"), # size=3 for 3D and 5 for 2D, color=df['colores']
                 )
                 data.append(scatter)
 
@@ -729,7 +733,8 @@ def demo_callbacks(app):
 
             # Convert the point clicked into float64 numpy array
             click_point_np = np.array(
-                [clickData["points"][0][i] for i in ["x", "y", "z"]] # clickData['points'] has a dict with 'x','y','z' keys
+                [clickData["points"][0][i] for i in ["x", "y"]]#[clickData["points"][0][i] for i in ["x", "y",
+                # "z"]] # clickData['points'] has a dict with 'x','y','z' keys
             ).astype(np.float64)
 
             # Create a boolean mask of the point clicked, truth value exists at only one row
@@ -737,7 +742,8 @@ def demo_callbacks(app):
             #     embedding_df.loc[:, "x":"z"].eq(click_point_np).all(axis=1)
             # )
             bool_mask_click = (
-                embedding_df.loc[:, "x_tsne":"z_tsne"].eq(click_point_np).all(axis=1)
+                embedding_df.loc[:, "x_tsne":"y_tsne"].eq(click_point_np).all(axis=1)#embedding_df.loc[:,
+                # "x_tsne":"z_tsne"].eq(click_point_np).all(axis=1)
             )
             # Retrieve the index of the point clicked, given it is present in the set
             if bool_mask_click.any():
@@ -796,7 +802,7 @@ def demo_callbacks(app):
 
             # Convert the point clicked into float64 numpy array
             click_point_np = np.array(
-                [clickData["points"][0][i] for i in ["x", "y", "z"]] # clickData['points'] has a dict with 'x','y','z' keys
+                [clickData["points"][0][i] for i in ["x", "y"]] # clickData['points'] has a dict with 'x','y','z' keys
             ).astype(np.float64)
 
             # Create a boolean mask of the point clicked, truth value exists at only one row
@@ -804,7 +810,8 @@ def demo_callbacks(app):
             #     embedding_df.loc[:, "x":"z"].eq(click_point_np).all(axis=1)
             # )
             bool_mask_click = (
-                embedding_df.loc[:, "x_tsne":"z_tsne"].eq(click_point_np).all(axis=1)
+                embedding_df.loc[:, "x_tsne":"y_tsne"].eq(click_point_np).all(axis=1)#embedding_df.loc[:,
+                # "x_tsne":"z_tsne"].eq(click_point_np).all(axis=1)
             )
             # Retrieve the index of the point clicked, given it is present in the set
             if bool_mask_click.any():
@@ -812,11 +819,12 @@ def demo_callbacks(app):
 
                 # name = [int(s) for s in df['map'][clicked_idx].split('-')]
                 # map_volume['orig'] = CNP.map_to_volume_dict(name[0], name[1], 20, 20)  # Empty vol
-                image_allo_ego = _gridmap_to_image(df['map'][clicked_idx])
-
+                # image_allo_ego = _gridmap_to_image(df['map'][clicked_idx]) # UNCOMMENT FOR PREDATOR DATA
+                image_allo_ego = df['map'][clicked_idx]
+                image_allo_ego = 255*image_allo_ego.copy()
                 # Encode image into base 64
                 # plt.clf()
-                image_allo_ego_b64 = numpy2b64(image_allo_ego)
+                image_allo_ego_b64 = numpy2b64(image_allo_ego.astype('uint8'))
                 # image_allo_ego_b64 = numpy2b64(image_allo_ego)
 
                 return html.Img(
