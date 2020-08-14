@@ -511,7 +511,6 @@ class HumanAgent(Agent):
 
     def setDisplay(self,display):
         self.display = display
-
     def stepCheck(self):
         if self.walls_hit:
             self.env.done = True
