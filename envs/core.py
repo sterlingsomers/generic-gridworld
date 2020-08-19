@@ -43,6 +43,7 @@ class Entity:
         self.history = {}
         self.record_history = False
         self.stuck = 0
+        self.visual = np.zeros(self.env.dims)
 
     def setRecordHistory(self,on=True,history_dict={'actions':[],'agent_value':0,'stuck':[]},write_files=False,prefix=''):
         self.record_history = on
@@ -118,13 +119,15 @@ class Entity:
         pass
 
 class ActiveEntity(Entity):
-    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free',position_coords=[]):
+    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free',position_coords=[],pygame=None):
         super().__init__(env, obs_type, entity_type, color, position, position_coords)
+        self.pygame = pygame
         self.env.active_entities[self.value] = self
 
     def getAction(self, obs):
         record_dict = self._getAction(obs)
         #action = self._getAction(obs)
+
         if self.record_history:
             for key,value in record_dict.items():
                 self.history[key].append(value)
@@ -621,6 +624,16 @@ class Advisary(ActiveEntity):
             return 3
 
 class RunAwayGoal(ActiveEntity):
+    def __init__(self,env, obs_type='data',entity_type='goal',color='green',pygame=None,displayPlan=False):
+        super().__init__(env,obs_type,entity_type,color)
+        self.pygame = pygame
+        self.displayPlan = displayPlan
+        self.display = False
+
+
+
+    def setDisplay(self,display):
+        self.display = display
 
     def getAgents(self):
         agents = []
@@ -632,6 +645,7 @@ class RunAwayGoal(ActiveEntity):
     def _getAction(self,obs):
         #find the closest agent
         # print("here")
+        #visual = np.zeros((10,10))
         directions = [UP, DOWN, LEFT, RIGHT]
         agents = self.getAgents()
         distance_to_agent = {}
@@ -644,7 +658,7 @@ class RunAwayGoal(ActiveEntity):
 
         min_agent = min(distance_to_agent, key=distance_to_agent.get)
         #min_agent (should be) the closest agent (in steps)
-        #now I want the edge that is furthest away from that agent and I want to go there
+        #now I want the edge tƒhat is furthest away from that agent and I want to go there
         #find the edges, and then find which edge is the furthest PATH for that agent to get to
         #go there
         # print("here2")
@@ -673,6 +687,15 @@ class RunAwayGoal(ActiveEntity):
         #max_point should be the point most distant from the closest agent
         # print('max points', max_point)
         target_path = self.env.getPathTo(self.current_position, max_point, free_spaces=self.env.free_spaces)
+        self.visual = target_path
+        if self.displayPlan and self.display:
+            runPath = PIL.Image.fromarray(self.env._path_to_image(self.visual,self.color))
+            size = tuple((np.array(runPath.size) * 20).astype(int))
+            runPath = np.array(runPath.resize(size, PIL.Image.NEAREST))
+            surf2 = self.pygame.surfarray.make_surface(np.flip(np.rot90(runPath), 0))
+            self.display.blit(surf2, (250, 0))
+
+            self.pygame.display.update()
 
         print(target_path)
         random.shuffle(directions)

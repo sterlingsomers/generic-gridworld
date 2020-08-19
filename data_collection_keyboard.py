@@ -31,16 +31,20 @@ import time
 
 human_data = pickle.load(open('symbolic_data_sterlingV220200207-152603.lst','rb'))
 data = {'environment_episode_data':[],'player_episode_data':[],'stuck':[]}
-episodes = 5
+episodes = 100
 outputFileName = 'sterling_model_with_adivsary_data_'
 write_data = False
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
 env = envs.generic_env.GenericEnv(map='small-portals',wallrule=False)#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
-goal = RunAwayGoal(env, obs_type='data',entity_type='goal',color='green')
-player1 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-player2 = AIAgent(env,entity_type='agent',color='pink')#,pygame=pygame,mapping={'i':UP,'j':LEFT,'k':DOWN,'l':RIGHT,'m':NOOP})
+goal = RunAwayGoal(env, obs_type='data',entity_type='goal',color='green',pygame=pygame,displayPlan=True)
+#player1 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+player1 = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame)
+#player2 = AIAgent(env,entity_type='agent',color='pink')#,pygame=pygame,mapping={'i':UP,'j':LEFT,'k':DOWN,'l':RIGHT,'m':NOOP})
 
+player3 = TrainedAgent(env,model_filepath='/Users/paulsomers/gridworlds/generic/_files/models/lioness/lioness.pb', color='aqua')
+#player3 = ChasingBlockingAdvisary(env,entity_type='advisary',color='blue',position='near-goal')
+#player4 = ChasingBlockingAdvisary(env,entity_type='advisary',color='blue',position='near-goal')
 
 
 
@@ -70,8 +74,12 @@ initial_img = np.array(initial_img.resize(size, PIL.Image.NEAREST))
 initial_img = np.flip(np.rot90(initial_img),0)
 #one noop
 pygame.init()
-display = pygame.display.set_mode((initial_img.shape[0], initial_img.shape[1] + 100))#initial_img.shape[:2],0,32)
+display = pygame.display.set_mode((initial_img.shape[0]+500, initial_img.shape[1] + 150))#initial_img.shape[:2],0,32)
+
+#Set the display so that the graphics can be modified by the agent if needed
 player1.setDisplay(display)
+#player2.setDisplay(display)
+goal.setDisplay(display)
 #player2.setDisplay(display)
 # player3.setDisplay(display)
 background = pygame.surfarray.make_surface(initial_img)
@@ -129,6 +137,8 @@ for i in range(episodes):
         obs = np.array(obs.resize(size, PIL.Image.NEAREST))
         surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
         display.blit(surf, (0, 0))
+
+
         pygame.display.update()
         for event in pygame.event.get():
 

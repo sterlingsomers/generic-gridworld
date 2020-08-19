@@ -81,7 +81,7 @@ class GenericEnv(gym.Env):
         self.history = {}
         self.wallrule=wallrule
         self.border = border
-
+        self.pathVisuals = {}
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
@@ -372,6 +372,26 @@ class GenericEnv(gym.Env):
         return self._gridmap_to_image()
 
 
+    def _path_to_image(self,apath,color):
+        image = np.zeros((self.dims[0], self.dims[1], 3), dtype=np.uint8)
+        image[:] = [96, 96, 96]
+
+        walls = np.where(self.current_grid_map == 1.0)
+        for x,y in list(zip(walls[0],walls[1])):
+            #print((x,y))
+            image[x,y,:] = self.colors[self.value_to_objects[1]['color']]
+
+        apaths = np.where(apath == -1.0)
+        points_in_path = list(zip(apaths[0], apaths[1]))
+        # print('pip', points_in_path)
+        if len(points_in_path):
+        #if apaths[0].size > 0:
+            for x,y in list(zip(apaths[0],apaths[1])):
+                image[x,y,:] = self.colors[color]
+
+        return image
+
+
 
     def _gridmap_to_image(self):
         image = np.zeros((self.dims[0],self.dims[1],3), dtype=np.uint8)
@@ -395,6 +415,7 @@ class GenericEnv(gym.Env):
     def step(self, action):
         # print('step')
         info = {}
+
         obs = self._gridmap_to_image()
         obs = obs.reshape((1,obs.shape[0],obs.shape[1],obs.shape[2]))
         grid_map = self.current_grid_map
