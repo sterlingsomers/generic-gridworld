@@ -162,6 +162,8 @@ class Runner(object):
 
             #Check for all t (timestep/observation in obs_raw which t has the last state true, meaning it is the last state
             # IF MAX_STEPS OR GOAL REACHED
+            #Notes: mb obs will have the correct length cauz u build it with append whereas the others will have
+            # length equal to the nstep parameter.
             if obs_raw[2].any(): # At least one env has done=True
                 for i in (np.argwhere(obs_raw[2])): # Run the loop for ONLY the envs that have finished
                     indx = i[0] # i will contain in [] the index of the env that has finished

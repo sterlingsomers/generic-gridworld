@@ -30,26 +30,32 @@ from envs.generic_env_v2 import GenericEnv
 from envs.generic_env_v2 import UP, DOWN, LEFT, RIGHT, NOOP
 from envs.core_v2 import *
 
+# from envs.generic_env_v2_before_chase import GenericEnv
+# from envs.generic_env_v2_before_chase import UP, DOWN, LEFT, RIGHT, NOOP
+# from envs.core_v2_before_chase import *
+
 FLAGS = flags.FLAGS
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
-flags.DEFINE_float("sleep_time", 0.0, "Time-delay in the demo")
+flags.DEFINE_float("sleep_time", 0.4, "Time-delay in the demo")
 flags.DEFINE_integer("resolution",8, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 100, "Game steps per agent step.")
 flags.DEFINE_integer("step2save", 500, "Game step to save the model.") #A2C every 1000, PPO 250, 500
-flags.DEFINE_integer("n_envs", 2, "Number of environments to run in parallel")
+flags.DEFINE_integer("n_envs", 80, "Number of environments to run in parallel")
 flags.DEFINE_integer("episodes", 5000, "Number of complete episodes for test mode") # TEST MODE EPISODES
-flags.DEFINE_integer("n_steps_per_batch", 16,
+flags.DEFINE_integer("n_steps_per_batch", 32,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!! You need them cauz you dont want to run till it finds the beacon especially at first episodes - will take forever
 flags.DEFINE_integer("all_summary_freq", 10, "Record all summaries every n batch")
 flags.DEFINE_integer("scalar_summary_freq", 5, "Record scalar summaries every n batch")
 flags.DEFINE_string("checkpoint_path", "_files/models", "Path for agent checkpoints")
 flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard summaries") #A2C_custom_maps#A2C-science-allmaps - BEST here for one policy
-flags.DEFINE_string("model_name", "dokimi", "Name for checkpoints and tensorboard summaries") # net_vs_pred_best_noop # net_vs_pred DONT touch TESTING is the best (take out normalization layer in order to work! -- check which parts exist in the restore session if needed)
+flags.DEFINE_string("model_name", "chase_game_LionKing", "Name for checkpoints and tensorboard summaries") #
+# net_vs_pred_best_noop #
+# net_vs_pred DONT touch TESTING is the best (take out normalization layer in order to work! -- check which parts exist in the restore session if needed)
 flags.DEFINE_integer("K_batches", 105000, # Batch is like a training epoch!
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "DefeatRoaches", "Name of a map to use.")
 flags.DEFINE_float("discount", 0.95, "Reward-discount for the agent")
-flags.DEFINE_boolean("training", True, "if should train the model, if false then save only episode score summaries")
+flags.DEFINE_boolean("training", False, "if should train the model, if false then save only episode score summaries")
 
 flags.DEFINE_enum("if_output_exists", "overwrite", ["fail", "overwrite", "continue"], # continue ONLY for PHASE_II!!!
     "What to do if summary and model output exists, only for training, is ignored if notraining")
@@ -105,13 +111,17 @@ def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
     def make_env(rank): # pylint: disable=C0111
         def _thunk():
             # env = gym.make(env_id)
-            env = TimeLimit(GenericEnv()) # envs.generic_env_v2.GenericEnv()
+            env = TimeLimit(GenericEnv(map='small-portals', wallrule=False)) # TimeLimit(GenericEnv(
+            # ))#envs.generic_env_v2.GenericEnv()
+            # env = TimeLimit(GenericEnv())
             env._max_episode_steps = 500
-            goal = Goal(env, entity_type='goal', color='green')
+            # goal = Goal(env, entity_type='goal', color='green')
+            goal = RunAwayGoal(env, obs_type='data', entity_type='goal', color='green')
             network_agent = NetworkAgent(env, color='aqua')
             # AI_agent = AIAgent(env, entity_type='agent', color='blue')
-            predator = ChasingBlockingAdvisary(env, entity_type='advisary',
-                                               color='red', obs_type='data', position='near-goal') # red dark_orange
+            AI_agent = AIAgent(env, entity_type='agent', color='pink')
+            # predator = ChasingBlockingAdvisary(env, entity_type='advisary',
+            #                                    color='red', obs_type='data', position='near-goal') # red dark_orange
             # env.seed(seed + rank)
             # Monitor should take care of reset!
             env = Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)), allow_early_resets=True) # SUBPROC NEEDS 4 OUTPUS FROM STEP FUNCTION
@@ -135,11 +145,15 @@ def main():
     elif FLAGS.training==False:
         #envs = make_custom_env('gridworld-v0', 1, 1)
         # envs = gym.make('gridworld{}-v0'.format('visualize' if FLAGS.visualize else ''))
-        envs = GenericEnv()
-        goal = Goal(envs, entity_type='goal', color='green')
+        envs = GenericEnv(map='small-portals')
+        # goal = Goal(envs, entity_type='goal', color='green')
+        goal = RunAwayGoal(envs, obs_type='data', entity_type='goal', color='green')
         network_agent = NetworkAgent(envs, color='aqua')
         # AI_agent = AIAgent(envs, entity_type='agent', color='blue')
-        predator = ChasingBlockingAdvisary(envs, entity_type='advisary', color='red', obs_type='data', position='near-goal')
+        # predator = ChasingBlockingAdvisary(envs, entity_type='advisary', color='red', obs_type='data',position='near-goal')
+        AI_agent = AIAgent(envs, entity_type='agent',color='pink')#HumanAgent(envs, entity_type='agent',color='pink',
+        #  pygame=pygame)#AIAgent(envs, entity_type='agent',
+        # color='pink')
     else:
         print('Wrong choices in FLAGS training and visualization')
         return

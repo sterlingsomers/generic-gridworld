@@ -58,7 +58,6 @@ class Entity:
     def moveToMe(self,entity_object):
         self.env.done = True
         self.env.reward -= 1
-        self.env.info['fire'] = -1 # someone moves to the predator which is an Advisary which is an Entity
 
     def getAction(self,obs):
         if self.active:
@@ -118,7 +117,6 @@ class Entity:
     def update(self):
         pass
 
-
 class ActiveEntity(Entity):
     def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free',position_coords=[]):
         super().__init__(env, obs_type, entity_type, color, position, position_coords)
@@ -130,36 +128,19 @@ class ActiveEntity(Entity):
         if self.record_history:
             for key,value in record_dict.items():
                 self.history[key].append(value)
-        #print('ACTS=', record_dict, 'entity:', self.value, 'self',self)
         return record_dict['actions']
 
-
 class Goal(Entity):
-    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free', position_coords=[]):
+    def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
         super().__init__(env, obs_type, entity_type, color, position, position_coords)
-        if env.__class__.__name__ == 'GenericEnv':
-            self.env = env
-        else:
-            self.env = env.env
-        # self.value = self.env.object_values[-1] + 1
-        # self.env.object_values.append(self.value)
-        # self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
-        # self.env.entities[self.value] = self
-        # self.color = color
-        # # self.moveTo = 'moveToDefault'
-        # self.entity_type = entity_type
-        # self.obs_type = obs_type
-        # self.position = position
-        # self.active = True
 
     def moveToMe(self,entity_object):
         if isinstance(entity_object, Advisary):
             entity_object.intended_position = entity_object.current_position
             return 0
-        # print('entity hit goal', entity_object)
+        print('entity hit goal', entity_object)
         self.env.done = True
         self.env.reward += 1
-        self.env.info['goal'] = 1
 
     def moveTo(self,current_position,intended_position):
         current_position_value = self.env.current_grid_map[current_position[0], current_position[1]]
@@ -171,7 +152,6 @@ class Goal(Entity):
 
     def getAction(self,obs):
         return 0
-
 
 class CountingGoal(Goal):
     def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
@@ -197,6 +177,7 @@ class CountingGoal(Goal):
         return 0
 
 
+
 class Agent(ActiveEntity):
     def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[]):
         super().__init__(env, obs_type, entity_type, color, position, position_coords)
@@ -218,36 +199,14 @@ class Agent(ActiveEntity):
         self.env.reward = -1
         return 1
 
-
 class AIAgent(Agent):
     def __init__(self, env, obs_type='image', entity_type='agent', color='', position='random-free',position_coords=[]):
         super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
-        if env.__class__.__name__ == 'GenericEnv':
-            self.env = env
-        else:
-            self.env = env.env
-        # self.value = self.env.object_values[-1] + 1
-        # self.env.object_values.append(self.value)
-        # self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
-        # self.env.entities[self.value] = self
-        # self.color = color
-        # # self.moveTo = 'moveToDefault'
-        # self.entity_type = entity_type
-        # self.obs_type = obs_type
-        # self.position = position
-        # self.pygame = pygame
 
     def moveToMe(self,entity_object):
-        # print('enity', entity_object, 'hit', self)
+        print('enity', entity_object, 'hit', self)
         if isinstance(entity_object,Agent):
-            entity_object.intended_position = entity_object.current_position
-            return 1
-        if isinstance(entity_object, RunAwayGoal):
-            self.env.done = True
-            self.env.reward = 0.5
-            return 1
-        if isinstance(entity_object, NetworkAgent):
             entity_object.intended_position = entity_object.current_position
             return 1
         return super().moveToMe(entity_object)
@@ -265,31 +224,285 @@ class AIAgent(Agent):
                 return direction
         return random.choice([UP,DOWN,LEFT,RIGHT])
 
+class ACTR(Agent):
+    import pyactup
+
+
+    def __init__(self, env, obs_type='image',entity_type='agent', color='orange', position='random-free',data=[],mismatch_penalty=1,temperature=1,noise=0.0,multiprocess=False,processes=4):
+        super().__init__(env, obs_type, entity_type, color, position)
+        self.mismatch_penalty = mismatch_penalty
+        self.temperature = temperature
+        self.noise = noise
+        self.memory = self.pyactup.Memory(noise=self.noise,decay=0.0,temperature=temperature,threshold=-100.0,mismatch=mismatch_penalty,optimized_learning=False)
+        self.pyactup.set_similarity_function(self.angle_similarity, *['goal_rads','advisary_rads'])
+        self.pyactup.set_similarity_function(self.distance_similarity, *['goal_distance','advisary_distance'])
+        self.multiprocess = multiprocess
+        self.processes = processes
+        self.data = data
+
+
+        #Before using the distances, they have to be normalized (0 to 1)
+        #Normalize by dividing by the max in the data
+        distances = []
+        for x in self.data:
+            distances.append(x['goal_distance'])
+            distances.append(x['advisary_distance'])
+        #distances = [x['goal_distance'],x['advisary_distance'] for x in self.data]
+        self.max_distance = max(distances)
+        for datum in self.data:
+            datum['goal_distance'] = datum['goal_distance'] / self.max_distance
+            datum['advisary_distance'] = datum['advisary_distance'] / self.max_distance
+
+
+        for chunk in self.data:
+            self.memory.learn(**chunk)
+
+    def angle_similarity(self,x,y):
+        PI = math.pi
+        TAU = 2*PI
+        result = min((2 * PI) - abs(x-y), abs(x-y))
+        normalized = result / TAU
+        xdeg = math.degrees(x)
+        ydeg = math.degrees(y)
+        resultdeg = math.degrees(result)
+        normalized2 = resultdeg / 180
+        #print("sim anle", 1 - normalized2)
+        return 1 - normalized2
+
+    def distance_similarity(self,x,y):
+        x = x/self.max_distance
+        result = 1 - abs(x-y)
+        #print("sim distance", result, x, y)
+        return result
+
+
+    def gridmap_to_symbols(self,gridmap, agent, value_to_objects):
+        agent_location = np.where(gridmap == agent)
+        agent_location = (int(agent_location[0]), int(agent_location[1]))
+        goal_location = 0
+        advisary_location = 0
+        return_dict = {}
+        for stuff in value_to_objects:
+            if 'entity_type' in value_to_objects[stuff]:
+                if value_to_objects[stuff]['entity_type'] == 'goal':
+                    goal_location = np.where(gridmap == stuff)
+                if value_to_objects[stuff]['entity_type'] == 'advisary':
+                    advisary_location = np.where(gridmap == stuff)
+        if goal_location:
+            goal_location = (int(goal_location[0]), int(goal_location[1]))
+            goal_rads = math.atan2(goal_location[0] - agent_location[0], goal_location[1] - agent_location[1])
+            path_agent_to_goal = self.env.getPathTo(agent_location, goal_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_goal == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            return_dict['goal_rads'] = goal_rads
+            return_dict['goal_distance'] = len(points_in_path) / self.max_distance
+        if advisary_location:
+            advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
+            advisary_rads = math.atan2(advisary_location[0] - agent_location[0],
+                                       advisary_location[1] - agent_location[1])
+            path_agent_to_advisary = self.env.getPathTo(agent_location, advisary_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_advisary == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+            return_dict['advisary_rads'] = advisary_rads
+            return_dict['advisary_distance'] = len(points_in_path) / self.max_distance
+
+        # the distances need to be normalized
+
+
+        return return_dict
+
+    def multiprocess_blend_salience(self,probe_chunk,action):
+        this_history = []
+        # probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects)
+        self.memory.activation_history = this_history
+        blend_value = self.memory.blend(action, **probe_chunk)
+        return action * 2
+
+    def multi_blends(self,slot,probe,memory,value_to_objects):
+        activation_history = []
+        memory.activation_history = activation_history
+        blend = memory.blend(slot,**probe)
+        salience = self.compute_S(probe, [x for x in list(probe.keys()) if not x == slot],
+                                  activation_history,
+                                  slot,
+                                  self.mismatch_penalty,
+                                  self.temperature)
+        return (blend, salience)
+
+
+    def compute_S(self,probe, feature_list, history, Vk, MP, t):
+        chunk_names = []
+
+        PjxdSims = {}
+        PI = math.pi
+        for feature in feature_list:
+            Fk = probe[feature]
+            for chunk in history:
+                dSim = None
+                vjk = None
+                for attribute in chunk['attributes']:
+                    if attribute[0] == feature:
+                        vjk = attribute[1]
+                        break
+
+                if Fk == vjk:
+                    dSim = 0.0
+                else:
+                    if 'rads' in feature:
+                        a_result = np.argmin(((2 * PI) - abs(vjk-Fk), abs(vjk-Fk)))
+                        if not a_result:
+                            dSim = (vjk - Fk) / abs(Fk - vjk)
+                        else:
+                            dSim = (Fk - vjk) / abs(Fk - vjk)
+                    else:
+                        dSim = (vjk - Fk) / abs(Fk - vjk)
+
+                # if Fk == vjk:
+                #     dSim = 0
+                # else:
+                #     dSim = -1 * ((Fk-vjk) / math.sqrt((Fk - vjk)**2))
+
+                Pj = chunk['retrieval_probability']
+                if not feature in PjxdSims:
+                    PjxdSims[feature] = []
+                PjxdSims[feature].append(Pj * dSim)
+                pass
+
+        # vio is the value of the output slot
+        fullsum = {}
+        result = {}  # dictionary to track feature
+        Fk = None
+        for feature in feature_list:
+            Fk = probe[feature]
+            if not feature in fullsum:
+                fullsum[feature] = []
+            inner_quantity = None
+            Pi = None
+            vio = None
+            dSim = None
+            vik = None
+            for chunk in history:
+                Pi = chunk['retrieval_probability']
+                for attribute in chunk['attributes']:
+                    if attribute[0] == Vk:
+                        vio = attribute[1]
+
+                for attribute in chunk['attributes']:
+                    if attribute[0] == feature:
+                        vik = attribute[1]
+                # if Fk > vik:
+                #     dSim = -1
+                # elif Fk == vik:
+                #     dSim = 0
+                # else:
+                #     dSim = 1
+                # dSim = (Fk - vjk) / sqrt(((Fk - vjk) ** 2) + 10 ** -10)
+                if Fk == vik:
+                    dSim = 0.0
+                else:
+                    #dSim = (vik - Fk) / abs(Fk - vik)
+                    if 'rads' in feature:
+                        a_result = np.argmin(((2 * PI) - abs(vjk-Fk), abs(vjk-Fk)))
+                        if not a_result:
+                            dSim = (vik - Fk) / abs(Fk - vik)
+                        else:
+                            dSim = (Fk - vjk) / abs(Fk - vik)
+                    else:
+                        dSim = (vik - Fk) / abs(Fk - vik)
+                #
+                # if Fk == vik:
+                #     dSim = 0
+                # else:
+                #     dSim = -1 * ((Fk-vik) / math.sqrt((Fk - vik)**2))
+
+                inner_quantity = dSim - sum(PjxdSims[feature])
+                fullsum[feature].append(Pi * inner_quantity * vio)
+
+            result[feature] = sum(fullsum[feature])
+
+        # sorted_results = sorted(result.items(), key=lambda kv: kv[1])
+        return result
+
+    def _getAction(self,obs):
+        # print('actr action')
+        self.memory.activation_history = []
+        self.memory.advance(0.1)
+        blends = []
+        saliences = {}
+        possible_actions = ['up','down','left','right','noop']
+        if not self.multiprocess:
+            for action in possible_actions:
+                probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects)
+                #print('pre-blend')
+                blend_value = self.memory.blend(action, **probe_chunk)
+                #print('post-blend')
+                salience = self.compute_S(self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value, self.env.value_to_objects),
+                                          [x for x in list(probe_chunk.keys()) if not x == action],
+                                          self.memory.activation_history,
+                                          action,
+                                          self.mismatch_penalty,
+                                          self.temperature)
+                saliences[action] = salience
+                blends.append(blend_value)
+        else:
+            probe_chunk = self.gridmap_to_symbols(self.env.current_grid_map.copy(), self.value,
+                                                  self.env.value_to_objects)
+            vto = self.env.value_to_objects.copy()
+            env = self.env
+            self.env = None
+            while True:
+                try:
+
+                    p = Pool(processes=self.processes)
+                    multi_p = partial(self.multi_blends, memory=self.memory, probe=probe_chunk,value_to_objects=vto)
+                    BS = p.map(multi_p, possible_actions)
+                    p.close()
+                    p.join()
+                    blends = [x[0] for x in BS]
+                    saliences = {action:salience for action,salience in zip(possible_actions,[b[1] for b in BS])}
+                    self.env = env
+                except BlockingIOError:
+                    print("Blocking IO Error")
+                    time.sleep(0.1)
+                    continue
+                break
+
+
+
+
+
+        # for x,y in zip(possible_actions, blends):
+        #     print(x,y)
+        # if possible_actions[np.argmax(blends)] == 'noop':
+        # print('argmax', blends, np.argmax(blends), possible_actions[np.argmax(blends)])
+        # print(saliences[possible_actions[np.argmax(blends)]])
+
+        argmax_action = possible_actions[np.argmax(blends)]
+        action_value = eval(argmax_action.upper())
+
+        return {'actions':round(action_value),'saliences':saliences[possible_actions[np.argmax(blends)]],'stuck':self.stuck}
+
+
+    def moveToMe(self,entity_object):
+        print('enity', entity_object, 'hit', self)
+        if isinstance(entity_object,Agent):
+            entity_object.intended_position = entity_object.current_position
+            self.intended_position =  self.current_position
+            return 1
+        return super().moveToMe(entity_object)
+
+
 
 class HumanAgent(Agent):
     obs = None
     def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[],pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'}):
-        self.size_factor = 10
         self.mapping = mapping
-        super().__init__(env, obs_type, entity_type, color, position, position_coords)
-        if env.__class__.__name__ == 'GenericEnv':
-            self.env = env
-        else:
-            self.env = env.env
-        # self.value = self.env.object_values[-1] + 1
-        # self.env.object_values.append(self.value)
-        # self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
-        # self.env.entities[self.value] = self
-        # self.color = color
-        # # self.moveTo = 'moveToDefault'
-        # self.entity_type = entity_type
-        # self.obs_type = obs_type
-        # self.action = 0
-        # self.position = position
+        super().__init__(env, obs_type, entity_type, color, position,position_coords)
+
         self.pygame = pygame
         self.keymappings = {}
-        # self.pygame.font.init()
-        # self.font = self.pygame.font.SysFont('Arial', 30)
+        self.pygame.font.init()
+        self.font = self.pygame.font.SysFont('Arial', 30)
         self.display = 0
         self.walls_hit = 0
 
@@ -308,14 +521,15 @@ class HumanAgent(Agent):
         self.walls_hit += 1
 
     def moveToMe(self,entity_object):
-        # print('enity', entity_object, 'hit', self)
+        print('enity', entity_object, 'hit', self)
         if isinstance(entity_object,Agent):
             entity_object.intended_position = entity_object.current_position
             self.intended_position =  self.current_position
             return 1
         return super().moveToMe(entity_object)
 
-    def getAction(self,obs):
+
+    def _getAction(self,obs):
         #this updates the picture
         # print("human getAction")
         if self.display:
@@ -350,6 +564,11 @@ class HumanAgent(Agent):
             self.display.blit(snapshot, (0,0))
             self.pygame.display.update()
         return {'actions':key_pressed}
+
+
+    # @record_action
+
+
 
 
 class Advisary(ActiveEntity):
@@ -400,7 +619,6 @@ class Advisary(ActiveEntity):
             return 2
         else:
             return 3
-
 
 class RunAwayGoal(ActiveEntity):
 
@@ -456,7 +674,7 @@ class RunAwayGoal(ActiveEntity):
         # print('max points', max_point)
         target_path = self.env.getPathTo(self.current_position, max_point, free_spaces=self.env.free_spaces)
 
-        # print(target_path)
+        print(target_path)
         random.shuffle(directions)
         for direction in directions:
             if target_path[self.env.action_map[direction]((self.current_position[0], self.current_position[1]))] == -1:
@@ -465,14 +683,9 @@ class RunAwayGoal(ActiveEntity):
         return {'actions':0}
 
     def moveToMe(self,entity_object):
-        # super().moveToMe(entity_object)
-        self.env.done = True
-        if isinstance(entity_object, AIAgent):
-            self.env.reward = 0.5
-            return 1
-        if isinstance(entity_object, NetworkAgent):
-            self.env.reward = 1.0
-            return 1
+        super().moveToMe(entity_object)
+
+
 
 
 class ChasingAdvisary(Advisary):
@@ -495,11 +708,9 @@ class ChasingAdvisary(Advisary):
             if path[self.env.action_map[direction]((my_location[0],my_location[1]))] == -1:
                 return direction
 
-
 class ChasingBlockingAdvisary(Advisary):
-
     def moveToMe(self,entity_object):
-        # print('CBA: entity', entity_object, 'hit me')
+        print('CBA: entity', entity_object, 'hit me')
         super().moveToMe(entity_object)
 
     def _getAction(self, obs):
@@ -524,7 +735,7 @@ class ChasingBlockingAdvisary(Advisary):
             points_in_path = np.where(path_to_agent == -1)
             if len(points_in_path) < 2:
                 # print("NOOP")
-                return {'actions':NOOP}
+                return NOOP
             points_in_path = list(zip(points_in_path[0], points_in_path[1]))
             if len(points_in_path) == 0: #no points exist, therefore no path
                 points_in_path_length = 10**10
@@ -540,7 +751,7 @@ class ChasingBlockingAdvisary(Advisary):
             distance_to_agents[agent] = {'dist': points_in_path_length, 'raw_path_to_agent':path_to_agent, 'path_to_agent': points_in_path, 'agent_to_goal':points_to_goal_path}
 
         #distance_to_agents now has the distance to the agent, the path to the agent, AND the points in the agents path to the goal
-        #the first rule is to check if my own location is beyond 5 steps to the goal
+        #the first rule is to check if my own location is beyond 3 steps to the goal
         path_to_goal = self.env.getPathTo((my_location[0],my_location[1]), (int(goal_location[0]),int(goal_location[1])),free_spaces=self.env.free_spaces)
         path_to_goal_points = np.where(path_to_goal == -1)
         path_to_goal_points = list(zip(path_to_goal_points[0], path_to_goal_points[1]))
@@ -553,10 +764,11 @@ class ChasingBlockingAdvisary(Advisary):
         #find the closest agent to intercept
         distance_list = sorted(distance_to_agents.keys(), key=lambda k: distance_to_agents[k]['dist'])
         target_agent_val = distance_list[0]
-        # print('target_', target_agent_val)
+        #print('target_', target_agent_val)
 
         if distance_to_agents[target_agent_val]['dist']  > 2:
             #go for the goal
+
             target_location = (-1, -1)
             goal_location = [int(goal_location[0]), int(goal_location[1])]
             agent_path = distance_to_agents[target_agent_val]['agent_to_goal']
@@ -582,15 +794,17 @@ class ChasingBlockingAdvisary(Advisary):
             if not list(np.where(path == -1)[0]):
                 #print("No path NOOP")
                 return {'actions':NOOP}
-
             for direction in [UP, DOWN, LEFT, RIGHT]:
+
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
-                    # print("direction", direction)
+                    #print("Getting in path")
+                    #print(np.array2string(path))
+                    #print('direction2', direction)
                     return {'actions':direction}
         else: #go for the agent
             path = distance_to_agents[target_agent_val]['raw_path_to_agent']
-            # print("Going for agent")
-            # print(np.array2string(path))
+            #print("Going for agent")
+            #print(np.array2string(path))
             for direction in [UP, DOWN, LEFT, RIGHT]:
                 if path[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
                     # print("diection2", direction)
@@ -648,65 +862,145 @@ class BlockingAdvisary(Advisary):
 
 
 class NetworkAgent(Agent):
-    def __init__(self,env,obs_type='image', entity_type='', color='', position='random-free', position_coords=[]):
-        super().__init__(env, obs_type, entity_type, color, position, position_coords)
 
-        if env.__class__.__name__ == 'GenericEnv':
-            self.env = env
-        else:
-            self.env = env.env
-        # self.value = self.env.object_values[-1] + 1 # Weird here: in MAC this works with just env.object... even with the wrapper (and the env. TAB gives no suggestions). But in koalemos works
-        # self.env.object_values.append(self.value)
-        # self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
-        # self.env.entities[self.value] = self
-        # self.color = color
-        # # self.moveTo = 'moveToDefault'
-        # self.entity_type = entity_type
-        # self.obs_type = obs_type
-        # self.position = position
-        # self.active = True
-        # self.record_history = False
-
-
-
-    def moveToMe(self,entity_object): # Means smth moves to the network
-        if isinstance(entity_object,Agent):
-            entity_object.intended_position = entity_object.current_position
-            return 1
-        if isinstance(entity_object, RunAwayGoal):
-            self.env.done = True
-            self.env.reward = 1
-            return 1
-        self.env.done = True
-        self.env.reward -=1
-        # print('net being captured')
-        self.env.info['fire'] = -1
-
-
-class TrainedAgent(Agent):
-    def __init__(self, env, obs_type='image', entity_type='', color='', position='random-free'):
-        if env.__class__.__name__ == 'GenericEnv':
-            self.env = env
-        else:
-            self.env = env.env
-        self.value = self.env.object_values[-1] + 1
+    def __init__(self,env,obs_type='image', entity_type='', color='', position='random-free'):
+        self.env = env
+        self.value = env.object_values[-1] + 1
         self.env.object_values.append(self.value)
-        self.env.value_to_objects[self.value] = {'color': color, 'entity_type': entity_type}
+        self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
         self.env.entities[self.value] = self
         self.color = color
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
         self.position = position
-        #self.agent = ActorCriticAgent()
-        #self.agent.buid_model()
         self.active = True
 
-    def getAction(self,obs):
-        pass
-        #network stuff
-        #return action
 
-    def moveToMe(self, entity_object):
+
+    def moveToMe(self,entity_object):
         self.env.done = True
         self.env.reward -=1
+
+
+class TrainedAgent(Agent):
+    def __init__(self, env, model_filepath, obs_type='image', entity_type='agent',color='', position='random-free'):
+        import tensorflow as tf
+        self.tf = tf
+        self.model_filepath = model_filepath
+        self.load_graph(model_filepath=model_filepath)
+
+        super().__init__(env, obs_type, entity_type, color, position)
+
+    def load_graph(self, model_filepath):
+        print('loading model...')
+        self.graph = self.tf.Graph()
+
+        with self.tf.gfile.GFile(model_filepath, 'rb') as f:
+            self.graph_def = self.tf.GraphDef()
+            self.graph_def.ParseFromString(f.read())
+
+        print('Check out the input placeholders:')
+        nodes = [n.name + ' => ' + n.op for n in self.graph_def.node if n.op in ('Placeholder')]
+        for node in nodes:
+            print(node)
+
+        with self.graph.as_default():
+            # Define input tensor
+            self.input = self.tf.placeholder(np.float32, shape=[None, 10, 10, 3], name='rgb_screen')
+            # self.dropout_rate = tf.placeholder(tf.float32, shape = [], name = 'dropout_rate')
+            self.tf.import_graph_def(self.graph_def, {'rgb_screen': self.input})
+
+        self.graph.finalize()  # Graph is read-only after this statement
+
+        print('Model loading complete!')
+
+        # Get layer names
+        layers = [op.name for op in self.graph.get_operations()]
+        for layer in layers:
+            print(layer)
+
+        # In this version, tf.InteractiveSession and tf.Session could be used interchangeably.
+        # self.sess = tf.InteractiveSession(graph = self.graph)
+        self.sess = self.tf.Session(graph=self.graph)
+
+    def getAction(self, obs):
+        # you can add a generic get_tensor_by_name("import/%s:0"%layer) and add layer as an input after
+        # data. You can check the way Ludis feature visualization does it.
+
+        # Know your output node name
+        value_tensor = self.graph.get_tensor_by_name("import/theta/value/BiasAdd:0")
+        policy_tensor = self.graph.get_tensor_by_name("import/theta/action_id/Softmax:0")
+        fc2 = self.graph.get_tensor_by_name("import/theta/fc2/Relu:0")
+        conv1 = self.graph.get_tensor_by_name("import/theta/screen_network/conv1/Relu:0")
+        conv2 = self.graph.get_tensor_by_name("import/theta/screen_network/conv2/Relu:0")
+        conv3 = self.graph.get_tensor_by_name("import/theta/screen_network/conv3/Relu:0")
+        fc2_logit_W = self.graph.get_tensor_by_name("import/theta/action_id/weights:0")
+        logits_pre_bias = self.graph.get_tensor_by_name("import/theta/action_id/MatMul:0")
+        conv1W = self.graph.get_tensor_by_name("import/theta/screen_network/conv1/weights:0")
+        output = self.sess.run(
+            [value_tensor, policy_tensor, fc2, conv1, conv2, conv3, fc2_logit_W, logits_pre_bias, conv1W],
+            feed_dict={self.input: obs})
+
+        return int(np.argmax(output[1],axis=1))
+
+    def moveToMe(self, entity_object):
+        #If anything hits me, game over.
+        self.env.done = True
+        self.env.reward -= 1
+
+
+
+
+# class TrainedAgent(Agent):
+#
+#     def __init__(self, env, obs_type='image', entity_type='', color='', position='random-free',model_name=''):
+#         import tensorflow
+#         from actorcritic.agent import ActorCriticAgent, ACMode
+#         from actorcritic.runner import Runner, PPORunParams
+#
+#         super().__init__(env, obs_type, entity_type, color, position)
+#
+#         self.tf = tensorflow
+#
+#         self.ActorCriticAgent = ActorCriticAgent
+#         self.ACMode = ACMode
+#
+#         self.Runner = Runner
+#         self.PPORunParams = PPORunParams
+#
+#         self.full_checkpoint_path = os.path.join("_files/models", model_name)
+#
+#
+#         self.obs_type = obs_type
+#         self.position = position
+#         #self.agent = ActorCriticAgent()
+#         #self.agent.buid_model()
+#         self.active = True
+#         self.record_history = False
+#
+#
+#         self.tf.reset_default_graph()
+#         self.config = self.tf.ConfigProto()
+#         self.config.gpu_options.allow_growth = True
+#         self.sess = self.tf.Session(config=self.config)
+#
+#         self.agent = ActorCriticAgent(
+#             mode=self.ACMode.A2C,
+#             sess=self.sess,
+#             spatial_dim=8,
+#             unit_type_emb_dim=5,
+#             loss_value_weight=0.5,
+#             entropy_weight_action_id=0.01,
+#             entropy_weight_spatial=0.00000001,
+#             scalar_summary_freq=5,
+#             all_summary_freq=10,
+#             summary_path='_files/summaries',
+#             max_gradient_norm=10.0,
+#             num_actions=5,
+#             num_envs=1,
+#             nsteps=16,
+#             obs_dim=(10,10),
+#             policy="FullyConv"
+#         )
+#         self.agent.build_mod
