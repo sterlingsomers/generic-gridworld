@@ -686,7 +686,7 @@ class RunAwayGoal(ActiveEntity):
         # print('here3')
         #max_point should be the point most distant from the closest agent
         # print('max points', max_point)
-        target_path = self.env.getPathTo(self.current_position, max_point, free_spaces=self.env.free_spaces)
+        target_path = self.env.getPathTo(self.current_position, max_point, free_spaces=self.env.free_spaces,agent_step_radius=1)
         self.visual = target_path
         if self.displayPlan and self.display:
             runPath = PIL.Image.fromarray(self.env._path_to_image(self.visual,self.color))
@@ -707,6 +707,10 @@ class RunAwayGoal(ActiveEntity):
 
     def moveToMe(self,entity_object):
         super().moveToMe(entity_object)
+
+class RunAwayGoal_v2(RunAwayGoal):
+    def _getAction(self,obs):
+        pass
 
 
 

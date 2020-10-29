@@ -36,13 +36,14 @@ outputFileName = 'sterling_model_with_adivsary_data_'
 write_data = False
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
-env = envs.generic_env.GenericEnv(map='small-portals',wallrule=False)#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
+env = envs.generic_env.GenericEnv(map='small-portals',border=1, density=0.5,wallrule=False)#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
 goal = RunAwayGoal(env, obs_type='data',entity_type='goal',color='green',pygame=pygame,displayPlan=True)
-#player1 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
 player1 = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame)
+player2 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+#player2 = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame)
 #player2 = AIAgent(env,entity_type='agent',color='pink')#,pygame=pygame,mapping={'i':UP,'j':LEFT,'k':DOWN,'l':RIGHT,'m':NOOP})
 
-player3 = TrainedAgent(env,model_filepath='/Users/paulsomers/gridworlds/generic/_files/models/lioness/lioness.pb', color='aqua')
+#player3 = TrainedAgent(env,model_filepath='/Users/paulsomers/gridworlds/generic/_files/models/lionking/LionKing.pb', color='aqua')
 #player3 = ChasingBlockingAdvisary(env,entity_type='advisary',color='blue',position='near-goal')
 #player4 = ChasingBlockingAdvisary(env,entity_type='advisary',color='blue',position='near-goal')
 
@@ -78,7 +79,7 @@ display = pygame.display.set_mode((initial_img.shape[0]+500, initial_img.shape[1
 
 #Set the display so that the graphics can be modified by the agent if needed
 player1.setDisplay(display)
-#player2.setDisplay(display)
+player2.setDisplay(display)
 goal.setDisplay(display)
 #player2.setDisplay(display)
 # player3.setDisplay(display)

@@ -72,7 +72,7 @@ class GenericEnv(gym.Env):
         'gray' : (96,96,96)
     }
 
-    def __init__(self,dims=(10,10),map='',agents=[],features=[],border=True, entities = [],wallrule=False):
+    def __init__(self,dims=(10,10),map='',agents=[],features=[],border=1, entities = [],wallrule=False,density=0):
 
         self.map = map
         self.features = features
@@ -82,8 +82,10 @@ class GenericEnv(gym.Env):
         self.wallrule=wallrule
         self.border = border
         self.pathVisuals = {}
+        self.density = density
+        self.border = border
         #before anything happens, setup the map
-        self.setupMap(map,dims)
+        self.setupMap(map,dims,density,border)
 
         #add (dynamic, random) features to the map
         self.addMapFeatures(features)
@@ -121,9 +123,9 @@ class GenericEnv(gym.Env):
         top = 0
         bottom = self.current_grid_map.shape[1]
         left_edges = [(0, x) for x in range(bottom)]
-        right_edges = [(right, x) for x in range(bottom)]
+        right_edges = [(right-1, x) for x in range(bottom)]
         top_edges = [(x, 0) for x in range(right)]
-        bottom_edges = [(bottom, x) for x in range(right)]
+        bottom_edges = [(x,bottom-1) for x in range(right)]
         self.edges = left_edges + right_edges + top_edges + bottom_edges
 
         #Run the dynamic environment
@@ -134,19 +136,35 @@ class GenericEnv(gym.Env):
         self.history = history_dict
         self.history['value_to_objects'] = self.value_to_objects
 
-    def getPathTo(self,start_location,end_location, free_spaces=[]):
+    def getPathTo(self,start_location,end_location, free_spaces=[],agent_step_radius=0,exclude_agents=[]):
         '''An A* algorithm to get from one point to another.
         free_spaces is a list of values that can be traversed.
         start_location and end_location are tuple point values.
+        agent_step_radius will have any agents in the search also appear in the square within
+        the movement radius - thereby avoiding a path plan that goes next to agents
 
         Returns a map with path denoted by -1 values. Inteded to use np.where(path == -1).'''
+
+        grid_copy = self.current_grid_map.copy()
+        if agent_step_radius:
+            #find all the agents, duplicate them as their own neighbors
+            for active in self.active_entities:
+                position = self.entities[active].current_position
+                neighbors = list(self.getNeighbors(position).values())
+                neighbors = [x for x in neighbors if x]
+                for neighbor in neighbors:
+                    print('neigh',neighbor)
+                    grid_copy[neighbor] = active
+
+        print('here')
+
         pathArray = np.full(self.dims,0)
         if start_location[0] == end_location[0] and start_location[1] == end_location[1]:
             pathArray[start_location] = -1
             return pathArray
 
         for free_space in free_spaces:
-            zeros = np.where(self.current_grid_map == free_space)
+            zeros = np.where(grid_copy == free_space)
             zeros = list(zip(zeros[0],zeros[1]))
             for point in zeros:
                 pathArray[point] = 1
@@ -266,15 +284,45 @@ class GenericEnv(gym.Env):
                 # free_space = random.choice(free_spaces)
                 # self.current_grid_map[free_space] = object_value
 
-    def setupMap(self,map,dims):
+    def setupMap(self,map,dims,density=None,border=1):
+        '''density is 0-1'''
         if map == '':
-            self.dims = dims
-            self.current_grid_map = np.zeros(dims)
-            #make border the walls (walls = 1)
-            self.current_grid_map[0,:] = [1] * dims[0]
-            self.current_grid_map[:,0] = [1] * dims[1]
-            self.current_grid_map[:,-1] = [1] * dims[1]
-            self.current_grid_map[-1,:] = [1] * dims[0]
+            if density == None:
+                self.dims = dims
+                self.current_grid_map = np.zeros(dims)
+                #make border the walls (walls = 1)
+                self.current_grid_map[0,:] = [1] * dims[0]
+                self.current_grid_map[:,0] = [1] * dims[1]
+                self.current_grid_map[:,-1] = [1] * dims[1]
+                self.current_grid_map[-1,:] = [1] * dims[0]
+            else:
+                #Generate a random map with density
+                #must be solvable.
+                #border = 0 -> no border, 1 = full border, 2 = teleports
+                self.dims = dims
+                self.current_grid_map = np.zeros(dims)
+                if border == 1:
+                    self.current_grid_map[0, :] = [1] * dims[0]
+                    self.current_grid_map[:, 0] = [1] * dims[1]
+                    self.current_grid_map[:, -1] = [1] * dims[1]
+                    self.current_grid_map[-1, :] = [1] * dims[0]
+                    remaining_spaces = (dims[0]-2) * (dims[1] - 2)
+                    blocks_to_place = int(density * remaining_spaces)
+                    range_list = list(range(1,dims[1]-1))
+                    combinations = list(itertools.product(range_list,range_list))#list(itertools.permutations(range_list,2))
+                    random_combos = random.sample(combinations,blocks_to_place)
+                    for index in random_combos:
+                        self.current_grid_map[index] = 1
+                    # xs = random.sample(range_list,blocks_to_place)
+                    # ys = random.sample(range_list,blocks_to_place)
+                    # indices = [(x,y) for x,y in zip(xs,ys)]
+                    # solvable = False
+
+
+
+
+
+
         else:
             self.dims = maps[map]['map'].shape
             self.current_grid_map = maps[map]['map']
