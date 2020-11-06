@@ -72,7 +72,7 @@ class GenericEnv(gym.Env):
         'gray' : (96,96,96)
     }
 
-    def __init__(self,dims=(10,10),map='',agents=[],features=[],border=1, entities = [],wallrule=False,density=0):
+    def __init__(self,dims=(10,10),map='',agents=[],features=[],border=1, entities = [],wallrule=False,density=0,safezone=None,teams=[]):
 
         self.map = map
         self.features = features
@@ -84,6 +84,13 @@ class GenericEnv(gym.Env):
         self.pathVisuals = {}
         self.density = density
         self.border = border
+        self.team_colors = {0:'pink',1:'purple'}
+        self.safezone=safezone
+        self.teams = teams
+        self.team_scores = {}
+        for team in self.teams:
+            self.team_scores[team] = 0
+
         #before anything happens, setup the map
         self.setupMap(map,dims,density,border)
 
@@ -136,6 +143,9 @@ class GenericEnv(gym.Env):
         self.history = history_dict
         self.history['value_to_objects'] = self.value_to_objects
 
+    def setupCTF(self,flags=2):
+        pass
+
     def getPathTo(self,start_location,end_location, free_spaces=[],agent_step_radius=0,exclude_agents=[]):
         '''An A* algorithm to get from one point to another.
         free_spaces is a list of values that can be traversed.
@@ -156,7 +166,7 @@ class GenericEnv(gym.Env):
                     print('neigh',neighbor)
                     grid_copy[neighbor] = active
 
-        print('here')
+        #print('here')
 
         pathArray = np.full(self.dims,0)
         if start_location[0] == end_location[0] and start_location[1] == end_location[1]:
@@ -325,7 +335,8 @@ class GenericEnv(gym.Env):
 
         else:
             self.dims = maps[map]['map'].shape
-            self.current_grid_map = maps[map]['map']
+            self.current_grid_map = maps[map]['map'].copy()
+            self.original_grid_map = self.current_grid_map.copy()
             self.object_values = np.unique(self.current_grid_map).tolist()
             if 'colors' in maps[map]:
                 for value in maps[map]['colors']:
@@ -385,7 +396,7 @@ class GenericEnv(gym.Env):
                 continue
             obj_loc = np.where(self.current_grid_map == object_value)
             for x,y in list(zip(obj_loc[0],obj_loc[1])):
-                self.current_grid_map[(x,y)] = 0
+                self.current_grid_map[(x,y)] = self.original_grid_map[(x,y)]
 
         self.done = False
         self.reward = 0
@@ -406,7 +417,7 @@ class GenericEnv(gym.Env):
             entity_object = self.entities[entity]
             if entity_object.record_history:
                 entity_object.history['actions'] = []
-            entity_object.place(position=entity_object.position)
+            entity_object.place(position=entity_object.position,position_coords=entity_object.position_coords)
         # for object_value in self.object_values:
         #     if object_value <= 1:
         #         continue
@@ -452,8 +463,13 @@ class GenericEnv(gym.Env):
 
 
         for obj_val in self.object_values:
+            # if obj_val == 2:
+            #     print('here')
             obj = np.where(self.current_grid_map == obj_val)
-            image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
+            if obj_val in self.entities:
+                image[obj[0], obj[1], :] = self.colors[self.entities[obj_val].current_color]
+            else:
+                image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
 
 
 
@@ -502,11 +518,11 @@ class GenericEnv(gym.Env):
                     self.active_entities[entity].hitWall()
                 self.active_entities[entity].intended_position = self.active_entities[entity].current_position
 
-            self.current_grid_map[current_position] = 0 #erase the person from their old spot
+            self.current_grid_map[current_position] = self.original_grid_map[current_position] #erase the person from their old spot
 
         #this loop carries out any action towards non-active entities (e.g. goals, reactive obstacles)
         for entity in self.active_entities:
-            other_entities = [x for x in self.entities if x not in self.active_entities]
+            other_entities = [x for x in self.entities if x not in self.active_entities and self.entities[x].sein]
             for other in other_entities:
                 if self.active_entities[entity].intended_position == self.entities[other].current_position:
                     self.entities[other].moveToMe(self.active_entities[entity])
@@ -542,9 +558,16 @@ class GenericEnv(gym.Env):
         if not self.done:
             for entity in self.active_entities:
                 entity_object = self.entities[entity]
-                entity_object.current_position = entity_object.intended_position
-                # print('entities', entity_object.current_position, 'ent_type', type(entity_object))
-                self.current_grid_map[entity_object.current_position] = entity_object.value
+                if self.current_grid_map[entity_object.intended_position] in self.free_spaces:
+                    entity_object.current_position = entity_object.intended_position
+                    # print('entities', entity_object.current_position, 'ent_type', type(entity_object))
+                    self.current_grid_map[entity_object.current_position] = entity_object.value
+                    if entity_object.carrying_flag and self.original_grid_map[entity_object.current_position] == entity_object.teamzone:
+                        self.done = True
+                        break
+                else:
+                    entity_object.intended_position = entity_object.current_position
+                    self.current_grid_map[entity_object.current_position] = entity_object.value
             # print("reward", self.reward, self.done)
             return self._gridmap_to_image(), self.reward, self.done, info
         else:

@@ -35,11 +35,17 @@ episodes = 100
 outputFileName = 'sterling_model_with_adivsary_data_'
 write_data = False
 
-# env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
-env = envs.generic_env.GenericEnv(map='small-portals',border=1, density=0.5,wallrule=False)#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
-goal = RunAwayGoal(env, obs_type='data',entity_type='goal',color='green',pygame=pygame,displayPlan=True)
-player1 = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame)
-player2 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+
+env = envs.generic_env.GenericEnv(map='CTF',border=1, density=0.5,wallrule=False, safezone=2,teams=[0,1])#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
+flag1 = FlagEntity(env=env,position='specific',position_coords=(16,16),color='red',team=0,teamzone=3)
+flag2 = FlagEntity(env=env,position='specific',position_coords=(3,3), color='green',team=1, teamzone=4)
+
+player1 = HumanAgent_CTF(env,entity_type='agent',color='blue',pygame=pygame, team=0, teamzone=3)
+player2 = HumanAgent_CTF(env,entity_type='agent',color='orange',pygame=pygame, team=1, teamzone=4)
+
+# goal = RunAwayGoal(env, obs_type='data',entity_type='goal',color='green',pygame=pygame,displayPlan=True)
+# player1 = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame)
+# player2 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
 #player2 = HumanAgent(env,entity_type='agent',color='pink',pygame=pygame)
 #player2 = AIAgent(env,entity_type='agent',color='pink')#,pygame=pygame,mapping={'i':UP,'j':LEFT,'k':DOWN,'l':RIGHT,'m':NOOP})
 
@@ -78,9 +84,8 @@ pygame.init()
 display = pygame.display.set_mode((initial_img.shape[0]+500, initial_img.shape[1] + 150))#initial_img.shape[:2],0,32)
 
 #Set the display so that the graphics can be modified by the agent if needed
-player1.setDisplay(display)
-player2.setDisplay(display)
-goal.setDisplay(display)
+#player1.setDisplay(display)
+
 #player2.setDisplay(display)
 # player3.setDisplay(display)
 background = pygame.surfarray.make_surface(initial_img)
@@ -105,26 +110,7 @@ for i in range(episodes):
     episode_done = False
     steps = 0
     while not episode_done:
-        print('step', steps)
-        steps += 1
-        if steps == 50:
-            player1.stuck = 1
-        if steps > 50:
-            # data['environment_episode_data'].append(env.history.copy())
-            # data['player_episode_data'].append(player3.history.copy())
-            #
-            # env.setRecordHistory()
-            # player1.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
 
-
-            episode_done = True
-
-            obs = env.reset()
-            obs = PIL.Image.fromarray(obs)
-            size = tuple((np.array(obs.size) * size_factor).astype(int))
-            obs = np.array(obs.resize(size, PIL.Image.NEAREST))
-            surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-            display.blit(surf, (0, 0))
 
         pygame.display.update()
         key_pressed = 0
@@ -148,17 +134,7 @@ for i in range(episodes):
                 running = False
 
 
-        if key_pressed and not game_done:
-            player1.action = key_pressed
-            if done:
-                obs = env.reset()
-                surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-                display.blit(surf, (0,0))
-            else:
-                #pygame.surfarray.blit_array(background,obs)
-                surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs),0))
-                #pygame.transform.rotate(surf,180)
-                display.blit(surf, (0,0))
+
 
 
         # pygame.time.delay(100)

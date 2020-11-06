@@ -35,6 +35,7 @@ class Entity:
         self.env.entities[self.value] = self
         self.position_coords = position_coords
         self.color = color
+        self.current_color = color
         # self.moveTo = 'moveToDefault'
         self.entity_type = entity_type
         self.obs_type = obs_type
@@ -44,6 +45,10 @@ class Entity:
         self.record_history = False
         self.stuck = 0
         self.visual = np.zeros(self.env.dims)
+        self.carrying_flag = False
+        self.flag = None
+        self.carried = False
+        self.sein = True
 
     def setRecordHistory(self,on=True,history_dict={'actions':[],'agent_value':0,'stuck':[]},write_files=False,prefix=''):
         self.record_history = on
@@ -83,7 +88,9 @@ class Entity:
 
     def place(self, position='random-free',position_coords=[]):
         # self.history['steps'] = []
-
+        print('placing', self.value, self.color)
+        self.current_color = self.color
+        self.carrying_flag = False
         if position == 'random-free':
             free_spaces = []
             for free_space in self.env.free_spaces:
@@ -117,6 +124,37 @@ class Entity:
 
     def update(self):
         pass
+
+class FlagEntity(Entity):
+    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',position_coords=[], team=0, teamzone=0):
+        super().__init__(env, obs_type,entity_type, color, position,position_coords)
+        self.team = team
+        self.teamzone = teamzone
+        self.carried = False
+
+    def moveToMe(self,entity_object):
+        print(self.value, self.color, 'hit by', entity_object)
+        if self.carried:
+            return 1
+
+        if not self.team == entity_object.team:
+            self.carried = True
+            self.sein = False
+            self.current_position = None
+            entity_object.current_color = self.env.team_colors[entity_object.team]
+            entity_object.carrying_flag =  True
+            entity_object.flag = self
+            entity_object.current_position = entity_object.intended_position
+            self.env.current_grid_map[self.position_coords] = self.env.original_grid_map[self.position_coords]
+        else:
+            return 1
+        return 1
+
+    def place(self,position,position_coords):
+        print('flag placed')
+        self.carried = False
+        self.sein = True
+        super().place(position,position_coords)
 
 class ActiveEntity(Entity):
     def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free',position_coords=[],pygame=None):
@@ -570,6 +608,77 @@ class HumanAgent(Agent):
 
 
     # @record_action
+
+class HumanAgent_CTF(HumanAgent):
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[],pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'},team=0,teamzone=0):
+        super().__init__(env,obs_type,entity_type,color,position,position_coords,pygame,mapping)
+        self.team = team
+        self.teamzone =  teamzone
+
+    def place(self, position='random-free',position_coords=[]):
+        #find a place in the team zone
+        self.current_color = self.color
+        self.carrying_flag = False
+        team_position = np.where(self.env.current_grid_map == self.teamzone)
+        team_position = list(zip(team_position[0], team_position[1]))
+        random_position = random.choice(team_position)
+        self.env.current_grid_map[random_position] = self.value
+        self.current_position = random_position
+
+    def moveToMe(self,entity_object):
+        print(self.value, self.color, 'hit by', entity_object)
+        if entity_object.team == self.team:
+            return 1
+        if self.env.original_grid_map[self.intended_position] == self.env.safezone:
+            self.intended_position = self.current_position
+            self.env.current_grid_map[self.current_position] = self.value
+            entity_object.intended_position = entity_object.current_position
+            return 1
+
+
+        if self.env.original_grid_map[self.current_position] == self.teamzone:
+            if isinstance(entity_object,Agent):
+                if entity_object.carrying_flag:
+                    entity_object.carrying_flag = False
+                    entity_object.flag.place('specific',entity_object.current_position)
+
+
+                if self.env.current_grid_map[self.intended_position] in self.env.free_spaces:
+
+                    self.env.current_grid_map[entity_object.current_position] = self.env.original_grid_map[entity_object.current_position]
+                    self.env.current_grid_map[self.current_position] = self.env.original_grid_map[self.current_position]
+                    self.current_position = self.intended_position
+                    self.env.current_grid_map[self.current_position] = self.value
+
+                    entity_object.place('',[])
+                    entity_object.intended_position = entity_object.current_position
+                else:
+                    self.env.current_grid_map[entity_object.current_position] = self.env.original_grid_map[entity_object.current_position]
+                    self.env.current_grid_map[self.current_position] = self.env.original_grid_map[self.current_position]
+                    entity_object.place('', [])
+                    entity_object.intended_position = entity_object.current_position
+        else:
+            if isinstance(entity_object,Agent):
+                if self.carrying_flag:
+                    self.carrying_flag = False
+                    self.flag.place('specific',self.current_position)
+
+                if self.env.current_grid_map[entity_object.intended_position] in self.env.free_spaces:
+                    self.env.current_grid_map[self.current_position] = self.env.original_grid_map[self.current_position]
+                    self.env.current_grid_map[entity_object.current_position] = self.env.original_grid_map[entity_object.current_position]
+                    entity_object.current_position = entity_object.intended_position
+                    self.env.current_grid_map[entity_object.current_position] = entity_object.value
+
+                    self.place('',[])
+                    self.intended_position = self.current_position
+                else:
+                    self.env.current_grid_map[self.current_position] = self.env.original_grid_map[self.current_position]
+                    self.place('', [])
+                    self.intended_position = self.current_position
+                    entity_object.intended_position = entity_object.current_position
+
+        return 1
+
 
 
 
