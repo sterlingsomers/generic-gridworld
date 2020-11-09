@@ -453,6 +453,7 @@ class GenericEnv(gym.Env):
 
 
     def _gridmap_to_image(self):
+        # print(np.array2string(self.current_grid_map))
         image = np.zeros((self.dims[0],self.dims[1],3), dtype=np.uint8)
         image[:] = [96,96,96]
         #put border walls in
@@ -518,6 +519,7 @@ class GenericEnv(gym.Env):
                     self.active_entities[entity].hitWall()
                 self.active_entities[entity].intended_position = self.active_entities[entity].current_position
 
+            # print('erasing', entity)
             self.current_grid_map[current_position] = self.original_grid_map[current_position] #erase the person from their old spot
 
         #this loop carries out any action towards non-active entities (e.g. goals, reactive obstacles)
@@ -529,7 +531,8 @@ class GenericEnv(gym.Env):
         if self.done:
             return self._gridmap_to_image(), self.reward, self.done, info
 
-
+        # print('H4')
+        # print(np.array2string(self.current_grid_map))
         #this loop checks for collisions, carries out the consequence
         for entity in self.active_entities:
             entity_object = self.active_entities[entity]
@@ -552,14 +555,20 @@ class GenericEnv(gym.Env):
                     other_entity_object.moveToMe(entity_object)
                     if self.done:
                         # print("reward", self.reward, self.done)
+                        # print('H1')
+                        # print(np.array2string(self.current_grid_map))
                         return self._gridmap_to_image(), self.reward, self.done, info
 
 
         if not self.done:
+            # print('H5')
+            # print(np.array2string(self.current_grid_map))
             for entity in self.active_entities:
                 entity_object = self.entities[entity]
                 if self.current_grid_map[entity_object.intended_position] in self.free_spaces:
                     entity_object.current_position = entity_object.intended_position
+                    if entity_object.carrying_flag:
+                        entity_object.flag.current_position = entity_object.current_position
                     # print('entities', entity_object.current_position, 'ent_type', type(entity_object))
                     self.current_grid_map[entity_object.current_position] = entity_object.value
                     if entity_object.carrying_flag and self.original_grid_map[entity_object.current_position] == entity_object.teamzone:
@@ -569,7 +578,11 @@ class GenericEnv(gym.Env):
                     entity_object.intended_position = entity_object.current_position
                     self.current_grid_map[entity_object.current_position] = entity_object.value
             # print("reward", self.reward, self.done)
+            # print('H2')
+            # print(np.array2string(self.current_grid_map))
             return self._gridmap_to_image(), self.reward, self.done, info
         else:
             # print("reward", self.reward, self.done)
+            # print('H3')
+            # print(np.array2string(self.current_grid_map))
             return self._gridmap_to_image(), self.reward, self.done, info

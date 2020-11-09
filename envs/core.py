@@ -116,6 +116,7 @@ class Entity:
             self.env.current_grid_map[the_space] = self.value
             self.current_position = the_space
         if position == 'specific':
+            print(self.color, 'specific', position_coords)
             if not position_coords:
                 raise ValueError("Coordinates must be specified")
             self.env.current_grid_map[position_coords] = self.value
@@ -659,23 +660,36 @@ class HumanAgent_CTF(HumanAgent):
                     entity_object.intended_position = entity_object.current_position
         else:
             if isinstance(entity_object,Agent):
-                if self.carrying_flag:
-                    self.carrying_flag = False
-                    self.flag.place('specific',self.current_position)
+                self.env.current_grid_map[self.current_position] = self.env.original_grid_map[self.current_position]
+                current_position = self.current_position
 
-                if self.env.current_grid_map[entity_object.intended_position] in self.env.free_spaces:
-                    self.env.current_grid_map[self.current_position] = self.env.original_grid_map[self.current_position]
+                if self.carrying_flag:
+                    self.place('', [])
+                    self.flag.place('specific',current_position)
+                    entity_object.intended_position = current_position
+                else:
+                    self.place('',[])
+                    self.env.current_grid_map[entity_object.intended_position] = entity_object.value
                     self.env.current_grid_map[entity_object.current_position] = self.env.original_grid_map[entity_object.current_position]
                     entity_object.current_position = entity_object.intended_position
-                    self.env.current_grid_map[entity_object.current_position] = entity_object.value
 
-                    self.place('',[])
-                    self.intended_position = self.current_position
-                else:
-                    self.env.current_grid_map[self.current_position] = self.env.original_grid_map[self.current_position]
-                    self.place('', [])
-                    self.intended_position = self.current_position
-                    entity_object.intended_position = entity_object.current_position
+                # if self.carrying_flag:
+                #     self.carrying_flag = False
+                #     self.flag.place('specific',self.current_position)
+                #
+                # if self.env.current_grid_map[entity_object.intended_position] in self.env.free_spaces:
+                #     self.env.current_grid_map[self.current_position] = self.env.original_grid_map[self.current_position]
+                #     self.env.current_grid_map[entity_object.current_position] = self.env.original_grid_map[entity_object.current_position]
+                #     entity_object.current_position = entity_object.intended_position
+                #     self.env.current_grid_map[entity_object.current_position] = entity_object.value
+                #
+                #     self.place('',[])
+                #     self.intended_position = self.current_position
+                # else:
+                #     self.env.current_grid_map[self.current_position] = self.env.original_grid_map[self.current_position]
+                #     self.place('', [])
+                #     self.intended_position = self.current_position
+                #     #entity_object.intended_position = entity_object.current_position
 
         return 1
 
