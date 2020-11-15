@@ -30,7 +30,7 @@ import time
 #some imports for the participant stuff
 import glob, os
 
-#A new class to extend old classes
+pygame.init()
 
 # human_data = pickle.load(open('symbolic_data_sterlingV220200207-152603.lst','rb'))
 os.chdir('./participant_data')
@@ -51,15 +51,17 @@ env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obsta
 goal = Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+# player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+player3 = TrainedAgent(env, model_filepath='/Users/paulsomers/gridworlds/generic/_files/models/networkb.pb',color='red')
 # player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=True,processes=5)
 #player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
 #player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
-advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
+advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='aqua',obs_type='data',position='near-goal')
 #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
 
 env.setRecordHistory()
-player3.setRecordHistory(history_dict={'actions':[],'saliences':[],'stuck':[]})
+# player3.setRecordHistory(history_dict={'actions':[],'saliences':[],'stuck':[]})
+player3.setRecordHistory(history_dict={'actions':[]})
 advisary.setRecordHistory(history_dict={'actions':[]})
 
 
