@@ -79,6 +79,7 @@ class GenericEnv(gym.Env):
         self.dims = dims
         self.record_history = False
         self.history = {}
+        self.top_score = -1
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
@@ -321,7 +322,7 @@ class GenericEnv(gym.Env):
         return 0
 
 
-    def reset(self):
+    def reset(self,config=None):
         # for entity in self.entities:
         #     entity_loc = np.where(self.current_grid_map == entity)
         #     for x,y in list(zip(entity_loc[0],entity_loc[1])):
@@ -353,6 +354,12 @@ class GenericEnv(gym.Env):
 
         for entity in self.entities:
             entity_object = self.entities[entity]
+            if not config == None:
+                if entity_object.value in config:
+                    entity_object.position = 'specific'
+                    entity_object.position_coords = config[entity_object.value]
+                self.top_score = config['steps']
+
             if entity_object.record_history:
                 entity_object.history['actions'] = []
             entity_object.place(position=entity_object.position,position_coords=entity_object.position_coords)
