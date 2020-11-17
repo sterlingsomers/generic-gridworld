@@ -46,8 +46,8 @@ def step_wrapper(f):
 
 
 class GenericEnv(gym.Env):
-    value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0}}
-    object_values = [1]
+    value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0},-1:{'color':'white'}}
+    object_values = [-1,1]
     entities = {} #indexed by object value
     active_entities = {}
     backup_values = {}
@@ -333,7 +333,7 @@ class GenericEnv(gym.Env):
         #First, erase them
 
         for object_value in self.object_values:
-            if object_value <= 1:
+            if object_value <= 1 and not object_value == -1:
                 continue
             obj_loc = np.where(self.current_grid_map == object_value)
             for x,y in list(zip(obj_loc[0],obj_loc[1])):
@@ -465,11 +465,13 @@ class GenericEnv(gym.Env):
                 #       other_entity_object.intended_position)
                 if entity_object.intended_position == other_entity_object.intended_position:
                     print("intended postions", entity_object, other_entity_object)
+                    self.current_grid_map[entity_object.intended_position] = -1
                     other_entity_object.moveToMe(entity_object)
                     if self.done:
                         # print("reward", self.reward, self.done)
                         return self._gridmap_to_image(), self.reward, self.done, info
                 if entity_object.current_position == other_entity_object.intended_position and other_entity_object.current_position == entity_object.intended_position:
+                    self.current_grid_map[entity_object.current_position] = -1
                     other_entity_object.moveToMe(entity_object)
                     if self.done:
                         # print("reward", self.reward, self.done)

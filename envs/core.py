@@ -495,7 +495,7 @@ class ACTR(Agent):
 
 class HumanAgent(Agent):
     obs = None
-    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[],pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'}):
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[],pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit', '\r':'return'}):
         self.mapping = mapping
         super().__init__(env, obs_type, entity_type, color, position,position_coords)
 

@@ -231,6 +231,8 @@ for i in range(episodes):
             player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
             advisary.setRecordHistory(history_dict={'actions':[]})
             episode_done = True
+            #print(np.array2string(env.current_grid_map))
+            t = player3.getAction(obs)
             if i+1 >= episodes:
                 obs = env.reset()
             else:
@@ -244,11 +246,11 @@ for i in range(episodes):
             pygame.display.update()
             try:
                 if not mission_configuration[i+1] == None:
-                    show_score(display, wins, losses, mission_configuration[i+1]['steps'], steps, txtX, txtY)#mission_configuration[i+1]['steps']
+                    show_score(display, wins, losses, mission_configuration[i+1]['steps'], 0, txtX, txtY)#mission_configuration[i+1]['steps']
                 else:
-                    show_score(display, wins, losses, None, steps, txtX, txtY)
+                    show_score(display, wins, losses, None, 0, txtX, txtY)
             except IndexError:
-                show_score(display, wins, losses, None, steps, txtX, txtY)
+                show_score(display, wins, losses, None, 0, txtX, txtY)
 
 
 #print("quitting?", player3.quit)
