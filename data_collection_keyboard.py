@@ -9,7 +9,7 @@
 from __future__ import print_function
 from threading import Thread
 import sys, gym, time
-from pyglet.window import key
+# from pyglet.window import key
 
 import envs.generic_env
 from envs.generic_env import UP, DOWN, LEFT, RIGHT, NOOP
