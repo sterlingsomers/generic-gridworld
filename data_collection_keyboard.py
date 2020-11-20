@@ -56,7 +56,7 @@ env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obsta
 goal = Goal(env,entity_type='goal',color='green')
 # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
 # player2 = Agent(env,entity_type='agent',color='orange')
-player3 = HumanAgent(env,entity_type='agent',color='aqua',pygame=pygame)
+player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
 # player3 = TrainedAgent(env, model_filepath='/Users/paulsomers/gridworlds/generic/_files/models/networkb.pb',color='aqua')
 # player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=True,processes=5)
 #player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
@@ -88,7 +88,7 @@ def show_score(display,wins,losses,min_steps,steps,x,y):
     display.blit(your_count, (x, y-15))
     display.blit(wins_txt, (x,y))
     display.blit(losses_txt,(x,y+15))
-    display.blit(best_score,(x+120, y-15))
+    display.blit(best_score,(x+130, y-15))
 
 human_agent_action = 0
 human_wants_restart = False
@@ -145,27 +145,60 @@ for i in range(episodes):
         if steps == 50:
             player3.stuck = 1
         if steps > 50:
+            # data['environment_episode_data'].append(env.history.copy())
+            # data['player_episode_data'].append(player3.history.copy())
+            # data['advisary_episode_data'].append(advisary.history.copy())
+            # env.setRecordHistory()
+            # player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
+            # advisary.setRecordHistory(history_dict={'actions': []})
+            #
+            episode_done = True
+            #
+            # obs = env.reset(config=mission_configuration[i+1])
+            # obs = PIL.Image.fromarray(obs)
+            # size = tuple((np.array(obs.size) * size_factor).astype(int))
+            # obs = np.array(obs.resize(size, PIL.Image.NEAREST))
+            # surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
+            # display.fill((0,0,0))
+            # display.blit(surf, (0, 0))
+            # pygame.display.update()
+            # if not mission_configuration[i+1] == None:
+            #     show_score(display, wins, losses, mission_configuration[i+1]['steps'],0,txtX, txtY)#mission_configuration[i+1]['steps']
+            # else:
+            #     show_score(display, wins, losses, None, 0, txtX, txtY)
+            # pygame.display.update()
+            # continue
             data['environment_episode_data'].append(env.history.copy())
             data['player_episode_data'].append(player3.history.copy())
             data['advisary_episode_data'].append(advisary.history.copy())
+            wins = wins + data['environment_episode_data'][-1]['reward'][-1] if data['environment_episode_data'][-1]['reward'][-1] > 0 else wins
+            losses = losses + 1 if data['environment_episode_data'][-1]['reward'][-1] < 0 else losses
             env.setRecordHistory()
             player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
-            advisary.setRecordHistory(history_dict={'actions': []})
-
+            advisary.setRecordHistory(history_dict={'actions':[]})
             episode_done = True
-
-            obs = env.reset(config=mission_configuration[i+1])
+            #print(np.array2string(env.current_grid_map))
+            t = player3.getAction(obs)
+            if i+1 >= episodes:
+                obs = env.reset()
+            else:
+                obs = env.reset(config=mission_configuration[i+1])
             obs = PIL.Image.fromarray(obs)
             size = tuple((np.array(obs.size) * size_factor).astype(int))
             obs = np.array(obs.resize(size, PIL.Image.NEAREST))
             surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
-            display.fill((0,0,0))
+            display.fill((0, 0, 0))
             display.blit(surf, (0, 0))
             pygame.display.update()
-            if not mission_configuration[i+1] == None:
-                show_score(display, wins, losses, mission_configuration[i+1]['steps'],steps,txtX, txtY)#mission_configuration[i+1]['steps']
-            else:
-                show_score(display, wins, losses, None, steps, txtX, txtY)
+            try:
+                if not mission_configuration[i+1] == None:
+                    show_score(display, wins, losses, mission_configuration[i+1]['steps'], 0, txtX, txtY)#mission_configuration[i+1]['steps']
+                else:
+                    show_score(display, wins, losses, None, 0, txtX, txtY)
+            except IndexError:
+                show_score(display, wins, losses, None, 0, txtX, txtY)
+            continue
+
         pygame.display.update()
         key_pressed = 0
         pygame.time.delay(0)
