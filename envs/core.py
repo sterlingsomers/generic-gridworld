@@ -537,6 +537,8 @@ class ACTR(Agent):
         last_predator = np.where(old_obs == 4)
         last_predator = (int(last_predator[0]), int(last_predator[1]))
         new_predator = np.where(new_obs == 4)
+        print("new predator", new_predator)
+        print(np.array2string(new_obs))
         new_predator = (int(new_predator[0]), int(new_predator[1]))
 
         last_action_category = None
