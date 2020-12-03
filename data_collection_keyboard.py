@@ -197,16 +197,19 @@ for i in range(number_of_runs):
                 episode_done = True
                 chunk = {}
                 encode_chunk = True
-                if player3.last_observation.any():
-                    chunk = player3.determine_action_chunk(player3.last_observation, player3.env.current_grid_map)
+                #the following would have been for the last observation.  But as humans don't see it,
+                #the model should also not see it
 
-                    obs_chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value,
-                                                           player3.env.value_to_objects)
-                    for key in obs_chunk:
-                        if 'distance' in key:
-                            obs_chunk[key] = obs_chunk[key] / player3.max_distance
-
-                    chunk = {**obs_chunk, **chunk}
+                # if player3.last_observation.any():
+                #     chunk = player3.determine_action_chunk(player3.last_observation, player3.env.current_grid_map)
+                #
+                #     obs_chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value,
+                #                                            player3.env.value_to_objects)
+                #     for key in obs_chunk:
+                #         if 'distance' in key:
+                #             obs_chunk[key] = obs_chunk[key] / player3.max_distance
+                #
+                #     chunk = {**obs_chunk, **chunk}
 
                 if chunk:
                     print('encoding 3', chunk)

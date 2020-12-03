@@ -124,6 +124,8 @@ class Goal(Entity):
         print('entity hit goal', entity_object)
         self.env.done = True
         self.env.reward += 1
+        #this next line is custom for ACT-R (to observe what happend)
+
 
     def moveTo(self,current_position,intended_position):
         current_position_value = self.env.current_grid_map[current_position[0], current_position[1]]
@@ -474,8 +476,9 @@ class ACTR(Agent):
                       4: lambda x: (x[0] % gridmap.shape[0], (x[1] + 1) % gridmap.shape[1]),
                       0: lambda x: (x[0], x[1])}
 
-        #agent_location = np.where(gridmap == agent)
-        agent_location = self.env.active_entities[agent].current_position#(int(agent_location[0]), int(agent_location[1]))
+        agent_location = np.where(gridmap == agent)
+        #agent_location = self.env.active_entities[agent].current_position
+        agent_location = (int(agent_location[0]), int(agent_location[1]))
         goal_location = []
         advisary_location = []
         return_dict = {}
@@ -636,6 +639,8 @@ class ACTR(Agent):
         #The following creates chunks that describe the transition from the previous time-step
         #to the current time step.
         #The intention is to use this to predict where the agent will be on the NEXT time-step
+        print('Get Action Called')
+        print(np.array2string(self.env.current_grid_map))
         chunk = {}
         advisary_action_map = {'advisary_up': UP, 'advisary_down': DOWN, 'advisary_noop': NOOP, 'advisary_left': LEFT,
                                'advisary_right': RIGHT}
@@ -743,7 +748,7 @@ class ACTR(Agent):
 
 
 
-            print("Projected Map")
+
             print("assuming:", probe_chunk)
             print(np.array2string(imaginary_map))
 
@@ -876,6 +881,7 @@ class ACTR(Agent):
         if isinstance(entity_object,Advisary):
             entity_object.intended_position = self.current_position
             self.intended_position =  self.current_position
+            self.env.current_grid_map[self.current_position] = entity_object.value
         #In this game, if anything moves to me, the game must be over
         self.env.done = True
         self.env.reward = - 1
@@ -1002,7 +1008,9 @@ class ChasingAdvisary(Advisary):
 
 class ChasingBlockingAdvisary(Advisary):
     def moveToMe(self,entity_object):
+
         self.current_position = self.intended_position
+        self.env.current_grid_map[self.intended_position] = self.value
         #del self.env.active_entities[entity_object.value]
         print('CBA: entity', entity_object, 'hit me')
         self.env.done = True
