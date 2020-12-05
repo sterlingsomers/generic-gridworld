@@ -540,8 +540,8 @@ class ACTR(Agent):
         last_predator = np.where(old_obs == 4)
         last_predator = (int(last_predator[0]), int(last_predator[1]))
         new_predator = np.where(new_obs == 4)
-        print("new predator", new_predator)
-        print(np.array2string(new_obs))
+        #print("new predator", new_predator)
+        #print(np.array2string(new_obs))
         new_predator = (int(new_predator[0]), int(new_predator[1]))
 
         last_action_category = None
@@ -603,9 +603,16 @@ class ACTR(Agent):
         angle1 = np.math.atan2(np.linalg.det([v1, v2]), np.dot(v1, v2))
         # angle2 = np.math.atan2(np.linalg.det([v0,v2]),np.dot(v0,v2))
         # diffangle = angle2 - angle1
-        chunk['clockwise'] = angle1 if angle1 < 0 else 0
-        chunk['counterclockwise'] = angle1 if angle1 > 0 else 0
+        chunk['clockwise'] = 1 if angle1 < 0 else 0
+        chunk['counterclockwise'] = 1 if angle1 > 0 else 0
         chunk['direct'] = 1 if angle1 == 0 else 0
+        if angle1:
+            print('old')
+            print(np.array2string(old_obs))
+            print('new')
+            print(np.array2string(new_obs))
+            print(angle1, 'clock', chunk['clockwise'], 'counter', chunk['counterclockwise'])
+            print('')
 
         return chunk
 
@@ -648,7 +655,7 @@ class ACTR(Agent):
         encode_chunk = True #used to store only when prediction was wrong
 
 
-        p1, p2, p3 = None, None, None
+        p0, p1, p2, p3 = None, None, None, None
         my_new_position = self.current_position
         new_predator = np.where(self.env.current_grid_map == 4)
         new_predator = (int(new_predator[0]), int(new_predator[1]))
