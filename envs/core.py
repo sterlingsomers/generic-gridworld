@@ -953,17 +953,17 @@ class pythonACTR(Agent):
             for afact in facts:
                 DM.learn(**afact)
             # DM.advance()
-            focus.set('step:do_nothing')
+            focus.set('step:go_towards')
 
         #we don't need a vision module. for simplicity, just assume the environment is visible
-        def do_nothing(focus='step:do_nothing'):
+        def do_nothing(focus='step:go_towards'):
             print('do nothing', self.parent)
             self.external_reference.action_to_forward = 1
             focus.set('step:request')
 
         def request(focus='step:request'):
             DM.blend('down', up=1.0)
-            focus.set('step:recall')
+            focus.set('step:do_nothing')
 
     def __init__(self, env, obs_type='image',entity_type='agent', color='orange', position='random-free',data=[],mismatch_penalty=1,temperature=1,noise=0.0,decay=0.0,multiprocess=False,processes=4):
         super().__init__(env, obs_type, entity_type, color, position)
