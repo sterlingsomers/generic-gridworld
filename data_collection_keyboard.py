@@ -50,7 +50,7 @@ goal = Goal(env,entity_type='goal',color='green')
 player3 = pythonACTR(env, data=human_data, mismatch_penalty=data['mismatch'],decay=data['decay'],noise=data['noise'],temperature=data['temperature'],multiprocess=False,processes=5)
 #player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
 #player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
-advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
+#advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
 #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
 
 env.setRecordHistory()
