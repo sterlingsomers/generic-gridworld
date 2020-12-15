@@ -1,5 +1,6 @@
 # Fully Convolutional Network (the 2nd in DeepMind's paper)import logging
 import os
+import json
 import shutil
 import sys
 from datetime import datetime
@@ -7,7 +8,7 @@ import time
 from time import sleep
 import numpy as np
 import pickle
-import pygame
+# import pygame
 from absl import flags
 from actorcritic.agent import ActorCriticAgent, ACMode
 from actorcritic.runner import Runner, PPORunParams
@@ -24,6 +25,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 import gym
 from gym.wrappers import TimeLimit
+from common.wrappers import  DiscreteToBoxWrapper
 
 # import envs.generic_env_v2
 from envs.generic_env_v2 import GenericEnv
@@ -35,41 +37,43 @@ from envs.core_v2 import *
 # from envs.core_v2_before_chase import *
 
 FLAGS = flags.FLAGS
+flags.DEFINE_boolean("training", True, "if should train the model, if false then save only episode score summaries")
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
+flags.DEFINE_bool("testing", False, "Whether to render with pygame.")
+flags.DEFINE_bool("recording", False, "Whether to record with Monitor.")
 flags.DEFINE_float("sleep_time", 0.4, "Time-delay in the demo")
 flags.DEFINE_integer("resolution",8, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 100, "Game steps per agent step.")
-flags.DEFINE_integer("step2save", 500, "Game step to save the model.") #A2C every 1000, PPO 250, 500
+flags.DEFINE_integer("step2save", 50, "Game step to save the model.") #A2C every 1000, PPO 250, 500
 flags.DEFINE_integer("n_envs", 80, "Number of environments to run in parallel")
-flags.DEFINE_integer("episodes", 5000, "Number of complete episodes for test mode") # TEST MODE EPISODES
+flags.DEFINE_integer("episodes", 150, "Number of complete episodes for test mode") # TEST MODE EPISODES
 flags.DEFINE_integer("n_steps_per_batch", 32,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!! You need them cauz you dont want to run till it finds the beacon especially at first episodes - will take forever
-flags.DEFINE_integer("all_summary_freq", 10, "Record all summaries every n batch")
+flags.DEFINE_integer("all_summary_freq", 100, "Record all summaries every n batch")
 flags.DEFINE_integer("scalar_summary_freq", 5, "Record scalar summaries every n batch")
 flags.DEFINE_string("checkpoint_path", "_files/models", "Path for agent checkpoints")
 flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard summaries") #A2C_custom_maps#A2C-science-allmaps - BEST here for one policy
-flags.DEFINE_string("model_name", "chase_game_LionKing", "Name for checkpoints and tensorboard summaries") #
+flags.DEFINE_string("model_name", "dokimi", "Name for checkpoints and tensorboard summaries") #
 # net_vs_pred_best_noop #
 # net_vs_pred DONT touch TESTING is the best (take out normalization layer in order to work! -- check which parts exist in the restore session if needed)
-flags.DEFINE_integer("K_batches", 105000, # Batch is like a training epoch!
+flags.DEFINE_integer("K_batches", 1050, # Batch is like a training epoch!
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "DefeatRoaches", "Name of a map to use.")
 flags.DEFINE_float("discount", 0.95, "Reward-discount for the agent")
-flags.DEFINE_boolean("training", False, "if should train the model, if false then save only episode score summaries")
 
-flags.DEFINE_enum("if_output_exists", "overwrite", ["fail", "overwrite", "continue"], # continue ONLY for PHASE_II!!!
+flags.DEFINE_enum("if_output_exists", "continue", ["fail", "overwrite", "continue"], # continue ONLY for PHASE_II!!!
     "What to do if summary and model output exists, only for training, is ignored if notraining")
 flags.DEFINE_float("max_gradient_norm", 10.0, "good value might depend on the environment") # orig: 1000
 flags.DEFINE_float("loss_value_weight", 0.5, "good value might depend on the environment") # orig:1.0, good value: 0.5
-flags.DEFINE_float("entropy_weight_spatial", 0.00000001,
-    "entropy of spatial action distribution loss weight") # orig:1e-6
-flags.DEFINE_float("entropy_weight_action", 0.01, "entropy of action-id distribution loss weight") # orig:1e-6
+flags.DEFINE_float("entropy_weight_spatial", 0.00000001, "entropy of spatial action distribution loss weight") # orig:1e-6
+flags.DEFINE_float("entropy_weight_action", 0.01, "entropy of action-id distribution loss weight") # 0.01 gridworld; orig:1e-6
 flags.DEFINE_float("ppo_lambda", 1.0, "lambda parameter for ppo AND for GAE(λ) - not yet")
 flags.DEFINE_integer("ppo_batch_size", None, "batch size for ppo, if None use n_steps_per_batch")
 flags.DEFINE_integer("ppo_epochs", 3, "epochs per update")
-flags.DEFINE_enum("policy_type", "FullyConv", ["MetaPolicy", "FullyConv", "FactoredPolicy",
+flags.DEFINE_enum("policy_type", "Imitation_ACTUP", ["MetaPolicy", "FullyConv", "FactoredPolicy",
                                                           "FactoredPolicy_PhaseI", 'FactoredPolicy_PhaseII',
-                                                          "Relational", "AlloAndAlt", "FullyConv3D", 'Imitation_ACTUP'], "Which type of Policy to use")
+                                                          "Relational", "AlloAndAlt", "FullyConv3D", 'Imitation_ACTUP',
+                                                       'Imitation_ACTUPII'], "Which type of Policy to use")
 flags.DEFINE_enum("agent_mode", ACMode.A2C, [ACMode.A2C, ACMode.PPO], "if should use A2C or PPO")
 
 FLAGS(sys.argv)
@@ -103,6 +107,38 @@ def _save_if_training(agent):
     agent.flush_summaries()
     sys.stdout.flush()
 
+def save_logging(): # NEW!
+    # TODO: REDUCE ACTION SPACE!!!
+    # TODO: Put policy selection (so it gets also into the flags file)
+    # TODO: Fix the path to be the model's path. THE PATH DOESNT EXIST! IT IS CREATED WITH THE FIRST MODEL SAVE!
+    # TODO: Test Relational RL and compare also your code with the only github repo that has RRL
+    # TODO: Test Reaver in Colab
+    path = full_chekcpoint_path + '/'
+
+    # SAVE HYPERPARAMS AND NET STRUCTURE
+    if FLAGS.if_output_exists == 'overwrite':  # when we overwrite the model we need new logging
+        if os.path.isfile(path + 'flags.txt'):
+            # Remove flags file if exists so we do not append the new flags to the previous ones.
+            os.remove(path + 'flags.txt')
+        # Save Flags
+        FLAGS.append_flags_into_file(path + 'flags.txt')
+
+        diction = {}
+        diction['variables'] = []
+        tvars = tf.trainable_variables()
+        for var in tvars:
+            diction['variables'].append({'name': var._shared_name,
+                                         'shape': tuple(var.shape.as_list())})
+
+        # Save to json:
+        with open(path + 'model.json', 'w', encoding='utf-8') as f:
+            json.dump(diction, f, ensure_ascii=False, sort_keys=True, indent=4)
+        print('Logging files saved...')
+
+    elif FLAGS.if_output_exists == 'continue': # If we continue we just append the new flags into the existing file (no
+        #  need to update the model file)
+        FLAGS.append_flags_into_file(path + 'flags.txt')
+
 def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
     """
     Create a wrapped, monitored SubprocVecEnv for Atari.
@@ -111,17 +147,22 @@ def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
     def make_env(rank): # pylint: disable=C0111
         def _thunk():
             # env = gym.make(env_id)
-            env = TimeLimit(GenericEnv(map='small-portals', wallrule=False)) # TimeLimit(GenericEnv(
-            # ))#envs.generic_env_v2.GenericEnv()
+            env = TimeLimit(GenericEnv(map='small-empty', wallrule=False)) # TimeLimit(
+            # GenericEnv(
+            # ))#envs.generic_env_v2.GenericEnv() /3 'small-portals' for labyrinth chase game
             # env = TimeLimit(GenericEnv())
-            env._max_episode_steps = 500
-            # goal = Goal(env, entity_type='goal', color='green')
-            goal = RunAwayGoal(env, obs_type='data', entity_type='goal', color='green')
-            network_agent = NetworkAgent(env, color='aqua')
+            env._max_episode_steps = 200 # Set max steps properly before assigning a new wrapper
+            env = DiscreteToBoxWrapper(env)
+            # env = GenericEnv(map='small-empty', wallrule=False)
+            Goal(env.env, entity_type='goal', color='green')
+            # goal = RunAwayGoal(env, obs_type='data', entity_type='goal', color='green')
+            NetworkAgent(env.env, color='aqua')
             # AI_agent = AIAgent(env, entity_type='agent', color='blue')
-            AI_agent = AIAgent(env, entity_type='agent', color='pink')
-            # predator = ChasingBlockingAdvisary(env, entity_type='advisary',
-            #                                    color='red', obs_type='data', position='near-goal') # red dark_orange
+            # AI_agent = AIAgent(env, entity_type='agent', color='pink') # <--this one!
+            #ChasingBlockingAdvisary(env.env, entity_type='advisary',
+            #                                   color='red', obs_type='data', position='near-goal') # red dark_orange
+            # env = TimeLimit(env)
+            # env = DiscreteToBoxWrapper(env)
             # env.seed(seed + rank)
             # Monitor should take care of reset!
             env = Monitor(env, logger.get_dir() and os.path.join(logger.get_dir(), str(rank)), allow_early_resets=True) # SUBPROC NEEDS 4 OUTPUS FROM STEP FUNCTION
@@ -142,7 +183,7 @@ def main():
         #envs = SubprocVecEnv([make_env(i,**env_args) for i in range(FLAGS.n_envs)])
         # envs = make_custom_env('gridworld{}-v3'.format('visualize' if FLAGS.visualize else ''), FLAGS.n_envs, 1)
         envs = make_custom_env('MsPacman-v4', FLAGS.n_envs, 1)
-    elif FLAGS.training==False:
+    elif (FLAGS.training==False) & (FLAGS.recording==False):
         #envs = make_custom_env('gridworld-v0', 1, 1)
         # envs = gym.make('gridworld{}-v0'.format('visualize' if FLAGS.visualize else ''))
         envs = GenericEnv(map='small-portals')
@@ -154,6 +195,18 @@ def main():
         AI_agent = AIAgent(envs, entity_type='agent',color='pink')#HumanAgent(envs, entity_type='agent',color='pink',
         #  pygame=pygame)#AIAgent(envs, entity_type='agent',
         # color='pink')
+    elif FLAGS.recording == True:
+        from gym.wrappers import Monitor as Mn
+        # You can run a random agent in parallel with 2 envs!!! Collect both rewards and do the smoothing
+        # numenvs = 1
+        # env = make_custom_env(numenvs, 1)
+        env = GenericEnv()
+        # envs = Mn(gym.make('CartPole-v0'), './data', video_callable=lambda episode_id: episode_id % 10 == 0,
+        #           force=True)
+        envs = Mn(env, './data', video_callable=lambda episode_id: episode_id % 5 == 0,
+                  force=True)  # record every 10 episodes
+        Goal(env, entity_type='goal', color='green')
+        NetworkAgent(env, entity_type='agent', color='aqua')
     else:
         print('Wrong choices in FLAGS training and visualization')
         return
@@ -185,14 +238,14 @@ def main():
         num_actions=envs.action_space.n,
         num_envs= FLAGS.n_envs,
         nsteps= FLAGS.n_steps_per_batch,
-        obs_dim= envs.observation_space.shape,
+        obs_dim= envs.observation_space['img'].shape,
         policy=FLAGS.policy_type
     )
     # Build Agent
     agent.build_model()
     if os.path.exists(full_chekcpoint_path):
         # if FLAGS.policy_type == 'FactoredPolicy_PhaseII' and FLAGS.if_output_exists != 'continue': # TODO: Careful below when you CONTINUE from Phase II! Do we load the whole net or only the heads?
-        if FLAGS.policy_type == 'FactoredPolicy_PhaseII': # FOR NOW CONTINUE  with PHASE II will re-init the Adam which is not correct
+        if (FLAGS.policy_type == 'FactoredPolicy_PhaseII') or (FLAGS.policy_type == 'Imitation_ACTUP'):#'FactoredPolicy_PhaseII': # FOR NOW CONTINUE  with PHASE II will re-init the Adam which is not correct
             agent.init() # Initialize all the variables (including Adam optimizer vars), so the ones that are not loaded (the untrained heads) are getting initialized. You also init the Adam variables which for head training is good. If you want to continue training in Phase II then Adam variables should be loaded as well!
         agent.load(full_chekcpoint_path, FLAGS.training) #We load the variables so hopefully the initialisation will substituted by the loaded params except for the heads.
         # TODO: You can run a self.sess(run) with a custom saver s = tf.train.saver(vars) and then use the code of agent.load with the vars you want.
@@ -254,6 +307,8 @@ def main():
                     _print(i)
                 if i % FLAGS.step2save == 0:
                     _save_if_training(agent)
+                    if i==0:
+                        save_logging()
                 if FLAGS.policy_type == 'MetaPolicy' or FLAGS.policy_type == 'LSTM':
                     runner.run_meta_batch()
                 elif FLAGS.policy_type == 'FactoredPolicy' or FLAGS.policy_type == 'FactoredPolicy_PhaseI' or FLAGS.policy_type == 'FactoredPolicy_PhaseII':
@@ -274,7 +329,7 @@ def main():
                 print("--- %s seconds ---" % (np.round(elapsed_time, 2)))
         except KeyboardInterrupt:
             pass
-    else: # Test the agent
+    elif FLAGS.testing: # Test the agent
         try:
             import pygame
             # import time
@@ -447,6 +502,51 @@ def main():
             #     pickle.dump(dictionary, handle)
 
         except KeyboardInterrupt:
+            pass
+    elif FLAGS.recording:
+        # Load Agent
+        #dm = pickle.load(open('./models/2020_Nov12_time13-17_agent_knn5_nenvs20_numdates50000.dm','rb'))
+        num_episodes = 100
+        MAX_STEPS = 200
+        num_envs = 1
+        epsilon = 0.0
+        from common.preprocess import ObsProcesser
+        # from gym.wrappers import Monitor as Mn
+        # # You can run a random agent in parallel with 2 envs!!! Collect both rewards and do the smoothing
+        # # numenvs = 1
+        # # env = make_custom_env(numenvs, 1)
+        # env = GenericEnv()
+        # # envs = Mn(gym.make('CartPole-v0'), './data', video_callable=lambda episode_id: episode_id % 10 == 0,
+        # #           force=True)
+        # envs = Mn(env, './data', video_callable=lambda episode_id: episode_id % 5 == 0,
+        #           force=True) # record every 10 episodes
+        # Goal(envs, entity_type='goal', color='green')
+        # NetworkAgent(envs, entity_type='agent', color='aqua')
+        # ChasingBlockingAdvisary(env, entity_type='advisary',
+        #                         color='red', obs_type='data', position='near-goal')  # red dark_orange
+        for epis in range(num_episodes):
+            print('\n Episode:', epis)
+            done = False
+            latest_obs = envs.reset()
+            latest_obs = latest_obs['img']  # reshape to [1, numfeats] for gym Monitor (Mn)
+            # for t in range(MAX_STEPS):
+            latest_obs = ObsProcesser().process(np.expand_dims(latest_obs, axis=0))
+
+            t=0
+            while not done or (t<MAX_STEPS):
+                print('\n step:', t)
+                # action = agent.step(reward, obs)
+                a, v = agent.step(latest_obs)
+                #a = dm.choose_action(latest_obs, epsilon, knn, num_envs)
+                # obs = latest_obs.copy()
+                latest_obs, r, done, info = envs.step(a[0])  # Monitor accepts only integer actions and np arrays
+                latest_obs = latest_obs['img']
+                latest_obs = ObsProcesser().process(np.expand_dims(latest_obs, axis=0))
+                t+=1
+                # if done: break
+        try:
+            envs.close()
+        except AttributeError:
             pass
 
     print("Okay. Work is done")

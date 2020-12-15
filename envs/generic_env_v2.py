@@ -13,9 +13,8 @@ import matplotlib.pyplot as plt
 from common.maps import *
 import numpy as np
 from collections import OrderedDict
-
+import PIL
 from envs.core_v2 import *
-
 import time
 
 NOOP = 0
@@ -47,6 +46,7 @@ def step_wrapper(f):
 
 
 class GenericEnv(gym.Env):
+    metadata = {'render.modes': ['human', 'rgb_array']}
     value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0}}
     object_values = [1]
     entities = {} #indexed by object value
@@ -95,13 +95,6 @@ class GenericEnv(gym.Env):
         #add (dynamic, random) features to the map
         self.addMapFeatures(features)
 
-
-        #Add agents to the environment (1 required).  Will be placed on reset()
-        # for agent in agents:
-        #     class_to_use = getattr(sys.modules[__name__], agent['class'])
-        #     class_to_use(self,entity_type=agent['entity_type'],color=agent['color'],position=agent['position'])
-        #
-        #
         # #add other entities to the environment
         for entity in entities: # WHY THIS? ENTITIES ARE EMPTY HERE
             class_to_use = getattr(sys.modules[__name__], entity['class'])
@@ -116,8 +109,11 @@ class GenericEnv(gym.Env):
                            4:lambda x: (x[0]%self.dims[0],(x[1]+1)%self.dims[1]),
                            0:lambda x: (x[0],x[1])}
 
-        self.obs_shape = [dims[0], dims[0], 3]
-        self.observation_space = spaces.Box(low=0, high=255, shape=self.obs_shape, dtype=np.uint8)
+        self.img_obs_shape = [dims[0], dims[0], 3]
+        # self.observation_space = spaces.Box(low=0, high=255, shape=self.obs_shape, dtype=np.uint8)
+        self.observation_space = spaces.Dict({"grid": spaces.Box(low=0, high=10, shape=(dims[0], dims[0]), dtype=np.int),
+                                              "img": spaces.Box(low=0, high=255, shape=self.img_obs_shape, dtype=np.uint8),
+                                              })
         self.action_space = spaces.Discrete(5)
         self.reward_range = (-float('inf'), float('inf')) # or self.reward_range = (0,1)
 
@@ -135,6 +131,9 @@ class GenericEnv(gym.Env):
 
         #Run the dynamic environment
         #self.run()
+
+    def seed(self, seed=None):
+        np.random.seed(seed=seed) # It works the seed now!!!
 
     def setRecordHistory(self,on=True,history_dict={'observations':[],'value_to_objects':0,'reward':[],'done':[]}):
         self.record_history = True
@@ -181,6 +180,10 @@ class GenericEnv(gym.Env):
                     # print(self.action_map[direction](test_point), end_location)
                     # print(test_point, end_location, direction)
                     # try:
+                    # print('direction=', direction)
+                    # print('test_point=', test_point)
+                    # print('endloc0=', end_location[0])
+                    # print('endloc1=', end_location[1])
                     if self.action_map[direction](test_point) == (int(end_location[0]),int(end_location[1])):
                         pathArray[end_location] = - 1
                         still_looking = True
@@ -328,6 +331,109 @@ class GenericEnv(gym.Env):
         '''What to do in the event you move to an obstacle'''
         return 0
 
+    def obs_process_(self):
+        # Find all entities in the grid
+        obs = copy.deepcopy(self.current_grid_map)
+        # print('map:',obs,'\n')
+        agent_xy = np.array(np.where(obs == 3)).ravel()
+        goal_xy = np.array(np.where(obs == 2)).ravel()
+        predator_xy = np.array(np.where(obs == 4)).ravel()
+        # print('agent:', agent_xy, 'predator:', predator_xy, 'goal:',goal_xy,'\n')
+        # Some entities disappear when one steps on the other (last states usually) but these states are not stored
+        if agent_xy.size == 0:
+            agent_xy = np.array([0,0,])
+
+        if predator_xy.size == 0:
+            predator_xy = np.array([0,0,])
+
+        if goal_xy.size == 0:
+            goal_xy = np.array([0,0,])
+        # NOTES: Get to the goal task
+        # out = np.concatenate(np.array([agent_xy, goal_xy]).tolist())#, predator_xy, goal_xy]).tolist())
+        # NOTES: Get to the goal and avoid predator task
+        out = np.concatenate(np.array([agent_xy, predator_xy, goal_xy]).tolist())
+        # print('out=', out, '\n')
+        return out
+
+    def obs_process(self):
+        # positions + angles + distances
+        gridmap = copy.deepcopy(self.current_grid_map)
+        # print('map:',obs,'\n')
+        # agent_xy = np.array(np.where(obs == 3)).ravel()
+        # agent_location = np.where(gridmap == 3)
+        # agent_location = (int(agent_location[0]), int(agent_location[1]))
+        agent_location = 0
+        goal_location = 0 # only if it doesnt exist it becomes 0
+        advisary_location = 0
+        return_dict = {}
+        obs = -1*np.zeros(4, dtype=np.float) # zeros are plausible observations!
+
+        for stuff in self.value_to_objects:
+            if 'entity_type' in self.value_to_objects[stuff]:
+                if self.value_to_objects[stuff]['entity_type'] == 'goal':
+                    goal_location = np.where(gridmap == stuff)
+                    goal_xy = np.array(goal_location).ravel()
+                    # print('\n','goal',goal_location, '\n')
+                if self.value_to_objects[stuff]['entity_type'] == 'advisary':
+                    advisary_location = np.where(gridmap == stuff)
+                    predator_xy = np.array(advisary_location).ravel()
+                    # print('\n','predator=', advisary_location, 'pred_stuff=', stuff, '\n')
+                if self.value_to_objects[stuff]['entity_type'] == 'agent':
+                    agent_location = np.where(gridmap == stuff)
+                    agent_xy = np.array(agent_location).ravel()
+                    # print('\n','agent', agent_location, '\n')
+
+
+        if (goal_xy.size != 0) and (agent_xy.size != 0):
+            # print('\n','goal=',goal_xy.size,'agent=',agent_xy.size,'\n')
+            goal_location = (int(goal_location[0]), int(goal_location[1]))
+            xdist_goal_agent = goal_location[0] - agent_location[0]
+            ydist_goal_agent = goal_location[1] - agent_location[1]
+            # if goal_location[0] < agent_location[0]:
+            #     xdist_goal_agent = - xdist_goal_agent
+            # if goal_location[1] < agent_location[1]:
+            #     ydist_goal_agent = - ydist_goal_agent
+            # atan2(y,x)
+            # print(xdist_goal_agent, ydist_goal_agent,'\n')
+            goal_rads = math.atan2(ydist_goal_agent, xdist_goal_agent)
+
+            path_agent_to_goal = self.getPathTo(agent_location, goal_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_goal == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+
+            if goal_rads < 0:
+                goal_rads += 2*math.pi
+            return_dict['goal_rads'] = goal_rads/(2*math.pi) # normalize
+            return_dict['goal_distance'] = len(points_in_path) / self.max_distance
+            obs[0] = return_dict['goal_rads']
+            obs[1] = return_dict['goal_distance']
+
+        if (predator_xy.size != 0) and (agent_xy.size != 0):
+            # print('\n', 'predator=', predator_xy.size, 'agent=',agent_xy.size, '\n')
+            advisary_location = (int(advisary_location[0]), int(advisary_location[1]))
+            xdist_advers_agent = advisary_location[0] - agent_location[0]
+            ydist_advers_agent = advisary_location[1] - agent_location[1]
+            # if advisary_location[0] < agent_location[0]:
+            #     xdist_advers_agent = - xdist_advers_agent
+            # if advisary_location[1] < agent_location[1]:
+            #     ydist_advers_agent = - ydist_advers_agent
+            # print(xdist_advers_agent, ydist_advers_agent, '\n')
+            advisary_rads = math.atan2(ydist_advers_agent, xdist_advers_agent)
+            path_agent_to_advisary = self.getPathTo(agent_location, advisary_location, free_spaces=[0])
+            points_in_path = np.where(path_agent_to_advisary == -1)
+            points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+
+            if advisary_rads < 0:
+                advisary_rads += 2*math.pi
+            return_dict['advisary_rads'] = advisary_rads/(2*math.pi) # normalize
+            return_dict['advisary_distance'] = len(points_in_path) / self.max_distance
+            obs[2] = return_dict['advisary_rads']
+            obs[3] = return_dict['advisary_distance']
+
+        # the distances need to be normalized
+
+
+        return obs#return_dict
 
     def reset(self):
         # for entity in self.entities:
@@ -364,7 +470,7 @@ class GenericEnv(gym.Env):
             entity_object = self.entities[entity]
             if entity_object.record_history:
                 entity_object.history['actions'] = []
-            entity_object.place(position=entity_object.position)
+            entity_object.place(position=entity_object.position,position_coords=entity_object.position_coords)
         # for object_value in self.object_values:
         #     if object_value <= 1:
         #         continue
@@ -374,12 +480,15 @@ class GenericEnv(gym.Env):
         #         free_spaces.extend(list(zip(found_spaces[0], found_spaces[1])))
         #     the_space = random.choice(free_spaces)
         #     self.current_grid_map[the_space] = object_value
-        obs_ = {}
-        obs_['img'] = self._gridmap_to_image()
-        obs_['map'] = self.current_grid_map.copy()
-        # obs_['agent_id'] = 0 #
-        obs_['objects_id'] = self.value_to_objects
-        return self._gridmap_to_image()#obs_
+        # obs_ = {}
+        # obs_['img'] = self._gridmap_to_image()
+        # obs_['map'] = self.current_grid_map.copy()
+        # # obs_['agent_id'] = 0 #
+        # obs_['objects_id'] = self.value_to_objects
+        self.state = {'grid': self.current_grid_map.copy(),
+                      'img':  self._gridmap_to_image()
+                        }
+        return self.state #obs_#self._gridmap_to_image()#obs_
 
     def _gridmap_to_image(self):
         image = np.zeros((self.dims[0],self.dims[1],3), dtype=np.uint8)
@@ -398,6 +507,31 @@ class GenericEnv(gym.Env):
 
         return image
 
+    def render(self, mode='rgb_array'):
+        """
+        Returns an RGB image of your environment.
+        - human: render to the current display or terminal and
+          return nothing. Usually for human consumption.
+        - rgb_array: Return an numpy.ndarray with shape (x, y, 3),
+          representing RGB values for an x-by-y pixel image, suitable
+          for turning into a video.
+        """
+        if mode == 'rgb_array':
+            size_factor = 100  # The higher the better
+            image = self._gridmap_to_image()
+            initial_img = PIL.Image.fromarray(image)
+            size = tuple((np.array(initial_img.size) * size_factor).astype(int))
+            initial_img = np.array(initial_img.resize(size, PIL.Image.NEAREST))
+
+            initial_img = np.flip(np.rot90(initial_img), 0)
+
+            return initial_img  # self._gridmap_to_image()#np.array(...)  # return RGB frame suitable for video
+        elif mode == 'human':
+            ...  # pop up a window and render (for a human to play the game)
+        else:
+            super(GenericEnv, self).render(mode=mode)  # just raise an exception
+        # return self._gridmap_to_image()
+
     @step_wrapper
     def step(self, action):
         # info = {}
@@ -411,7 +545,11 @@ class GenericEnv(gym.Env):
             ent_obj = self.entities[entity]
             ent_obj.stepCheck()
         if self.done:
-            return self._gridmap_to_image(), self.reward, self.done, self.info
+            print('done')
+            self.state = {'grid': self.current_grid_map.copy(),
+                          'img': self._gridmap_to_image()
+                          }
+            return self.state, self.reward, self.done, self.info
 
         for entity in self.active_entities:
             if not type(self.entities[entity]) == NetworkAgent:
@@ -448,7 +586,11 @@ class GenericEnv(gym.Env):
                 if self.active_entities[entity].intended_position == self.entities[other].current_position:
                     self.entities[other].moveToMe(self.active_entities[entity])
         if self.done:
-            return self._gridmap_to_image(), self.reward, self.done, self.info
+            #print('done')
+            self.state = {'grid': self.current_grid_map.copy(),
+                          'img': self._gridmap_to_image()
+                          }
+            return self.state, self.reward, self.done, self.info # self._gridmap_to_image()
 
 
         #this loop checks for collisions, carries out the consequence
@@ -466,12 +608,16 @@ class GenericEnv(gym.Env):
                 if entity_object.intended_position == other_entity_object.intended_position:
                     # print("intended postions", entity_object, other_entity_object)
                     other_entity_object.moveToMe(entity_object)
+                    # print('self=',self)
                     if self.done:
                         # print("reward", self.reward, self.done)
                         # obs_['img'] = self._gridmap_to_image()
                         # obs_['map'] = self.current_grid_map.copy()
                         # obs_['objects_id'] = self.value_to_objects
-                        return self._gridmap_to_image(), self.reward, self.done, self.info # obs_
+                        self.state = {'grid': self.current_grid_map.copy(),
+                                      'img': self._gridmap_to_image()
+                                      }
+                        return self.state, self.reward, self.done, self.info # obs_ # self._gridmap_to_image()
                 if entity_object.current_position == other_entity_object.intended_position and other_entity_object.current_position == entity_object.intended_position:
                     other_entity_object.moveToMe(entity_object)
                     if self.done:
@@ -479,7 +625,10 @@ class GenericEnv(gym.Env):
                         # obs_['img'] = self._gridmap_to_image()
                         # obs_['map'] = self.current_grid_map.copy()
                         # obs_['objects_id'] = self.value_to_objects
-                        return self._gridmap_to_image(), self.reward, self.done, self.info # obs_
+                        self.state = {'grid': self.current_grid_map.copy(),
+                                      'img': self._gridmap_to_image()
+                                      }
+                        return self.state, self.reward, self.done, self.info # obs_ self._gridmap_to_image()
 
 
         if not self.done:
@@ -492,10 +641,16 @@ class GenericEnv(gym.Env):
             # obs_['img'] = self._gridmap_to_image()
             # obs_['map'] = self.current_grid_map.copy()
             # obs_['objects_id'] = self.value_to_objects
-            return self._gridmap_to_image(), self.reward, self.done, self.info
+            self.state = {'grid': self.current_grid_map.copy(),
+                          'img': self._gridmap_to_image()
+                          }
+            return self.state, self.reward, self.done, self.info # self._gridmap_to_image()
         else:
             # print("reward", self.reward, self.done)
             # obs_['img'] = self._gridmap_to_image()
             # obs_['map'] = self.current_grid_map.copy()
             # obs_['objects_id'] = self.value_to_objects
-            return self._gridmap_to_image(), self.reward, self.done, self.info
+            self.state = {'grid': self.current_grid_map.copy(),
+                          'img': self._gridmap_to_image()
+                          }
+            return self.state, self.reward, self.done, self.info # self._gridmap_to_image()

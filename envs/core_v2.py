@@ -81,7 +81,7 @@ class Entity:
         self.active = False
         return 1
 
-    def place(self, position='random-free',position_coords=[]):
+    def place(self, position='random-free',position_coords=()):
         # self.history['steps'] = []
 
         if position == 'random-free':
@@ -253,6 +253,7 @@ class AIAgent(Agent):
         return super().moveToMe(entity_object)
 
     def getAction(self,obs):
+        # print('obs=', obs)
         #go straight for the goal
         my_location = np.where(self.env.current_grid_map == self.value)
         goal_val = self.env.getGoalValue()
@@ -414,6 +415,7 @@ class RunAwayGoal(ActiveEntity):
     def _getAction(self,obs):
         #find the closest agent
         # print("here")
+        # print('obs _getAction=', obs)
         directions = [UP, DOWN, LEFT, RIGHT]
         agents = self.getAgents()
         distance_to_agent = {}
@@ -478,6 +480,7 @@ class RunAwayGoal(ActiveEntity):
 class ChasingAdvisary(Advisary):
 
     def _getAction(self,obs):
+        # print('obs=', obs)
         my_location = np.where(self.env.current_grid_map == self.value)
 
         agents = self.getAgents()
@@ -670,17 +673,27 @@ class NetworkAgent(Agent):
 
 
     def moveToMe(self,entity_object): # Means smth moves to the network
-        if isinstance(entity_object,Agent):
+        environment = self.env
+        # if self.env.__class__.__name__ == 'GenericEnv':
+        #     environment = self.env
+        # else:
+        #     environment = self.env.env
+        if isinstance(entity_object,Agent): # Notes: Any agent hitting our agent
+            # print('entity_object.intended_position=', entity_object.intended_position)
             entity_object.intended_position = entity_object.current_position
             return 1
-        if isinstance(entity_object, RunAwayGoal):
-            self.env.done = True
-            self.env.reward = 1
+        if isinstance(entity_object, Goal):
+            # print('2nd done')
+            environment.done = True
+            environment.reward = 1
             return 1
-        self.env.done = True
-        self.env.reward -=1
-        # print('net being captured')
-        self.env.info['fire'] = -1
+        if isinstance(entity_object, ChasingBlockingAdvisary):
+            # print('3rd')
+            # print('self 3rd=',self.env)
+            environment.done = True
+            environment.reward -=1
+            # print('net being captured')
+            environment.info['fire'] = -1
 
 
 class TrainedAgent(Agent):

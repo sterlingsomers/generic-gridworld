@@ -185,7 +185,7 @@ class FullyConvPolicy:
         # action_id_probs /= tf.reduce_sum(action_id_probs, axis=1, keepdims=True)
 
         def logclip(x):
-            return tf.log(tf.clip_by_value(x, 1e-12, 1.0))
+            return tf.log(tf.clip_by_value(x, 1e-12, 1.0)) # log( π(α|σ) )
 
 
         # non-available actions get log(1e-10) value but that's ok because it's never used. SEEMS THAT YOU NEED THE LOG!!!

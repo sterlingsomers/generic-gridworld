@@ -8,6 +8,7 @@ from actorcritic.agent import ActorCriticAgent, ACMode
 from common.preprocess import ObsProcesser, ActionProcesser, FEATURE_KEYS
 from common.util import general_n_step_advantage, combine_first_dimensions, \
     dict_of_lists_to_list_of_dicst, general_nstep_adv_sequential
+
 import tensorflow as tf
 from absl import flags
 # from time import sleep
@@ -74,8 +75,10 @@ class Runner(object):
     def reset(self):
         #self.score = 0.0
         obs = self.envs.reset()
-        self.latest_obs = self.obs_processer.process(obs) # we use [] as the processor expects a list and not a dictionary.
-        # self.grid_map = self.latest_obs['rgb_screen'][0]['map'] # There are significant differences between monitor newest version with the older one that you used in the drone domain
+        self.latest_obs = self.obs_processer.process(obs['img']) # we use [] as the processor expects a list and not a
+        # dictionary.
+        self.grid_map = obs['features'] # There are significant differences between monitor
+        # newest version with the older one that you used in the drone domain
         # self.objects_id = self.latest_obs['rgb_screen'][0]['objects_id']
 
     def reset_demo(self):
@@ -533,27 +536,31 @@ class Runner(object):
 
         latest_obs = self.latest_obs # (MINE) =state(t)
         grid_map = self.grid_map
-        objects_id = self.objects_id
+        # objects_id = self.objects_id
 
         for n in range(self.n_steps):
             # could calculate value estimate from obs when do training
             # but saving values here will make n step reward calculation a bit easier
-            action_ids, value_estimate, actup_probs = self.agent.step_imitate(latest_obs, grid_map, objects_id)
+            # print('grid map:', grid_map)
+            action_ids, value_estimate, actup_probs = self.agent.step_imitate(latest_obs, grid_map)
             # print('|step:', n, '|actions:', action_ids)  # (MINE) If you put it after the envs.step the SUCCESS appears at the envs.step so it will appear oddly
             # (MINE) Store actions and value estimates for all steps
             mb_values[:, n] = value_estimate
             mb_obs.append(latest_obs)
             mb_actions.append((action_ids))
-            mb_actup_probs[:, n, :] = [t for t in actup_probs]
+            mb_actup_probs[:, n, :] = [t for t in actup_probs] # [batch x timesteps x num_actions]
             # (MINE)  do action, return it to environment, get new obs and reward, store reward
             #actions_pp = self.action_processer.process(action_ids) # Actions have changed now need to check: BEFORE: actions.FunctionCall(actions.FUNCTIONS.no_op.id, []) NOW: actions.FUNCTIONS.no_op()
             obs_raw = self.envs.step(action_ids)
             #obs_raw.reward = reward
-            latest_obs = self.obs_processer.process(obs_raw[0]['img']) # For obs_raw as tuple! #(MINE) =state(t+1). Processes all inputs/obs from all timesteps (and envs)
-            grid_map = obs_raw[0]['map']
+            # Notes (Below): the obs_raw come from Monitor which returns a tuple(obs,reward,done,info)
+            latest_obs = self.obs_processer.process(obs_raw[0]['img']) # For obs_raw as tuple! #(MINE) =state(t+1).
+            # Processes all inputs/obs from all timesteps (and envs)
+            grid_map = obs_raw[0]['features']
             #print('-->|rewards:', np.round(np.mean(obs_raw[1]), 3))
             mb_rewards[:, n] = [t for t in obs_raw[1]]
             mb_done[:, n] = [t for t in obs_raw[2]]
+            # print('done=',mb_done[:, n])
 
             #Check for all t (timestep/observation in obs_raw which t has the last state true, meaning it is the last state
             # IF MAX_STEPS OR GOAL REACHED

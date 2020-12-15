@@ -1,5 +1,8 @@
 import collections
 import os
+import sys
+syspath = '/home/konstantinos/Documents/Projects/general_grid/common'
+sys.path.append(syspath)#'/Users/constantinos/Documents/Projects/genreal_grid/common')
 import numpy as np
 import tensorflow as tf
 # from pysc2.lib import actions
@@ -9,6 +12,7 @@ from actorcritic.policy import FullyConvPolicy, MetaPolicy, RelationalPolicy,\
     FullyConvPolicyAlt, FullyConv3DPolicy, FactoredPolicy, FactoredPolicy_PhaseI, FactoredPolicy_PhaseII#, LSTM
 from common.preprocess import ObsProcesser, FEATURE_KEYS, AgentInputTuple
 from common.util import weighted_random_sample, select_from_each_row, ravel_index_pairs
+# from common import IBL
 import tensorboard.plugins.beholder as beholder_lib
 # import saliency
 #from pyactup import *
@@ -216,27 +220,33 @@ class ActorCriticAgent:
 
         # sterling's stuff
         if policy == 'Imitation_ACTUP':
-            self.memory = Memory(noise=0.2, decay=0.0, temperature=1.0, threshold=-100.0, mismatch=20,
-                                 optimized_learning=False)
-            set_similarity_function(self.angle_similarity, *['goal_rads', 'adisary_rads'])
-            set_similarity_function(self.distance_similarity, *['goal_disdtance', 'advisary_distance'])
+            # TODO: Just load the saved agent!
+            #self.policy = FullyConvPolicy
+            #self.dm = pickle.load(open('./models/2020_Nov12_time13-17_agent_knn5_nenvs20_numdates50000.dm','rb'))
+            from A2C_static_graph import A2C
+            self.dm = A2C(model_filepath='./analysis/networkb.pb')
 
-            # self.data = pickle.load(open('/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/symbolic_data_sterling20200128-161543.lst', 'rb'))
-            self.data = pickle.load(open('./data/net_vs_pred/symbolic_data_sterling20200128-161543.lst', 'rb'))
-            # Before using the distances, they have to be normalized (0 to 1)
-            # Normalize by dividing by the max in the data
-            distances = []
-            for x in self.data:
-                distances.append(x['goal_distance'])
-                distances.append(x['advisary_distance'])
-            # distances = [x['goal_distance'],x['advisary_distance'] for x in self.data]
-            self.max_distance = max(distances)
-            for datum in self.data:
-                datum['goal_distance'] = datum['goal_distance'] / self.max_distance
-                datum['advisary_distance'] = datum['advisary_distance'] / self.max_distance
-
-            for chunk in self.data:
-                self.memory.learn(**chunk)
+            # # self.memory = Memory(noise=0.2, decay=0.0, temperature=1.0, threshold=-100.0, mismatch=20,
+            # #                      optimized_learning=False)
+            # # set_similarity_function(self.angle_similarity, *['goal_rads', 'adisary_rads'])
+            # # set_similarity_function(self.distance_similarity, *['goal_disdtance', 'advisary_distance'])
+            #
+            # # self.data = pickle.load(open('/Users/constantinos/Documents/Projects/genreal_grid/data/net_vs_pred/symbolic_data_sterling20200128-161543.lst', 'rb'))
+            # self.data = pickle.load(open('./data/net_vs_pred/symbolic_data_sterling20200128-161543.lst', 'rb'))
+            # # Before using the distances, they have to be normalized (0 to 1)
+            # # Normalize by dividing by the max in the data
+            # distances = []
+            # for x in self.data:
+            #     distances.append(x['goal_distance'])
+            #     distances.append(x['advisary_distance'])
+            # # distances = [x['goal_distance'],x['advisary_distance'] for x in self.data]
+            # self.max_distance = max(distances)
+            # for datum in self.data:
+            #     datum['goal_distance'] = datum['goal_distance'] / self.max_distance
+            #     datum['advisary_distance'] = datum['advisary_distance'] / self.max_distance
+            #
+            # for chunk in self.data:
+            #     self.memory.learn(**chunk)
 
     def angle_similarity(self, x, y):
         PI = math.pi
@@ -489,8 +499,16 @@ class ActorCriticAgent:
             self.value_loss = tf.losses.mean_squared_error(self.placeholders.value_target, self.theta.value_estimate) # value_target comes from runner/run_batch when you specify the full input
             self.policy_loss = -tf.reduce_mean(selected_log_probs.total * self.placeholders.advantage)
             if self.policy_type == 'Imitation_ACTUP':
-                self.neg_cross_entropy_action_id = tf.reduce_mean(
-                    tf.reduce_sum(self.placeholders.actup_probs * self.theta.action_id_log_probs, axis=1))
+                """ Cross Entropy for Imitation Learning """
+
+                def kl(x, y):
+                    X = tf.distributions.Categorical(probs=x)
+                    Y = tf.distributions.Categorical(probs=y)
+                    return tf.distributions.kl_divergence(X, Y)
+
+                self.neg_cross_entropy_action_id = - tf.reduce_mean(kl(self.placeholders.actup_probs , self.theta.action_id_probs))
+                # self.neg_cross_entropy_action_id = tf.reduce_mean(
+                #     tf.reduce_sum(self.placeholders.actup_probs * self.theta.action_id_log_probs, axis=1))
 
         """ Loss function choices """
         if self.policy_type == 'FactoredPolicy':
@@ -512,7 +530,7 @@ class ActorCriticAgent:
                 self.policy_loss
                 + self.value_loss * self.loss_value_weight
                 + self.neg_entropy_action_id * self.entropy_weight_action_id
-                - 0.7*self.neg_cross_entropy_action_id
+                - 0.5*self.neg_cross_entropy_action_id
             )
         else:
             loss = (
@@ -633,8 +651,8 @@ class ActorCriticAgent:
 
         return action_id, value_estimate
 
-    def step_imitate(self, obs, grid, objects_id):
-        # (MINE) Pass the observations through the net
+    def step_imitate(self, obs, grid):
+        # (MINE) Pass the observations through the net and the expert model (not an expert NN)
 
         feed_dict = self._input_to_feed_dict(obs)
 
@@ -643,11 +661,15 @@ class ActorCriticAgent:
             feed_dict=feed_dict
         )
 
-        actup_probs = []
-        for i in range(self.num_envs):
-            actup_probs.append(self.actup_step(grid[i], 3, objects_id[i]))
+        # actup_probs = []
+        # Q = self.dm.estimate(grid, 5)
+        # expertprobs = self.dm.softmax(Q)
+        value, expertprobs, fc2, conv1, conv2, conv3, fc2_logit_W, logits_pre_bias, conv1W = self.dm.test(data=feed_dict['rgb_screen:0'])
+        # for i in range(self.num_envs):
+        #     # actup_probs.append(self.actup_step(grid[i], 3, objects_id[i]))
+        #     actup_probs.append(np.array([0.4, 0.2, 0.1, 0.0, 0.3]))
 
-        return action_id, value_estimate, actup_probs
+        return action_id, value_estimate, expertprobs#actup_probs
 
     def step_recurrent(self, obs, rnn_state, prev_reward, prev_action):
         # (MINE) Pass the observations through the net
