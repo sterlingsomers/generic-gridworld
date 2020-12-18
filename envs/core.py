@@ -322,7 +322,7 @@ class ACTR(Agent):
                 if Fk == vjk:
                     dSim = 0.0
                 else:
-                    if 'rads' in feature:
+                    if 'angle' in feature:
                         a_result = np.argmin(((2 * PI) - abs(vjk-Fk), abs(vjk-Fk)))
                         if not a_result:
                             dSim = (vjk - Fk) / abs(Fk - vjk)
@@ -375,7 +375,7 @@ class ACTR(Agent):
                     dSim = 0.0
                 else:
                     #dSim = (vik - Fk) / abs(Fk - vik)
-                    if 'rads' in feature:
+                    if 'angle' in feature:
                         a_result = np.argmin(((2 * PI) - abs(vjk-Fk), abs(vjk-Fk)))
                         if not a_result:
                             dSim = (vik - Fk) / abs(Fk - vik)
