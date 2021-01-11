@@ -1,9 +1,7 @@
-import numpy as np
 import gym
 from gym import spaces
-from gym.spaces import Box, Discrete
 import copy
-from analysis.misc_tools import *
+from common.misc_tools import *
 
 #Notes: IMPORTANT! ob = env.unwrapped.state returns the full dictionary no matter the wrapper!
 class DiscreteToBoxWrapper(gym.ObservationWrapper): # This one returns a BATCH of OBS but takes in 1!!! This one
@@ -53,7 +51,8 @@ class FeaturesWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
         self.n = 10  # self.observation_space.n
-        self.observation_space = spaces.Box(low=-1, high=14, shape=[10, ], dtype=np.int)
+        self.observation_space = spaces.Box(low=-1, high=14, shape=[10, ], dtype=np.float32) # NNs need floats and
+        # not integers!!
 
 
     def observation(self, obs):
@@ -157,3 +156,41 @@ class ImageOnlyWrapper(gym.ObservationWrapper):
     def observation(self, obs):
         obs_ = copy.deepcopy(obs['img'])
         return obs_
+
+class CoordsOnlyWrapper(gym.ObservationWrapper): # This one returns a BATCH of OBS but takes in 1!!! This one
+    # does one hot encoding
+    # Notes: It receives an observation (or a set of obs if you are in multienv mode) that are discrete and literally
+    #  its just one number. E.g. for 1 env: obs= 3. Then the env.n gives the number of discrete values of the obs and
+    #  by using it we create a vector of 0. Then we put 1 to the index 3 making it a 1-hot encoding. It won't work
+    #  for Multidiscrete spaces (e.g. [5,3,4] means that we have 3 features and the 1st one has 5 discrete values,
+    #  the 2nd feat 3 and the last one 4)
+    def __init__(self, env):
+        super().__init__(env)
+        # assert isinstance(env.observation_space, gym.spaces.Discrete), \
+        #     "Should only be used to wrap Discrete envs."
+        self.n = 6#self.observation_space.n
+        dims = self.dims
+        self.observation_space = spaces.Box(low=1, high=8, shape=[6, ], dtype=np.float32)
+
+    def observation(self, obs):
+        obs_ = copy.deepcopy(obs['grid'])
+        # print('map:',obs,'\n')
+        agent_xy = np.array(np.where(obs_ == 3)).ravel()
+        goal_xy = np.array(np.where(obs_ == 2)).ravel()
+        predator_xy = np.array(np.where(obs_ == 4)).ravel()
+        # print('agent:', agent_xy, 'predator:', predator_xy, 'goal:',goal_xy,'\n')
+        # Some entities disappear when one steps on the other (last states usually) but these states are not stored
+        if agent_xy.size == 0:
+            agent_xy = np.array([0,0,])
+
+        if predator_xy.size == 0:
+            predator_xy = np.array([0,0,])
+
+        if goal_xy.size == 0:
+            goal_xy = np.array([0,0,])
+        # NOTES: Get to the goal task
+        # out = np.concatenate(np.array([agent_xy, goal_xy]).tolist())#, predator_xy, goal_xy]).tolist())
+        # NOTES: Get to the goal and avoid predator task
+        out = np.concatenate(np.array([agent_xy, predator_xy, goal_xy]).tolist())
+        # print('out=', out, '\n')
+        return out

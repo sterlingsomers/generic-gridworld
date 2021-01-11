@@ -60,7 +60,7 @@ class A2C(object):
 
         # Know your output node name
         value_tensor = self.graph.get_tensor_by_name("import/theta/value/BiasAdd:0")
-        policy_tensor = self.graph.get_tensor_by_name("import/theta/softmax_layer:0")#action_id/Softmax:0")
+        policy_tensor = self.graph.get_tensor_by_name("import/theta/action_id/Softmax:0")# softmax_layer:0
         fc2 = self.graph.get_tensor_by_name("import/theta/fc2/Relu:0")
         conv1 = self.graph.get_tensor_by_name("import/theta/screen_network/conv1/Relu:0")
         conv2 = self.graph.get_tensor_by_name("import/theta/screen_network/conv2/Relu:0")

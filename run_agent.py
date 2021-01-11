@@ -25,7 +25,7 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 import gym
 from gym.wrappers import TimeLimit
-from common.wrappers import  DiscreteToBoxWrapper
+from common.wrappers import DiscreteToBoxWrapper, ImageOnlyWrapper
 
 # import envs.generic_env_v2
 from envs.generic_env_v2 import GenericEnv
@@ -56,12 +56,12 @@ flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard su
 flags.DEFINE_string("model_name", "dokimi", "Name for checkpoints and tensorboard summaries") #
 # net_vs_pred_best_noop #
 # net_vs_pred DONT touch TESTING is the best (take out normalization layer in order to work! -- check which parts exist in the restore session if needed)
-flags.DEFINE_integer("K_batches", 1050, # Batch is like a training epoch!
+flags.DEFINE_integer("K_batches", 70000, # Batch is like a training epoch!
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "DefeatRoaches", "Name of a map to use.")
 flags.DEFINE_float("discount", 0.95, "Reward-discount for the agent")
 
-flags.DEFINE_enum("if_output_exists", "continue", ["fail", "overwrite", "continue"], # continue ONLY for PHASE_II!!!
+flags.DEFINE_enum("if_output_exists", "overwrite", ["fail", "overwrite", "continue"], # continue ONLY for PHASE_II!!!
     "What to do if summary and model output exists, only for training, is ignored if notraining")
 flags.DEFINE_float("max_gradient_norm", 10.0, "good value might depend on the environment") # orig: 1000
 flags.DEFINE_float("loss_value_weight", 0.5, "good value might depend on the environment") # orig:1.0, good value: 0.5
@@ -70,7 +70,7 @@ flags.DEFINE_float("entropy_weight_action", 0.01, "entropy of action-id distribu
 flags.DEFINE_float("ppo_lambda", 1.0, "lambda parameter for ppo AND for GAE(λ) - not yet")
 flags.DEFINE_integer("ppo_batch_size", None, "batch size for ppo, if None use n_steps_per_batch")
 flags.DEFINE_integer("ppo_epochs", 3, "epochs per update")
-flags.DEFINE_enum("policy_type", "Imitation_ACTUP", ["MetaPolicy", "FullyConv", "FactoredPolicy",
+flags.DEFINE_enum("policy_type", "FullyConv", ["MetaPolicy", "FullyConv", "FactoredPolicy",
                                                           "FactoredPolicy_PhaseI", 'FactoredPolicy_PhaseII',
                                                           "Relational", "AlloAndAlt", "FullyConv3D", 'Imitation_ACTUP',
                                                        'Imitation_ACTUPII'], "Which type of Policy to use")
@@ -147,16 +147,27 @@ def make_custom_env(env_id, num_env, seed, wrapper_kwargs=None, start_index=0):
     def make_env(rank): # pylint: disable=C0111
         def _thunk():
             # env = gym.make(env_id)
-            env = TimeLimit(GenericEnv(map='small-empty', wallrule=False)) # TimeLimit(
-            # GenericEnv(
-            # ))#envs.generic_env_v2.GenericEnv() /3 'small-portals' for labyrinth chase game
-            # env = TimeLimit(GenericEnv())
-            env._max_episode_steps = 200 # Set max steps properly before assigning a new wrapper
-            env = DiscreteToBoxWrapper(env)
-            # env = GenericEnv(map='small-empty', wallrule=False)
-            Goal(env.env, entity_type='goal', color='green')
-            # goal = RunAwayGoal(env, obs_type='data', entity_type='goal', color='green')
-            NetworkAgent(env.env, color='aqua')
+            # env = TimeLimit(GenericEnv(map='small-empty', wallrule=False)) # TimeLimit(
+            # # GenericEnv(
+            # # ))#envs.generic_env_v2.GenericEnv() /3 'small-portals' for labyrinth chase game
+            # # env = TimeLimit(GenericEnv())
+            # env._max_episode_steps = 200 # Set max steps properly before assigning a new wrapper
+            # env = DiscreteToBoxWrapper(env)
+            # # env = GenericEnv(map='small-empty', wallrule=False)
+            # Goal(env.env, entity_type='goal', color='green')
+            # # goal = RunAwayGoal(env, obs_type='data', entity_type='goal', color='green')
+            # NetworkAgent(env.env, color='aqua')
+            env = GenericEnv()
+            Goal(env, entity_type='goal', color='green', position='specific', position_coords=(6, 7))
+            NetworkAgent(env, entity_type='agent', color='aqua', position='specific', position_coords=(2,2))
+            ChasingBlockingAdvisary(env, entity_type='advisary',
+                                    color='red', obs_type='data', position='near-goal')  # red dark_orange
+            env.seed(0)
+            # Correct order of wrappers
+            env = ImageOnlyWrapper(env)
+            env = TimeLimit(env)
+            env._max_episode_steps = 200
+
             # AI_agent = AIAgent(env, entity_type='agent', color='blue')
             # AI_agent = AIAgent(env, entity_type='agent', color='pink') # <--this one!
             #ChasingBlockingAdvisary(env.env, entity_type='advisary',
@@ -238,7 +249,7 @@ def main():
         num_actions=envs.action_space.n,
         num_envs= FLAGS.n_envs,
         nsteps= FLAGS.n_steps_per_batch,
-        obs_dim= envs.observation_space['img'].shape,
+        obs_dim= envs.observation_space.shape,
         policy=FLAGS.policy_type
     )
     # Build Agent

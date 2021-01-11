@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn import preprocessing
 # from sklearn import manifold
 from sklearn.model_selection import train_test_split
-# from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
@@ -81,11 +81,11 @@ def encode_features(map, dist2goal, dist2pred):
 
     dists = np.append(dist2goal, dist2pred)
     return np.concatenate([ag_neighs, direction_goal, direction_predator, dists])
-
+#%%
 h = pickle.load(open('./data/net_vs_pred/human_data_pandas_ready.pdr','rb'))
 print('ok')
 # h participants (list) --> missions (list) --> dict per mission with steps, actions, features, etc
-participant = 1
+participant = 0
 missions_list = h[participant]
 df1 = pd.DataFrame.from_dict(missions_list[0])
 symb1 = pd.DataFrame.from_dict(missions_list[0]['symbolic_1'])
@@ -125,24 +125,31 @@ df.to_pickle(filename)
 print('ok')
 
 #%% Read File
-participant = 1
+participant = 10
 filename = './data/net_vs_pred/' + str(participant) + '_participant.pdr'
 df = pd.read_pickle(filename)
 #%% Data Selection
+# df = df[df['ep_id']>=33]
 data = df['features'].values
 data = np.vstack(data)
 print(data.shape)
 #%% Data Selection (Sterling)
-df1 = df[df['ep_id']>=33]
-data = df1[['goal_angle',
-        'goal_distance', 'advisary_angle', 'advisary_distance',
-        'up_wall_distance', 'left_wall_distance', 'down_wall_distance',
-        'right_wall_distance']].values
+df = df[df['ep_id']>=33]
+# data = df[['goal_angle',
+#         'goal_distance', 'advisary_angle', 'advisary_distance',
+#         'up_wall_distance', 'left_wall_distance', 'down_wall_distance',
+#         'right_wall_distance']].values
+data = df[['goal_angle',
+        'goal_distance', 'advisary_angle', 'advisary_distance']].values # higher acc but per class is really bad!
 #%% Data Selection
 x_fc = data
 y_fc = df['action_label'].values
+#%% Print actions and counts of the whole dataset
+np.unique(y_fc, return_counts=True)
 #%% Analysis
 x_train_fc, x_test_fc, y_train_fc, y_test_fc = train_test_split(x_fc, y_fc, test_size=0.20, random_state=42)
+#%%
+
 #%%
 min_max_scaler = preprocessing.MinMaxScaler()
 x_train_fc = min_max_scaler.fit_transform(x_train_fc)
@@ -157,26 +164,63 @@ def softmax(weights): # Should be applied on a vector and NOT a matrix!
 #%%
 if   participant==0: k=30  # 0.65
 elif participant==1: k=100 # 0.76
+elif participant==2: k=20 # 0.66
+elif participant==3: k=50 # 0.60
+elif participant==4: k=50 # 0.50
+elif participant==5: k=50 # 0.41
+elif participant==6: k=250 # 0.58
+elif participant==7: k=50 # 0.41
+elif participant==8: k=20 # 0.52
+elif participant==9: k=50 # 0.41
+elif participant==10: k=10 # 0.41
 
 clf_neigh = KNeighborsClassifier(n_neighbors=k, weights=softmax)
 clf_neigh.fit(x_train_fc, y_train_fc)
 y_pred_fc = clf_neigh.predict(x_test_fc)
 print('kNN Accuracy: %.4f' % clf_neigh.score(x_test_fc, y_test_fc))
+#%% Random Forest and Feature Importance
+clf_fc = RandomForestClassifier(n_estimators=70,# max_depth=15, max_features=10,
+                                  random_state=2, n_jobs=-1)
+clf_fc.fit(x_train_fc, y_train_fc)
+y_pred_fc = clf_fc.predict(x_test_fc)
+print('Random Forest (fc only) Accuracy: %.4f' % clf_fc.score(x_test_fc, y_test_fc))
+#%% Feature Importance
+clf_fc.fit(x_fc, y_fc)
+importances = clf_fc.feature_importances_
+std = np.std([tree.feature_importances_ for tree in clf_fc.estimators_],
+             axis=0)
+indices = np.argsort(importances)[::-1]
+
+# Print the feature ranking
+print("Feature ranking:")
+
+for f in range(x_fc.shape[1]):
+    print("%d. feature %d (%f)" % (f + 1, indices[f], importances[indices[f]]))
+
+# Plot the impurity-based feature importances of the forest
+plt.figure()
+plt.title("Feature importances")
+plt.bar(range(x_fc.shape[1]), importances[indices],
+        color="r", yerr=std[indices], align="center")
+plt.xticks(range(x_fc.shape[1]), indices)
+plt.xlim([-1, x_fc.shape[1]])
+plt.show()
 #%% Compare to random
 from sklearn.metrics import accuracy_score
 y_random = np.random.randint(0,5,y_test_fc.shape[0]) # int [low,high)
 accuracy_score(y_test_fc, y_random, normalize=True)
 
 # %% Confusion Matrix
-
+labels = ['DOWN', 'LEFT', 'NOOP', 'RIGHT', 'UP']
 titles_options = [("Confusion matrix, without normalization", None),
                   ("Normalized confusion matrix", 'true')]
 classifier = clf_neigh#clf_fc
 for title, normalize in titles_options:
-    disp = plot_confusion_matrix(classifier, x_test_fc, y_test_fc,
+    disp = plot_confusion_matrix(classifier, x_test_fc, y_test_fc, labels=labels,
                                  cmap=plt.cm.Blues,
                                  normalize=normalize)
     disp.ax_.set_title(title)
+    plt.show()
 #%%
 # clf_neigh.classes_.tolist()
 # out: ['DOWN', 'LEFT', 'NOOP', 'RIGHT', 'UP'] # Notes: This is just alphabetical order

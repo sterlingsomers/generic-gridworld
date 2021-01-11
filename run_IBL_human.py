@@ -27,6 +27,8 @@ from envs.core_v2 import *
 
 from IBL import IBL
 
+now = datetime.now()
+
 def softmax(weights): # Should be applied on a vector and NOT a matrix!
   """Compute softmax values for each sets of matching scores in x."""
   # weights = 5*weights
@@ -36,7 +38,7 @@ def softmax(weights): # Should be applied on a vector and NOT a matrix!
 
 def argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--logdir', help='log directory', default='log/train/ibl')
+    parser.add_argument('--logdir', help='log directory', default='log/train/ppo/'+now.strftime("%Y%m%d-%H%M%S") + "/")
     parser.add_argument('--savedir', help='save directory', default='trained_models/ibl')
     parser.add_argument('--gamma', default=0.95, type=float)
     parser.add_argument('--iteration', default=int(3e3), type=int)
@@ -68,7 +70,7 @@ def main(args):
     # Clean duplicates
     print('Clean duplicates...')
     dat, ind = np.unique(data, axis=0, return_index=True)
-    sort = np.sort(ind) # We need sort as the array will be a mess so we cannot find the relevant instnc in actions
+    sort = np.sort(ind) # We need to sort as the array will be a mess so we cannot find the relevant instnc in actions
     unique_dat = data[sort]
     pr = probs_[sort]
 
