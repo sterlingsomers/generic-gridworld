@@ -7,13 +7,16 @@ from gym.utils import seeding
 import random
 import itertools
 import functools
-# import matplotlib
+import matplotlib
+import io
 # matplotlib.use('TkAgg')
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from common.maps import *
 import numpy as np
 
 from envs.core import *
+
+import threading
 
 import time
 
@@ -72,8 +75,7 @@ class GenericEnv(gym.Env):
         'gray' : (96,96,96)
     }
 
-    def __init__(self,dims=(10,10),map='',agents=[],features=[],border=True, entities = [],wallrule=False):
-
+    def __init__(self,dims=(10,10),map='',agents=[],features=[],border=True, entities = [],wallrule=False,choice_queue=None):
         self.map = map
         self.features = features
         self.dims = dims
@@ -82,6 +84,7 @@ class GenericEnv(gym.Env):
         self.wallrule = wallrule
         self.border = border
         self.top_score = -1
+        self.choice_queue = choice_queue
         #before anything happens, setup the map
         self.setupMap(map,dims)
 
@@ -380,6 +383,7 @@ class GenericEnv(gym.Env):
 
 
     def _gridmap_to_image(self):
+        return self._gridmap_to_svg()
         image = np.zeros((self.dims[0],self.dims[1],3), dtype=np.uint8)
         image[:] = [96,96,96]
         #put border walls in
@@ -393,16 +397,44 @@ class GenericEnv(gym.Env):
             obj = np.where(self.current_grid_map == obj_val)
             image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
 
+        f = io.StringIO()
+        plt.imshow(image)
+        plt.savefig(f, format='svg')
 
 
-        return image
+        return f.getvalue()
+
+    def _gridmap_to_svg(self):
+        svg_open = f'<svg width=250 height=250>'
+        svg_close = f'</svg>'
+        rect = []
+        print(np.array2string(self.current_grid_map))
+        for x in range(10):
+            for y in range(10):
+                obj_val = int(self.current_grid_map[x,y])
+                if not obj_val:
+                    color = (96,96,96)
+                else:
+                    #color = self.colors[self.value_to_objects[int(obj_val)]['color']]
+                    color = self.colors[self.value_to_objects[obj_val]['color']]
+                #print(color)
+                rect.append(f'<rect y={x*25} x={y*25} style=\'fill:rgb{color}\' width=25 height=25 />')
+                # break
+            # break
+        img = ''.join(rect)
+
+        #print(svg_open + img + svg_close)
+        # print(f'<svg width=100 height=100><rect x=20 y=0 style=\'fill:orange\' width=\'50\' height=\'50\'/><rect x=0 y=0 style=\'fill:blue\' width=\'50\' height=\'50\'/></svg>')
+        return svg_open + img + svg_close
+
+
 
     @step_wrapper
-    def step(self, action):
+    def step(self, action,choice):
         # print('step')
         info = {}
         obs = self._gridmap_to_image()
-        obs = obs.reshape((1,obs.shape[0],obs.shape[1],obs.shape[2]))
+        #obs = obs.reshape((1,obs.shape[0],obs.shape[1],obs.shape[2]))
         grid_map = self.current_grid_map
         # if self.record_history:
         #     self.history['observations'].append(self.current_grid_map.copy())
@@ -416,7 +448,7 @@ class GenericEnv(gym.Env):
 
         for entity in self.active_entities:
             if not type(self.entities[entity]) == NetworkAgent:
-                action_chosen = self.active_entities[entity].getAction(obs)
+                action_chosen = self.active_entities[entity].getAction(obs,choice)
                 entity_actions.append(action_chosen)
                 # if self.active_entities[entity].record_history:
                 #     self.active_entities[entity].history['steps'].append(action_chosen)

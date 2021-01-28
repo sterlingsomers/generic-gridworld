@@ -1,0 +1,49 @@
+
+#up {
+    position: absolute;
+    top: 175px;
+    left: 350px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+#down {
+    position: absolute;
+    top: 225px;
+    left: 350px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+#left {
+    position: absolute;
+    top: 200px;
+    left: 325px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+#right {
+    position: absolute;
+    top: 200px;
+    left: 375px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+#noop {
+    position: absolute;
+    top: 200px;
+    left: 350px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+
+#reset {
+    position: absolute;
+    top: 228px;
+    left: 410px;
+
+    background-size: contain;
+}

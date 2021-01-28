@@ -9,7 +9,7 @@ import PIL
 import time
 import os
 
-import dill as pickle
+#import dill as pickle
 from multiprocessing import Pool
 from functools import partial
 
@@ -122,8 +122,8 @@ class ActiveEntity(Entity):
         super().__init__(env, obs_type, entity_type, color, position, position_coords)
         self.env.active_entities[self.value] = self
 
-    def getAction(self, obs):
-        record_dict = self._getAction(obs)
+    def getAction(self, obs, choice):
+        record_dict = self._getAction(obs,choice)
         #action = self._getAction(obs)
         if self.record_history:
             for key,value in record_dict.items():
@@ -569,6 +569,26 @@ class HumanAgent(Agent):
 
     # @record_action
 
+class WebAgent(Agent):
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position,position_coords)
+        self.walls_hit = 0
+
+    def _getAction(self,obs,choice):
+        print('web - get action')
+        #choice = self.env.choice_queue.get()
+        print('choice-ga', choice)
+        if choice == 'up':
+            return {'actions':2}
+        elif choice == 'down':
+            return {'actions':1}
+        elif choice == 'left':
+            return {'actions':3}
+        elif choice == 'right':
+            return {'actions':4}
+        elif choice == 'noop':
+            return {'actions':0}
+        return {'actions':0}
 
 
 
@@ -602,7 +622,7 @@ class Advisary(ActiveEntity):
         self.env.reward = -1
         # print('PREADATOR IS BEING ATTACKED')
 
-    def _getAction(self,obs):
+    def _getAction(self,obs,choice):
         agents = self.getAgents()
         target = self.getClosestTarget(agents)
 
@@ -714,7 +734,7 @@ class ChasingBlockingAdvisary(Advisary):
         print('CBA: entity', entity_object, 'hit me')
         super().moveToMe(entity_object)
 
-    def _getAction(self, obs):
+    def _getAction(self, obs, choice):
         my_location = np.where(self.env.current_grid_map == self.value)
         goal_val = self.env.getGoalValue()
         # print('goal_val',goal_val)
