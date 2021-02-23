@@ -21,14 +21,16 @@ RIGHT = 4
 directions = [NOOP, DOWN, UP, LEFT, RIGHT]
 
 class Entity:
-    current_position = (0,0)
-    action_chosen = None
+    # current_position = (0,0)
+    # action_chosen = None
 
     def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',position_coords=[]):
         if env.__class__.__name__ == 'GenericEnv':
             self.env = env
         else:
             self.env = env.env
+        self.current_position = (0,0)
+        self.action_chosen = None
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
         self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
@@ -94,6 +96,9 @@ class Entity:
         if position == 'near-goal':
             goal_value = self.env.getGoalValue()
             goal_locations = np.where(self.env.current_grid_map == goal_value)
+            print('near-goal')
+            # print(np.array2string(self.env.current_grid_map))
+            # print("goal",goal_value)
             goal_locations = list(zip(goal_locations[0], goal_locations[1]))
             specific_goal_location = random.choice(goal_locations)
             neighbors = self.env.allNeighbors(specific_goal_location[0],specific_goal_location[1])
@@ -577,6 +582,7 @@ class WebAgent(Agent):
     def _getAction(self,obs,choice):
         print('web - get action')
         #choice = self.env.choice_queue.get()
+        return {'actions':int(choice)}
         print('choice-ga', choice)
         if choice == 'up':
             return {'actions':2}
@@ -589,7 +595,6 @@ class WebAgent(Agent):
         elif choice == 'noop':
             return {'actions':0}
         return {'actions':0}
-
 
 
 class Advisary(ActiveEntity):

@@ -47,3 +47,226 @@
 
     background-size: contain;
 }
+#count_txt {
+    position: absolute;
+    top: 250px;
+    left: 10px;
+}
+
+#environment {
+    position: absolute;
+    top: 50px;
+    left: 50px;
+    width: 250px;
+    height: 250px;
+
+}
+
+#keepgoingbutton {
+    position: absolute;
+    top: 325px;
+    left: 410px;
+
+    background-size: contain;
+}
+
+#playersquare {
+    position: absolute;
+    top: 75px;
+    left: 325px;
+    width: 25px;
+    height: 25px;
+}
+
+#orangetext {
+    position: absolute;
+    top: 65px;
+    left: 375px;
+
+}
+#goalsquare {
+    position: absolute;
+    top: 105px;
+    left: 325px;
+    width: 25px;
+    height: 25px;
+}
+#greentext {
+    position: absolute;
+    top: 95px;
+    left: 375px;
+
+}
+#adversarysquare {
+    position: absolute;
+    top: 135px;
+    left: 325px;
+    width: 25px;
+    height: 25px;
+}
+#redtext {
+    position: absolute;
+    top: 125px;
+    left: 375px;
+
+}
+#emptysquare {
+    position: absolute;
+    top: 165px;
+    left: 325px;
+    width: 25px;
+    height: 25px;
+}
+#graytext {
+    position: absolute;
+    top: 155px;
+    left: 375px;
+
+}
+#obstaclesquare {
+    position: absolute;
+    top: 195px;
+    left: 325px;
+    width: 25px;
+    height: 25px;
+}
+#blacktext {
+    position: absolute;
+    top: 185px;
+    left: 375px;
+
+}
+#winninganimated {
+    position: absolute;
+    top: 100px;
+    left: 25px;
+    width: 250px;
+    height: 250px;
+}
+#winningtext {
+    position: absolute;
+    top: 185px;
+    left: 375px;
+
+}
+#losing1animated {
+    position: absolute;
+    top: 100px;
+    left: 25px;
+    width: 250px;
+    height: 250px;
+}
+#losing1text {
+    position: absolute;
+    top: 65px;
+    left: 25px;
+
+}
+#losing2animated {
+    position: absolute;
+    top: 400px;
+    left: 25px;
+    width: 250px;
+    height: 250px;
+}
+#losing2text {
+    position: absolute;
+    top: 365px;
+    left: 25px;
+
+}
+#losing3animated {
+    position: absolute;
+    top: 700px;
+    left: 25px;
+    width: 250px;
+    height: 250px;
+}
+#losing3text {
+    position: absolute;
+    top: 665px;
+    left: 25px;
+}
+
+#up_alt {
+    position: absolute;
+    top: 35px;
+    left: 25px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+#down_alt {
+    position: absolute;
+    top: 65px;
+    left: 25px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+#left_alt {
+    position: absolute;
+    top: 95px;
+    left: 25px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+#right_alt {
+    position: absolute;
+    top: 125px;
+    left: 25px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+#noop_alt {
+    position: absolute;
+    top: 155px;
+    left: 25px;
+    height: 25px;
+    width: 25px;
+    background-size: contain;
+}
+#uptext {
+    position: absolute;
+    top: 25px;
+    left:70px;
+}
+#downtext {
+    position: absolute;
+    top: 55px;
+    left: 70px;
+}
+#lefttext {
+    position: absolute;
+    top: 85px;
+    left: 70px;
+}
+#righttext {
+    position: absolute;
+    top: 115px;
+    left: 70px;
+}
+#nooptext {
+    position: absolute;
+    top: 145px;
+    left: 70px;
+}
+#keepgoingbutton_alt1 {
+    position: absolute;
+    top: 925px;
+    left: 410px;
+
+    background-size: contain;
+}
+#scoreboard_table {
+    position: absolute;
+    top: 55px;
+    left: 500px;
+}
+#scoreboard_text {
+    position: absolute;
+    top: 20px;
+    left: 500px;
+}

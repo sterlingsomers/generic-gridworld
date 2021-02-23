@@ -49,19 +49,22 @@ def step_wrapper(f):
 
 
 class GenericEnv(gym.Env):
-    value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0},-1:{'color':'white'}}
-    object_values = [-1,1]
-    entities = {} #indexed by object value
-    active_entities = {}
-    backup_values = {}
-    actions = {}
-    reward = 0
-    done = 0
-    to_clean = []
-    permanents = []
-    free_spaces = [0]
+    # value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0},-1:{'color':'white'}}
+    # object_values = [-1,1]
+    # entities = {} #indexed by object value
+    # active_entities = {}
+    # backup_values = {}
+    # actions = {}
+    # reward = 0
+    # done = 0
+    # to_clean = []
 
-    colors = {
+
+
+
+
+    def __init__(self,dims=(10,10),map='',agents=[],features=[],border=True, entities = [],wallrule=False,choice_queue=None):
+        self.colors = {
         'red': (252, 3, 3),
         'green': (3, 252, 78),
         'blue': (3, 15, 252),
@@ -73,9 +76,18 @@ class GenericEnv(gym.Env):
         'aqua': (0,255,255),
         'black': (0, 0, 0),
         'gray' : (96,96,96)
-    }
-
-    def __init__(self,dims=(10,10),map='',agents=[],features=[],border=True, entities = [],wallrule=False,choice_queue=None):
+                            }
+        self.to_clean = []
+        self.done = 0
+        self.reward = 0
+        self.actions = {}
+        self.backup_values = {}
+        self.active_entities = {}
+        self.entities = {}
+        self.object_values = [-1,1]
+        self.value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0},-1:{'color':'white'}}
+        self.free_spaces = [0]
+        self.permanents = []
         self.map = map
         self.features = features
         self.dims = dims
@@ -405,10 +417,10 @@ class GenericEnv(gym.Env):
         return f.getvalue()
 
     def _gridmap_to_svg(self):
-        svg_open = f'<svg width=250 height=250>'
-        svg_close = f'</svg>'
+        svg_open = f'<svg width=250 height=250><g>'
+        svg_close = f'</g></svg>'
         rect = []
-        print(np.array2string(self.current_grid_map))
+        # print(np.array2string(self.current_grid_map))
         for x in range(10):
             for y in range(10):
                 obj_val = int(self.current_grid_map[x,y])
@@ -421,6 +433,7 @@ class GenericEnv(gym.Env):
                 rect.append(f'<rect y={x*25} x={y*25} style=\'fill:rgb{color}\' width=25 height=25 />')
                 # break
             # break
+
         img = ''.join(rect)
 
         #print(svg_open + img + svg_close)

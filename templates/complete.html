@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset=UTF-8>
+    <meta name=viewport content="width=device-width, initial-scale=1">
+    <link rel=stylesheet href="{{url_for('static', filename='game.css')}}">
+    <title>Instructions</title>
+</head>
+<body>
+<p id="instruction1">Below is an image of the game arena. Each element in the game is described.<br>
+                    </p>
+<img src="images/environment.png" id="environment">
+<img src="images/player_square.png" id="playersquare">
+<p id="orangetext">&#8226;Orange square is contolled by you, the player.</p>
+<img src="images/goal_square.png" id="goalsquare">
+<p id="greentext">&#8226;Green square is the goal square, it does not move.</p>
+<img src="images/adversary_square.png" id="adversarysquare">
+<p id="redtext">&#8226;Red square is the adversary. It is controlled by an AI.</p>
+<img src="images/empty_square.png" id="emptysquare">
+<p id="graytext">&#8226;Gray square is empty space. Players are free to move to an adjacent empty space.</p>
+<img src="images/obstacle_square.png" id="obstaclesquare">
+<p id="blacktext">&#8226;Black square is an obstacle. Players cannot move into adjacent obstacles.</p>
+<form action="#" method="post" id=buttons>
+
+    <p><input id="keepgoingbutton" type="submit" value="Next"/></p>
+</body>
+</html>

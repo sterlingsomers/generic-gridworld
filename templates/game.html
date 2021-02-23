@@ -7,13 +7,27 @@
  </head>
 <body>
   {{ svg|safe }}
-  <form id=buttons>
-    <button id=up name=choice value=up style="background-image: url('images/up.png')"></button>
-    <button id=down name=choice value=down style="background-image: url('images/down.png')"></button>
-    <button id=left  name=choice value=left style="background-image: url('images/left.png')"></button>
-    <button id=right name=choice value=right style="background-image: url('images/right.png')"></button>
-    <button id=noop name=choice value=noop style="background-image: url('images/noop.png')"></button>
-    <button id=reset name=choice value=reset >RESET</button>
+  <!--p id=count_txt>Turn Number: {{ turn_number | safe }}</p-->
+  <p id=feedback_txt>{{ feedback | safe }}</p>
+  <p id=scoreboard_text>STEPboard!</p>
+  <table id=scoreboard_table>
+    <tr>
+      <th>Your Steps</th>
+      <th>Best Steps</th>
+    </tr>
+    <tr>
+      <td>{{yoursteps | safe}}</td>
+      <td>{{beststeps | safe}}</td>
+    </tr>
+  </table>
+  <form action="/move" method="post" id=buttons>
+    <button id=up name=choice value=2 style="background-image: url('images/up.png')"></button>
+    <button id=down name=choice value=1 style="background-image: url('images/down.png')"></button>
+    <button id=left  name=choice value=3 style="background-image: url('images/left.png')"></button>
+    <button id=right name=choice value=4 style="background-image: url('images/right.png')"></button>
+    <button id=noop name=choice value=0 style="background-image: url('images/noop.png')"></button>
+    <button id=reset name=choice value=99 >RESET</button>
+    <input type="text" name=step_number style="visibility: hidden;" value="{{turn_number}}"></input>
   </form>
 </body>
 </html>

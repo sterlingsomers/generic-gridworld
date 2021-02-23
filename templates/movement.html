@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang=en>
+  <meta charset=UTF-8>
+  <meta name=viewport content="width=device-width, initial-scale=1">
+  <link rel=stylesheet href="{{url_for('static', filename='game.css')}}">
+  <title>Movement</title>
+ </head>
+<p>There are 5 possible movements in this game for both player and preditor.</p>
+  <form action="/move" method="post" id=deadbuttons>
+    <button id=up_alt disabled name=choice value=2 style="background-image: url('images/up.png')"></button>
+      <p id="uptext">&#8226;Up: Moves player up one empty space.</p>
+    <button id=down_alt disabled name=choice value=1 style="background-image: url('images/down.png')"></button>
+      <p id="downtext">&#8226;Down: Moves player down one empty space.</p>
+    <button id=left_alt  disabled name=choice value=3 style="background-image: url('images/left.png')"></button>
+      <p id="lefttext">&#8226;Left: Moves player left one empty space.</p>
+    <button id=right_alt disabled name=choice value=4 style="background-image: url('images/right.png')"></button>
+      <p id="righttext">&#8226;Right: Moves player right one empty space.</p>
+    <button id=noop_alt disabled name=choice value=0 style="background-image: url('images/noop.png')"></button>
+      <p id="nooptext">&#8226;No-move: Player remains in current space turn.</p>
+  </form>
+  <form action="#" method="post" id=buttons>
+     <p><input id="keepgoingbutton" type="submit" value="Next"/></p>
+  </form>
+</body>
+</html>

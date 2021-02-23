@@ -15,6 +15,7 @@ Pillow==7.2.0
 pyactup==1.0.9
 pyglet==1.5.0
 pylru==1.2.0
+pymongo==3.11.2
 pyparsing==2.4.7
 python-dateutil==2.8.1
 scipy==1.5.4
