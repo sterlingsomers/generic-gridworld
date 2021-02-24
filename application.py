@@ -52,6 +52,7 @@ with sql.connect("player_info.db") as con:
 def game():
     global environments
     userid = session['user']
+
     # print("session", session)
     # print("user-s", userid)
     yoursteps = 0
@@ -75,7 +76,8 @@ def game():
         obs = session['obs']
     beststeps = mission_configuration[environments[userid]['episode']]['steps']
     #print(mission_configuration[environments[userid]['episode']])
-    return render_template('game.html', svg=obs, turn_number=0, yoursteps=yoursteps, beststeps=beststeps)
+    episode = environments[userid]['episode']
+    return render_template('game.html', svg=obs, turn_number=0, yoursteps=yoursteps,episodes=episode,beststeps=beststeps)
 
 @app.route('/')
 def root():
@@ -84,6 +86,7 @@ def root():
 @app.route('/instructions', methods=["POST", "GET"])
 def instructions():
     userid = session['user']
+
     instruct_next, turnbased_next, movement_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
     if request.method == "POST":
         with sql.connect("player_info.db") as con:
@@ -182,6 +185,7 @@ def complete():
 
 @app.route('/setup', methods=["POST", "GET"])
 def setup():
+
     if request.method == "POST":
         userid = request.form["code"]
         print("USER:",userid)
@@ -284,7 +288,8 @@ def move():
         cur.execute(sqltxt,(userid,episode,step,r,goal_x,goal_y,player_x,player_y,predator_x,predator_y,action,actiontime))
         con.commit()
 
-    return render_template('game.html', svg=obs, turn_number=turn_number+1,yoursteps=environments[userid]['step'],beststeps=mission_configuration[environments[userid]['episode']]['steps'],feedback=txt)
+    episode = environments[userid]['episode']
+    return render_template('game.html', svg=obs, turn_number=turn_number+1,yoursteps=environments[userid]['step'],beststeps=mission_configuration[environments[userid]['episode']]['steps'],episodes=episode,feedback=txt)
 
 
 
