@@ -5,7 +5,9 @@
   <link rel=stylesheet href="{{url_for('static', filename='game.css')}}">
   <title>Movement</title>
  </head>
-<p>There are 5 possible movements in this game for both player and preditor.</p>
+<p>There are 5 possible movements in this game for both player and adversary.<br>
+The adversary is limited to these moves only.<br>
+In the description below, 'player' refers to either you or the adversary.</p>
   <form action="/move" method="post" id=deadbuttons>
     <button id=up_alt disabled name=choice value=2 style="background-image: url('images/up.png')"></button>
       <p id="uptext">&#8226;Up: Moves player up one empty space.</p>
@@ -16,7 +18,7 @@
     <button id=right_alt disabled name=choice value=4 style="background-image: url('images/right.png')"></button>
       <p id="righttext">&#8226;Right: Moves player right one empty space.</p>
     <button id=noop_alt disabled name=choice value=0 style="background-image: url('images/noop.png')"></button>
-      <p id="nooptext">&#8226;No-move: Player remains in current space turn.</p>
+      <p id="nooptext">&#8226;No-move: During this turn, the player does not move.</p>
   </form>
   <form action="#" method="post" id=buttons>
      <p><input id="keepgoingbutton" type="submit" value="Next"/></p>

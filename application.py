@@ -84,14 +84,14 @@ def root():
 @app.route('/instructions', methods=["POST", "GET"])
 def instructions():
     userid = session['user']
-    instruct_next, turnbased_next, movment_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
+    instruct_next, turnbased_next, movement_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
     if request.method == "POST":
         with sql.connect("player_info.db") as con:
             instruct_next = dt.datetime.now()
             sqltxt = '''INSERT INTO player_buttons(userid,participate,instruct_next,turnbased_next,movement_next,winning_next,losing_next) VALUES (?,?,?,?,?,?,?)'''
             cur = con.cursor()
             cur.execute(sqltxt, (
-            userid, participate, instruct_next, turnbased_next, movment_next, winning_next, losing_next))
+            userid, participate, instruct_next, turnbased_next, movement_next, winning_next, losing_next))
             con.commit()
             return redirect(url_for("turn_based"))
     return render_template("instructions.html")
@@ -99,14 +99,14 @@ def instructions():
 @app.route('/turn_based', methods=["POST", "GET"])
 def turn_based():
     userid = session['user']
-    instruct_next, turnbased_next, movment_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
+    instruct_next, turnbased_next, movement_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
     if request.method == "POST":
         with sql.connect("player_info.db") as con:
             turnbased_next = dt.datetime.now()
             sqltxt = '''INSERT INTO player_buttons(userid,participate, instruct_next,turnbased_next,movement_next,winning_next,losing_next) VALUES (?,?,?,?,?,?,?)'''
             cur = con.cursor()
             cur.execute(sqltxt, (
-                userid, participate, instruct_next, turnbased_next, movment_next, winning_next, losing_next))
+                userid, participate, instruct_next, turnbased_next, movement_next, winning_next, losing_next))
             con.commit()
             return redirect(url_for("movement"))
     return render_template("turn_based.html")
@@ -114,14 +114,14 @@ def turn_based():
 @app.route("/movement", methods=["POST", "GET"])
 def movement():
     userid = session['user']
-    instruct_next, turnbased_next, movment_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
+    instruct_next, turnbased_next, movement_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
     if request.method == "POST":
         with sql.connect("player_info.db") as con:
             movement_next = dt.datetime.now()
             sqltxt = '''INSERT INTO player_buttons(userid,participate,instruct_next,turnbased_next,movement_next,winning_next,losing_next) VALUES (?,?,?,?,?,?,?)'''
             cur = con.cursor()
             cur.execute(sqltxt, (
-                userid, participate, instruct_next, turnbased_next, movment_next, winning_next, losing_next))
+                userid, participate, instruct_next, turnbased_next, movement_next, winning_next, losing_next))
             con.commit()
             return redirect(url_for("winning"))
     return render_template("movement.html")
@@ -129,14 +129,14 @@ def movement():
 @app.route('/losing', methods=["POST", "GET"])
 def losing():
     userid = session['user']
-    instruct_next, turnbased_next, movment_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
+    instruct_next, turnbased_next, movement_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
     if request.method == "POST":
         with sql.connect("player_info.db") as con:
             losing_next = dt.datetime.now()
             sqltxt = '''INSERT INTO player_buttons(userid,participate,instruct_next,turnbased_next,movement_next,winning_next,losing_next) VALUES (?,?,?,?,?,?,?)'''
             cur = con.cursor()
             cur.execute(sqltxt, (
-                userid, participate, instruct_next, turnbased_next, movment_next, winning_next, losing_next))
+                userid, participate, instruct_next, turnbased_next, movement_next, winning_next, losing_next))
             con.commit()
             return redirect(url_for("game"))
     return render_template("losing.html")
@@ -144,14 +144,14 @@ def losing():
 @app.route('/winning', methods=["POST", "GET"])
 def winning():
     userid = session['user']
-    instruct_next, turnbased_next, movment_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
+    instruct_next, turnbased_next, movement_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
     if request.method == "POST":
         with sql.connect("player_info.db") as con:
             winning_next = dt.datetime.now()
             sqltxt = '''INSERT INTO player_buttons(userid,participate,instruct_next,turnbased_next,movement_next,winning_next,losing_next) VALUES (?,?,?,?,?,?,?)'''
             cur = con.cursor()
             cur.execute(sqltxt, (
-                userid, participate, instruct_next, turnbased_next, movment_next, winning_next, losing_next))
+                userid, participate, instruct_next, turnbased_next, movement_next, winning_next, losing_next))
             con.commit()
             return redirect(url_for("losing"))
     return render_template("winning.html")
@@ -159,14 +159,14 @@ def winning():
 @app.route('/consent', methods=["POST","GET"])
 def consent():
     userid = session['user']
-    instruct_next, turnbased_next, movment_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
+    instruct_next, turnbased_next, movement_next, winning_next, losing_next, participate = 0, 0, 0, 0, 0, 0
     if request.method == "POST":
         with sql.connect("player_info.db") as con:
             participate = dt.datetime.now()
             sqltxt = '''INSERT INTO player_buttons(userid,participate,instruct_next,turnbased_next,movement_next,winning_next,losing_next) VALUES (?,?,?,?,?,?,?)'''
             cur = con.cursor()
             cur.execute(sqltxt, (
-                userid, participate, instruct_next, turnbased_next, movment_next, winning_next, losing_next))
+                userid, participate, instruct_next, turnbased_next, movement_next, winning_next, losing_next))
             con.commit()
 
             return redirect(url_for("instructions"))
