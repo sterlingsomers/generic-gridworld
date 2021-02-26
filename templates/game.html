@@ -9,7 +9,7 @@
   {{ svg|safe }}
   <!--p id=count_txt>Turn Number: {{ turn_number | safe }}</p-->
   <p id=feedback_txt>{{ feedback | safe }}</p>
-  <p id=scoreboard_text>STEPboard!</p>
+  <p id=scoreboard_text>Best Scores</p>
   <table id=scoreboard_table>
     <tr>
       <th>Your Steps</th>
@@ -20,6 +20,17 @@
       <td>{{beststeps | safe}}</td>
     </tr>
   </table>
+
+<img src="images/player_square.png" style='position:absolute; top:120px; left: 500px; height:25px; width:25px;'>
+<p style='position:absolute; top:110px; left: 540px;'>&#8226;Orange square is contolled by you, the player.</p>
+<img src="images/goal_square.png" style='position:absolute; top:150px; left: 500px; height:25px; width:25px;'>
+<p style='position:absolute; top:140px; left: 540px;'>&#8226;Green square is the goal square, it does not move.</p>
+<img src="images/adversary_square.png" style='position:absolute; top:180px; left: 500px; height:25px; width:25px;'>
+<p style='position:absolute; top:170px; left: 540px;'>&#8226;Red square is the adversary. It is controlled by an AI.</p>
+<img src="images/empty_square.png" style='position:absolute; top:210px; left: 500px; height:25px; width:25px;'>
+<p style='position:absolute; top:200px; left: 540px;'>&#8226;Gray square is empty space. Players are free to move to an adjacent empty space.</p>
+<img src="images/obstacle_square.png" style='position:absolute; top:240px; left: 500px; height:25px; width:25px;'>
+<p style='position:absolute; top:230px; left: 540px;'>&#8226;Black square is an obstacle. Players cannot move into adjacent obstacles.</p>
   <form action="/move" method="post" id=buttons>
     <button id=up name=choice value=2 style="background-image: url('images/up.png')"></button>
     <button id=down name=choice value=1 style="background-image: url('images/down.png')"></button>

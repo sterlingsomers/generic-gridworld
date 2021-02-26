@@ -34,6 +34,8 @@ with sql.connect("player_info.db") as con:
             player_y INTEGER,
             predator_x INTEGER,
             predator_y INTEGER,
+            goal_distance INTEGER,
+            adversary_distance INTEGER,
             action INTEGER,
             actionTime INTEGER);'''
     cursor.execute(sqltxt)
@@ -179,7 +181,13 @@ def consent():
 
 @app.route('/complete', methods=["POST","GET"])
 def complete():
+    global environments
     userid = session['user']
+    if request.method == "GET":
+        if userid not in environments:
+            return redirect(url_for("instructions"))
+        if environments[userid]['episode'] < 50:
+            return redirect(url_for("instructions"))
     #Code generation here.
     return render_template('complete.html')
 
@@ -221,6 +229,32 @@ def move():
     txt = ''
     step = environments[userid]['step']
     observation = environments[userid]['env'].current_grid_map.copy()
+    goal_location = np.where(observation == 2)
+    player_location = np.where(observation == 3)
+    predator_location = np.where(observation == 4)
+    player_location = (int(player_location[0]), int(player_location[1]))
+    goal_location = (int(goal_location[0]), int(goal_location[1]))
+    predator_location = (int(predator_location[0]), int(predator_location[1]))
+    # print(goal_location, player_location, predator_location)
+    action = choice
+    actiontime = dt.datetime.now()
+    env = environments[userid]['env']
+    # print('observation:')
+    # print(np.array2string(observation))
+    # print("callling GPT 1")
+
+    path_to_goal = env.getPathTo(player_location, goal_location, free_spaces=env.free_spaces)
+    # print(np.array2string(path_to_goal))
+    points_in_path = np.where(path_to_goal == -1)
+    points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+    goal_distance = len(points_in_path)
+    # print("calling GPT 2")
+    path_to_adversary = env.getPathTo((player_location[0], player_location[1]),
+                                      (predator_location[0], predator_location[1]), free_spaces=env.free_spaces)
+    points_in_path = np.where(path_to_adversary == -1)
+    points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+    adversary_distance = len(points_in_path)
+    # print(goal_distance, adversary_distance, "!!!!!!")
     #print(np.array2string(observation))
     #print(np.where(observation==4))
     episode = environments[userid]['episode']
@@ -256,23 +290,23 @@ def move():
             done == None
 
     with sql.connect("player_info.db") as con:
-        goal_location = np.where(observation == 2)
+        # goal_location = np.where(observation == 2)
         goal_x = int(goal_location[0])
         goal_y = int(goal_location[1])
-        player_location = np.where(observation == 3)
+        # player_location = np.where(observation == 3)
         #player_location = list(zip(player_location[0],player_location[1]))[0]
-        print("PLAYER", player_location)
-        if player_location[0].size == 0:
+        # print("PLAYER", player_location)
+        if len(player_location) == 0:
         #if not len(player_location):
             player_x = -1
             player_y = -1
         else:
             player_x = int(player_location[0])
             player_y = int(player_location[1])
-        predator_location = np.where(observation == 4)
+        # predator_location = np.where(observation == 4)
         #predator_location = list(zip(predator_location[0],predator_location[1]))[0]
         #if not len(predator_location):
-        if predator_location[0].size == 0:
+        if len(predator_location) == 0:
             predator_x = -1
             predator_y = -1
         else:
@@ -280,12 +314,18 @@ def move():
             predator_y = int(predator_location[1])
 
 
-        action = choice
-        actiontime = dt.datetime.now()
 
-        sqltxt = '''INSERT INTO player_data(userid,episode,step,reward,goal_x,goal_y,player_x,player_y,predator_x,predator_y,action,actionTime) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'''
+
+        # agent_location = np.where(self.env.current_grid_map == agent)
+        # path = self.env.getPathTo((my_location[0], my_location[1]), (agent_location[0], agent_location[1]),
+        #                           free_spaces=self.env.free_spaces)
+        # points_in_path = np.where(path == -1)
+        # points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+        # distance_to_agents[agent] = {'dist': len(points_in_path), 'path': path}
+
+        sqltxt = '''INSERT INTO player_data(userid,episode,step,reward,goal_x,goal_y,player_x,player_y,predator_x,predator_y,goal_distance,adversary_distance,action,actionTime) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'''
         cur = con.cursor()
-        cur.execute(sqltxt,(userid,episode,step,r,goal_x,goal_y,player_x,player_y,predator_x,predator_y,action,actiontime))
+        cur.execute(sqltxt,(userid,episode,step,r,goal_x,goal_y,player_x,player_y,predator_x,predator_y,goal_distance,adversary_distance,action,actiontime))
         con.commit()
 
     episode = environments[userid]['episode']
