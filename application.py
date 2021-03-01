@@ -229,31 +229,43 @@ def move():
     txt = ''
     step = environments[userid]['step']
     observation = environments[userid]['env'].current_grid_map.copy()
+
     goal_location = np.where(observation == 2)
     player_location = np.where(observation == 3)
     predator_location = np.where(observation == 4)
-    player_location = (int(player_location[0]), int(player_location[1]))
-    goal_location = (int(goal_location[0]), int(goal_location[1]))
-    predator_location = (int(predator_location[0]), int(predator_location[1]))
-    # print(goal_location, player_location, predator_location)
-    action = choice
-    actiontime = dt.datetime.now()
-    env = environments[userid]['env']
-    # print('observation:')
-    # print(np.array2string(observation))
-    # print("callling GPT 1")
+    if player_location[0].size == 0 or goal_location[0].size == 0 or predator_location[0].size == 0:
+        goal_distance = -1
+        adversary_distance = -1
+        player_location = (-1,-1)
+        goal_location = (-1,-1)
+        predator_location = (-1,-1)
+        action = choice
+        actiontime = dt.datetime.now()
+    else:
+        # import pdb;
+        # pdb.set_trace()
+        player_location = (int(player_location[0]), int(player_location[1]))
+        goal_location = (int(goal_location[0]), int(goal_location[1]))
+        predator_location = (int(predator_location[0]), int(predator_location[1]))
+        # print(goal_location, player_location, predator_location)
+        action = choice
+        actiontime = dt.datetime.now()
+        env = environments[userid]['env']
+        # print('observation:')
+        # print(np.array2string(observation))
+        # print("callling GPT 1")
 
-    path_to_goal = env.getPathTo(player_location, goal_location, free_spaces=env.free_spaces)
-    # print(np.array2string(path_to_goal))
-    points_in_path = np.where(path_to_goal == -1)
-    points_in_path = list(zip(points_in_path[0], points_in_path[1]))
-    goal_distance = len(points_in_path)
-    # print("calling GPT 2")
-    path_to_adversary = env.getPathTo((player_location[0], player_location[1]),
-                                      (predator_location[0], predator_location[1]), free_spaces=env.free_spaces)
-    points_in_path = np.where(path_to_adversary == -1)
-    points_in_path = list(zip(points_in_path[0], points_in_path[1]))
-    adversary_distance = len(points_in_path)
+        path_to_goal = env.getPathTo(player_location, goal_location, free_spaces=env.free_spaces)
+        # print(np.array2string(path_to_goal))
+        points_in_path = np.where(path_to_goal == -1)
+        points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+        goal_distance = len(points_in_path)
+        # print("calling GPT 2")
+        path_to_adversary = env.getPathTo((player_location[0], player_location[1]),
+                                          (predator_location[0], predator_location[1]), free_spaces=env.free_spaces)
+        points_in_path = np.where(path_to_adversary == -1)
+        points_in_path = list(zip(points_in_path[0], points_in_path[1]))
+        adversary_distance = len(points_in_path)
     # print(goal_distance, adversary_distance, "!!!!!!")
     #print(np.array2string(observation))
     #print(np.where(observation==4))
