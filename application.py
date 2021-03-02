@@ -75,6 +75,8 @@ def game():
         session['obs'] = obs
 
     else:
+        if environments[userid]['episode'] >= 50:
+            return redirect(url_for("complete"))
         obs = session['obs']
     beststeps = mission_configuration[environments[userid]['episode']]['steps']
     #print(mission_configuration[environments[userid]['episode']])
