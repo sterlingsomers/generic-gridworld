@@ -280,18 +280,26 @@ def move():
     if choice == 99 and environments[userid]['done']:
         print("1",choice, environments[userid]['done'])
         configuration = environments[userid]['configuration']
-        configuration += 1
-        while configuration in bad_configs:
+        if environments[userid]['reward'] == -1:
+            obs = environments[userid]['env'].reset(config=mission_configuration[configuration])
+            environments[userid]['done'] = False
+            environments[userid]['reward'] = 0
+            environments[userid]['step'] = 0
+            environments[userid]['episode'] = environments[userid]['episode']
+            environments[userid]['configuration'] = configuration
+        else:
             configuration += 1
-        print("configuration", configuration)
-        obs = environments[userid]['env'].reset(config=mission_configuration[configuration])
-        environments[userid]['done'] = False
-        environments[userid]['reward'] = 0
-        environments[userid]['step'] = 0
-        environments[userid]['episode'] = environments[userid]['episode'] + 1
-        environments[userid]['configuration'] = configuration
-        #environments[userid]['gridmap'] = environments[userid]['env'].current_grid_map
-        session['obs'] = obs
+            while configuration in bad_configs:
+                configuration += 1
+            print("configuration", configuration)
+            obs = environments[userid]['env'].reset(config=mission_configuration[configuration])
+            environments[userid]['done'] = False
+            environments[userid]['reward'] = 0
+            environments[userid]['step'] = 0
+            environments[userid]['episode'] = environments[userid]['episode'] + 1
+            environments[userid]['configuration'] = configuration
+            #environments[userid]['gridmap'] = environments[userid]['env'].current_grid_map
+            session['obs'] = obs
         if environments[userid]['episode'] >=50:
             return redirect(url_for("complete"))
     elif choice == 99 and not environments[userid]['done']:
@@ -310,7 +318,7 @@ def move():
             txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You win</p><p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">Press reset to move on</p>'
             done == None
         if done == True and r == -1:
-            txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You lose</p><p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">Press reset to move on</p>'
+            txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You lose</p><p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">Press reset to try again!</p>'
             done == None
 
     with sql.connect("player_info.db") as con:
