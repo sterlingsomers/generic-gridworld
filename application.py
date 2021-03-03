@@ -20,6 +20,8 @@ application = app = Flask(__name__)
 app.secret_key = 'hello'
 mission_configuration = pickle.load(open('100position.netw','rb'))
 environments = {}
+bad_configs = [0, 3, 9, 11, 13, 14, 15, 20, 23, 36, 39, 43, 44, 47, 48,52,55,61]
+
 with sql.connect("player_info.db") as con:
     cursor = con.cursor()
     sqltxt = '''CREATE TABLE IF NOT EXISTS player_data (
@@ -71,14 +73,15 @@ def game():
         environments[userid]['reward'] = 0
         environments[userid]['step'] = 0
         environments[userid]['episode'] = 0
-        obs = environments[userid]['env'].reset(config=mission_configuration[environments[userid]['episode']])
+        environments[userid]['configuration'] = 0
+        obs = environments[userid]['env'].reset(config=mission_configuration[environments[userid]['configuration']])
         session['obs'] = obs
 
     else:
         if environments[userid]['episode'] >= 50:
             return redirect(url_for("complete"))
         obs = session['obs']
-    beststeps = mission_configuration[environments[userid]['episode']]['steps']
+    beststeps = mission_configuration[environments[userid]['configuration']]['steps']
     #print(mission_configuration[environments[userid]['episode']])
     episode = environments[userid]['episode']
     return render_template('game.html', svg=obs, turn_number=0, yoursteps=yoursteps,episodes=episode,beststeps=beststeps)
@@ -215,6 +218,7 @@ def scrub(table_name):
 @app.route('/move', methods = ['POST'])
 def move():
     global environments
+    global bad_configs
     data = request.form
 
     userid = session['user']
@@ -275,11 +279,17 @@ def move():
 
     if choice == 99 and environments[userid]['done']:
         print("1",choice, environments[userid]['done'])
-        obs = environments[userid]['env'].reset(config=mission_configuration[environments[userid]['episode'] + 1])
+        configuration = environments[userid]['configuration']
+        configuration += 1
+        while configuration in bad_configs:
+            configuration += 1
+        print("configuration", configuration)
+        obs = environments[userid]['env'].reset(config=mission_configuration[configuration])
         environments[userid]['done'] = False
         environments[userid]['reward'] = 0
         environments[userid]['step'] = 0
         environments[userid]['episode'] = environments[userid]['episode'] + 1
+        environments[userid]['configuration'] = configuration
         #environments[userid]['gridmap'] = environments[userid]['env'].current_grid_map
         session['obs'] = obs
         if environments[userid]['episode'] >=50:
@@ -343,7 +353,7 @@ def move():
         con.commit()
 
     episode = environments[userid]['episode']
-    return render_template('game.html', svg=obs, turn_number=turn_number+1,yoursteps=environments[userid]['step'],beststeps=mission_configuration[environments[userid]['episode']]['steps'],episodes=episode,feedback=txt)
+    return render_template('game.html', svg=obs, turn_number=turn_number+1,yoursteps=environments[userid]['step'],beststeps=mission_configuration[environments[userid]['configuration']]['steps'],episodes=episode,feedback=txt)
 
 
 
