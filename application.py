@@ -74,6 +74,7 @@ def game():
         environments[userid]['step'] = 0
         environments[userid]['episode'] = 0
         environments[userid]['configuration'] = 0
+        environments[userid]['score'] = 0
         obs = environments[userid]['env'].reset(config=mission_configuration[environments[userid]['configuration']])
         session['obs'] = obs
 
@@ -82,9 +83,10 @@ def game():
             return redirect(url_for("complete"))
         obs = session['obs']
     beststeps = mission_configuration[environments[userid]['configuration']]['steps']
+    score = environments[userid]['score']
     #print(mission_configuration[environments[userid]['episode']])
     episode = environments[userid]['episode']
-    return render_template('game.html', svg=obs, turn_number=0, yoursteps=yoursteps,episodes=episode,beststeps=beststeps)
+    return render_template('game.html', svg=obs, turn_number=0, yoursteps=yoursteps,episodes=episode,score=score,beststeps=beststeps)
 
 @app.route('/')
 def root():
@@ -287,7 +289,17 @@ def move():
             environments[userid]['step'] = 0
             environments[userid]['episode'] = environments[userid]['episode']
             environments[userid]['configuration'] = configuration
+            score = environments[userid]['score']
+            score -= 30
+            if score < 0:
+                score = 0
+            environments[userid]['score'] = score
         else:
+            best_steps = mission_configuration[environments[userid]['configuration']]['steps']
+            your_steps = environments[userid]['step']
+            bonus = 0
+            if your_steps <= best_steps:
+                bonus = 3 + (abs(your_steps - best_steps))
             configuration += 1
             while configuration in bad_configs:
                 configuration += 1
@@ -300,6 +312,8 @@ def move():
             environments[userid]['configuration'] = configuration
             #environments[userid]['gridmap'] = environments[userid]['env'].current_grid_map
             session['obs'] = obs
+            environments[userid]['score'] += (10 + bonus)
+
         if environments[userid]['episode'] >=50:
             return redirect(url_for("complete"))
     elif choice == 99 and not environments[userid]['done']:
@@ -361,7 +375,8 @@ def move():
         con.commit()
 
     episode = environments[userid]['episode']
-    return render_template('game.html', svg=obs, turn_number=turn_number+1,yoursteps=environments[userid]['step'],beststeps=mission_configuration[environments[userid]['configuration']]['steps'],episodes=episode,feedback=txt)
+    score = environments[userid]['score']
+    return render_template('game.html', svg=obs, turn_number=turn_number+1,yoursteps=environments[userid]['step'],beststeps=mission_configuration[environments[userid]['configuration']]['steps'],episodes=episode,score=score,feedback=txt)
 
 
 

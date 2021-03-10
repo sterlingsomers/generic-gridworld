@@ -9,8 +9,12 @@
   {{ svg|safe }}
   <!--p id=count_txt>Turn Number: {{ turn_number | safe }}</p-->
   <p id=feedback_txt>{{ feedback | safe }}</p>
-  <p id=scoreboard_text>Best Scores</p>
+  <p id=scoreboard_text>Scoreboard</p>
   <table id=scoreboard_table>
+    <tr>
+      <th>Total Score</th>
+      <td>{{score | safe}}</td>
+    </tr>
     <tr>
       <th>Your Steps</th>
       <th>Best Steps</th>

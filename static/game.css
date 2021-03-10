@@ -262,13 +262,13 @@
 }
 #scoreboard_table {
     position: absolute;
-    top: 55px;
+    top: 35px;
     left: 500px;
 
 }
 #scoreboard_text {
     position: absolute;
-    top: 20px;
+    top: 3px;
     left: 500px;
 }
 table, th, td {
