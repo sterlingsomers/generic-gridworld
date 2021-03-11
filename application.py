@@ -332,7 +332,7 @@ def move():
             txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You win.</p> <p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">10 points will be added to your score!</p><p style=\"font-size:25px; color:red; position:absolute; top:130px; left:25px;\">Press reset to move on.</p>'
             done == None
         if done == True and r == -1:
-            txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You win.</p> <p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">30 points will be subtracted from your score.</p><p style=\"font-size:25px; color:red; position:absolute; top:130px; left:25px;\">Press reset to try again.</p>'
+            txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You lose.</p> <p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">30 points will be subtracted from your score.</p><p style=\"font-size:25px; color:red; position:absolute; top:130px; left:25px;\">Press reset to try again.</p>'
             done == None
 
     with sql.connect("player_info.db") as con:
