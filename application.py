@@ -312,7 +312,7 @@ def move():
             environments[userid]['configuration'] = configuration
             #environments[userid]['gridmap'] = environments[userid]['env'].current_grid_map
             session['obs'] = obs
-            environments[userid]['score'] += (10 + bonus)
+            environments[userid]['score'] += 10
 
         if environments[userid]['episode'] >=50:
             return redirect(url_for("complete"))
@@ -329,10 +329,10 @@ def move():
 
     if not done == None and not r == None:
         if done == True and r == 1:
-            txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You win</p><p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">Press reset to move on</p>'
+            txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You win.</p> <p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">10 points will be added to your score!</p><p style=\"font-size:25px; color:red; position:absolute; top:130px; left:25px;\">Press reset to move on.</p>'
             done == None
         if done == True and r == -1:
-            txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You lose</p><p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">Press reset to try again!</p>'
+            txt = f'<p style=\"font-size:35px; color:red; position:absolute; top:50px; left:25px;\">You win.</p> <p style=\"font-size:25px; color:red; position:absolute; top:100px; left:25px;\">30 points will be subtracted from your score.</p><p style=\"font-size:25px; color:red; position:absolute; top:130px; left:25px;\">Press reset to try again.</p>'
             done == None
 
     with sql.connect("player_info.db") as con:
