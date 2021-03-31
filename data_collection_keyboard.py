@@ -52,22 +52,32 @@ outputFileName = 'participant-'
 write_data = True
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
-env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
-goal = Goal(env,entity_type='goal',color='green')
-# player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
-# player2 = Agent(env,entity_type='agent',color='orange')
-player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
-# player3 = TrainedAgent(env, model_filepath='/Users/paulsomers/gridworlds/generic/_files/models/networkb.pb',color='aqua')
-# player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=True,processes=5)
-#player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
-#player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
-advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
-#advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
+env = envs.generic_env.GenericEnv(map='town-board')#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
+print("envfree",env.free_spaces)
+master = InfectionMaster(env,min_infect=0,max_infect=3,step_rate=3)
+town1 = Town(env, infection_master=master, color='white', position='specific', position_coords=(2,2))
+town2 = Town(env, infection_master=master, color='white', position='specific', position_coords=(8,8))
+town3 = Town(env, infection_master=master, color='white', position='specific', position_coords=(6,3))
+town4 = Town(env, infection_master=master, color='white', position='specific', position_coords=(8,5))
+town5 = Town(env, infection_master=master, color='white', position='specific', position_coords=(5,8))
 
-env.setRecordHistory()
-# player3.setRecordHistory(history_dict={'actions':[],'saliences':[],'stuck':[]})
-player3.setRecordHistory(history_dict={'actions':[]})
-advisary.setRecordHistory(history_dict={'actions':[]})
+player3 = HumanAgent(env,entity_type='agent',color='orange',position='random-free',pygame=pygame)
+
+# goal = Goal(env,entity_type='goal',color='green')
+# # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
+# # player2 = Agent(env,entity_type='agent',color='orange')
+# player3 = HumanAgent(env,entity_type='agent',color='orange',pygame=pygame)
+# # player3 = TrainedAgent(env, model_filepath='/Users/paulsomers/gridworlds/generic/_files/models/networkb.pb',color='aqua')
+# # player3 = ACTR(env, data=human_data, mismatch_penalty=20,noise=0.25,multiprocess=True,processes=5)
+# #player3 = TrainedAgent(env,color='aqua',model_name='net_vs_pred_best_noop')
+# #player4 = AIAgent(env,entity_type='agent',color='pink',pygame=pygame)
+# advisary = ChasingBlockingAdvisary(env,entity_type='advisary',color='red',obs_type='data',position='near-goal')
+# #advisary2 = ChasingBlockingAdvisary(env,entity_type='advisary',color='pink',obs_type='data')
+#
+# env.setRecordHistory()
+# # player3.setRecordHistory(history_dict={'actions':[],'saliences':[],'stuck':[]})
+# player3.setRecordHistory(history_dict={'actions':[]})
+# advisary.setRecordHistory(history_dict={'actions':[]})
 
 
 
@@ -96,7 +106,7 @@ human_sets_pause = False
 
 size_factor = 30
 
-initial_image_data = env.reset(config=mission_configuration[0])
+initial_image_data = env.reset()
 initial_img = PIL.Image.fromarray(initial_image_data)
 size = tuple((np.array(initial_img.size) * size_factor).astype(int))
 initial_img = np.array(initial_img.resize(size, PIL.Image.NEAREST))
@@ -142,9 +152,9 @@ for i in range(episodes):
 
         print('step', steps)
         steps += 1
-        if steps == 50:
+        if steps == 500:
             player3.stuck = 1
-        if steps > 50:
+        if steps > 500:
             # data['environment_episode_data'].append(env.history.copy())
             # data['player_episode_data'].append(player3.history.copy())
             # data['advisary_episode_data'].append(advisary.history.copy())
@@ -182,7 +192,7 @@ for i in range(episodes):
             if i+1 >= episodes:
                 obs = env.reset()
             else:
-                obs = env.reset(config=mission_configuration[i+1])
+                obs = env.reset()
             obs = PIL.Image.fromarray(obs)
             size = tuple((np.array(obs.size) * size_factor).astype(int))
             obs = np.array(obs.resize(size, PIL.Image.NEAREST))
@@ -227,7 +237,7 @@ for i in range(episodes):
         if key_pressed and not game_done:
             player3.action = key_pressed
             if done:
-                obs = env.reset(config=mission_configuration[i+1])
+                obs = env.reset()
                 surf = pygame.surfarray.make_surface(np.flip(np.rot90(obs), 0))
                 display.fill((0, 0, 0))
                 display.blit(surf, (0,0))
@@ -269,7 +279,7 @@ for i in range(episodes):
             if i+1 >= episodes:
                 obs = env.reset()
             else:
-                obs = env.reset(config=mission_configuration[i+1])
+                obs = env.reset()
             obs = PIL.Image.fromarray(obs)
             size = tuple((np.array(obs.size) * size_factor).astype(int))
             obs = np.array(obs.resize(size, PIL.Image.NEAREST))

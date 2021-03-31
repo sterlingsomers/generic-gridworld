@@ -24,14 +24,14 @@ class Entity:
     current_position = (0,0)
     action_chosen = None
 
-    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',position_coords=[]):
+    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',position_coords=[],display=True):
         if env.__class__.__name__ == 'GenericEnv':
             self.env = env
         else:
             self.env = env.env
         self.value = self.env.object_values[-1] + 1
         self.env.object_values.append(self.value)
-        self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type}
+        self.env.value_to_objects[self.value] = {'color': color,'entity_type':entity_type,'display':display}
         self.env.entities[self.value] = self
         self.position_coords = position_coords
         self.color = color
@@ -43,6 +43,7 @@ class Entity:
         self.history = {}
         self.record_history = False
         self.stuck = 0
+        self.display = display
 
     def setRecordHistory(self,on=True,history_dict={'actions':[],'agent_value':0,'stuck':[]},write_files=False,prefix=''):
         self.record_history = on
@@ -82,7 +83,7 @@ class Entity:
 
     def place(self, position='random-free',position_coords=[]):
         # self.history['steps'] = []
-
+        print('place spaces',self.env.free_spaces)
         if position == 'random-free':
             free_spaces = []
             for free_space in self.env.free_spaces:
@@ -129,6 +130,69 @@ class ActiveEntity(Entity):
             for key,value in record_dict.items():
                 self.history[key].append(value)
         return record_dict['actions']
+
+class InfectionMaster(Entity):
+    def __init__(self, env,min_infect=0,max_infect=0,step_rate=3):
+        self.env = env
+        self.value = self.env.object_values[-1] + 1
+        self.env.entities[self.value] = self
+        self.env.object_values.append(self.value)
+        self.record_history = False
+        self.towns = []
+        self.env.value_to_objects[self.value] = {'display': False}
+        self.min_infect = min_infect
+        self.max_infect = max_infect
+        self.town_colors = {0:'white',1:'light yellow',2:'yellow',3:'light orange', 4:'red', 5:'brown'}
+        self.display = False
+        self.step_rate = step_rate
+        self.step = 0
+        print(self.env.entities)
+
+    def place(*args):
+        pass
+
+    def setupTowns(self):
+        pass
+
+
+    def stepCheck(self):
+        if not self.step % self.step_rate:
+            infects = random.randint(self.min_infect,self.max_infect)
+            towns_to_infect = random.choices(self.towns,k=infects)
+            print('step',self.step,'infects',infects)
+            for town in self.towns:
+                if town in towns_to_infect:
+                    town.infection += 1
+                    if town.infection >= 5:
+                        town.infection = 5
+                town.color = self.town_colors[town.infection]
+                self.env.value_to_objects[town.value]['color'] = town.color
+
+        self.step += 1
+
+    def getAction(self,obs):
+        return None
+
+    def moveToMe(self):
+        return None
+
+class Town(Entity):
+    def __init__(self, env, infection_master, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
+        self.infection_master = infection_master
+        self.infection_master.towns.append(self)
+        self.town_number = len(self.infection_master.towns) + 1
+        self.infection = 0
+        self.env.current_grid_map[self.town_number,10] = self.value
+        print(self.env.entities)
+
+    def stepCheck(self):
+        print('town?')
+
+    def moveToMe(self,entity_object):
+        return 0
+
+
 
 class Goal(Entity):
     def __init__(self, env, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
@@ -503,14 +567,14 @@ class HumanAgent(Agent):
         self.keymappings = {}
         self.pygame.font.init()
         self.font = self.pygame.font.SysFont('Arial', 30)
-        self.display = 0
+        self.pygame_display = 0
         self.walls_hit = 0
 
 
         self.quit = False
 
     def setDisplay(self,display):
-        self.display = display
+        self.pygame_display = display
 
     def stepCheck(self):
         if self.walls_hit:
@@ -533,11 +597,11 @@ class HumanAgent(Agent):
     def _getAction(self,obs):
         #this updates the picture
         # print("human getAction")
-        if self.display:
-            snapshot = self.display.copy()
+        if self.pygame_display:
+            snapshot = self.pygame_display.copy()
             textsurface = self.font.render(self.color, False, (255,255,255))
             size = self.pygame.display.get_surface().get_size()
-            self.display.blit(textsurface, (10,220))
+            self.pygame_display.blit(textsurface, (10,220))
             self.pygame.display.update()
 
         key_pressed = None
@@ -561,8 +625,8 @@ class HumanAgent(Agent):
             self.quit = True
             return 0
         # print("human pressed", key_pressed)
-        if self.display:
-            self.display.blit(snapshot, (0,0))
+        if self.pygame_display:
+            self.pygame_display.blit(snapshot, (0,0))
             self.pygame.display.update()
         return {'actions':key_pressed}
 

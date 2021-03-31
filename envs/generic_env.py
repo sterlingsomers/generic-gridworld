@@ -46,7 +46,7 @@ def step_wrapper(f):
 
 
 class GenericEnv(gym.Env):
-    value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0},-1:{'color':'white'}}
+    value_to_objects = {1: {'class': 'wall', 'color': 'black', 'moveTo': 0, 'display':True},-1:{'color':'white', 'display':True}}
     object_values = [-1,1]
     entities = {} #indexed by object value
     active_entities = {}
@@ -69,7 +69,10 @@ class GenericEnv(gym.Env):
         'white': (255,255,255),
         'aqua': (0,255,255),
         'black': (0, 0, 0),
-        'gray' : (96,96,96)
+        'gray' : (96,96,96),
+        'light yellow': (255,251,176),
+        'light orange': (255,104,55),
+        'brown': (122,57,0)
     }
 
     def __init__(self,dims=(10,10),map='',agents=[],features=[],border=True, entities = [],wallrule=False):
@@ -266,6 +269,7 @@ class GenericEnv(gym.Env):
                 # free_space = random.choice(free_spaces)
                 # self.current_grid_map[free_space] = object_value
 
+
     def setupMap(self,map,dims):
         if map == '':
             self.dims = dims
@@ -283,7 +287,7 @@ class GenericEnv(gym.Env):
                 for value in maps[map]['colors']:
                     if value  in self.value_to_objects:
                         continue
-                    self.value_to_objects[value] = {'color':maps[map]['colors'][value]}
+                    self.value_to_objects[value] = {'color':maps[map]['colors'][value],'display':maps[map]['display']}
             if 'properties' in maps[map]:
                 for value in maps[map]['properties']:
                     self.value_to_objects[value].update(maps[map]['properties'][value])
@@ -292,6 +296,8 @@ class GenericEnv(gym.Env):
                     self.permanents.append(value)
             if 'free-spaces' in maps[map]:
                 [self.free_spaces.append(i) for i in maps[map]['free-spaces'] if not i in self.free_spaces]
+
+
 
     def moveToAgent(self,current_position,intended_position):
         return 0
@@ -335,9 +341,11 @@ class GenericEnv(gym.Env):
         for object_value in self.object_values:
             if object_value <= 1 and not object_value == -1:
                 continue
+            if object_value in self.permanents:
+                continue
             obj_loc = np.where(self.current_grid_map == object_value)
             for x,y in list(zip(obj_loc[0],obj_loc[1])):
-                self.current_grid_map[(x,y)] = 0
+                self.current_grid_map[(x,y)] = self.base_grid_map[(x,y)]
 
         self.done = False
         self.reward = 0
@@ -364,7 +372,8 @@ class GenericEnv(gym.Env):
 
             if entity_object.record_history:
                 entity_object.history['actions'] = []
-            entity_object.place(position=entity_object.position,position_coords=entity_object.position_coords)
+            if entity_object.display:
+                entity_object.place(position=entity_object.position,position_coords=entity_object.position_coords)
         # for object_value in self.object_values:
         #     if object_value <= 1:
         #         continue
@@ -390,8 +399,12 @@ class GenericEnv(gym.Env):
 
 
         for obj_val in self.object_values:
-            obj = np.where(self.current_grid_map == obj_val)
-            image[obj[0],obj[1],:] = self.colors[self.value_to_objects[obj_val]['color']]
+            print("obj_val_grif",obj_val)
+            if not self.value_to_objects[obj_val]['display']:
+                continue
+            objs = np.where(self.current_grid_map == obj_val)
+            for objx,objy in list(zip(objs[0],objs[1])):
+                image[objx,objy,:] = self.colors[self.value_to_objects[obj_val]['color']]
 
 
 
@@ -439,7 +452,7 @@ class GenericEnv(gym.Env):
                     self.active_entities[entity].hitWall()
                 self.active_entities[entity].intended_position = self.active_entities[entity].current_position
 
-            self.current_grid_map[current_position] = 0 #erase the person from their old spot
+            self.current_grid_map[current_position] = self.base_grid_map[current_position] #erase the person from their old spot
 
         #this loop carries out any action towards non-active entities (e.g. goals, reactive obstacles)
         for entity in self.active_entities:
