@@ -146,6 +146,8 @@ class InfectionMaster(Entity):
         self.display = False
         self.step_rate = step_rate
         self.step = 0
+        self.elixirs = []
+        self.elixir_colors = {0:'pale green', 1:'light green', 2:'green'}
         print(self.env.entities)
 
     def place(*args):
@@ -178,6 +180,36 @@ class InfectionMaster(Entity):
     def moveToMe(self):
         return None
 
+class ElixirGenerator(Entity):
+    def __init__(self, env, infection_master, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords)
+        self.infection_master = infection_master
+        self.infection_master.elixirs.append(self)
+        self.elixir_number = len(self.infection_master.elixirs)
+        #self.env.current_grid_map[8,9+self.elixir_number] = self.value#[9,10+len(self.infection_master.elixirs)] = self.value
+        self.covered = False
+        self.level = 0
+
+        print(self.env.entities)
+
+    def stepCheck(self):
+        if self.env.current_grid_map[self.current_position] == self.value:
+            self.covered = False
+        self.color = self.infection_master.elixir_colors[self.level]
+        self.env.value_to_objects[self.value]['color'] = self.color
+
+    def place(self,position,position_coords):
+        super().place(position,position_coords)
+        self.env.base_grid_map[self.current_position] = self.value
+
+    def moveToMe(self,entity_object):
+        if self.covered:
+            if self.level < 2:
+                self.level += 1
+            elif self.level == 2:
+                self.env.base_grid_map[8,9+self.elixir_number] = self.value
+        self.covered = True
+
 class Town(Entity):
     def __init__(self, env, infection_master, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
         super().__init__(env, obs_type, entity_type, color, position, position_coords)
@@ -187,20 +219,23 @@ class Town(Entity):
         self.infection = 0
         self.env.current_grid_map[self.town_number,10] = self.value
         self.steps_covered = 0
+        self.covered = False
 
 
         print(self.env.entities)
 
     def stepCheck(self):
-        if not self.env.current_grid_map[self.current_position] == self.value and self.steps_covered:
-            self.infection -= 1
-            if self.infection < 0:
-                self.infection = 0
-        elif not self.env.current_grid_map[self.current_position] == self.value and not self.steps_covered:
-            self.steps_covered += 1
-
         if self.env.current_grid_map[self.current_position] == self.value:
-            self.steps_covered = 0
+            self.covered = False
+        # if not self.env.current_grid_map[self.current_position] == self.value and self.steps_covered:
+        #     self.infection -= 1
+        #     if self.infection < 0:
+        #         self.infection = 0
+        # elif not self.env.current_grid_map[self.current_position] == self.value and not self.steps_covered:
+        #     self.steps_covered += 1
+        #
+        # if self.env.current_grid_map[self.current_position] == self.value:
+        #     self.steps_covered = 0
 
         self.color = self.infection_master.town_colors[self.infection]
         self.env.value_to_objects[self.value]['color'] = self.color
@@ -210,7 +245,13 @@ class Town(Entity):
         self.env.base_grid_map[self.current_position] = self.value
 
     def moveToMe(self,entity_object):
-        pass
+        print("move to me")
+        if self.covered:
+            if self.infection >= 1:
+                self.infection -= 1
+            self.color = self.infection_master.town_colors[self.infection]
+            self.env.value_to_objects[self.value]['color'] = self.color
+        self.covered = True
 
 
 

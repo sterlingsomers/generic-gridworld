@@ -72,7 +72,9 @@ class GenericEnv(gym.Env):
         'gray' : (96,96,96),
         'light yellow': (255,251,176),
         'light orange': (255,104,55),
-        'brown': (122,57,0)
+        'brown': (122,57,0),
+        'pale green': (179,255,196),
+        'light green': (89,217,119)
     }
 
     def __init__(self,dims=(10,10),map='',agents=[],features=[],border=True, entities = [],wallrule=False):
@@ -295,7 +297,7 @@ class GenericEnv(gym.Env):
                 for value in maps[map]['permanent']:
                     self.permanents.append(value)
                     #the permanents also need to be in the base_map
-                    print('')
+
 
             if 'free-spaces' in maps[map]:
                 [self.free_spaces.append(i) for i in maps[map]['free-spaces'] if not i in self.free_spaces]

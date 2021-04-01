@@ -60,7 +60,7 @@ town2 = Town(env, infection_master=master, color='white', position='specific', p
 town3 = Town(env, infection_master=master, color='white', position='specific', position_coords=(7,8))
 town4 = Town(env, infection_master=master, color='white', position='specific', position_coords=(8,5))
 town5 = Town(env, infection_master=master, color='white', position='specific', position_coords=(6,3))
-
+elixir = ElixirGenerator(env, infection_master=master, color='pale green', position='specific', position_coords=(5,5))
 player3 = HumanAgent(env,entity_type='agent',color='orange',position='random-free',pygame=pygame)
 #player4 = HumanAgent(env,entity_type='agent',color='blue',position='random-free',pygame=pygame)
 

@@ -138,7 +138,7 @@ maps = {'pacman':{'colors':{0:'gray',1:'black',2:'white',3:'yellow',4:'pink',5:'
         'town-board':{'colors':{0:'gray',2:'gray'},
                       'free-spaces':[0],
                       'display':True,
-                      'permanent':[4,5,6,7,8],
+                      'permanent':[4,5,6,7,8,9],
                       'map': np.array([[1,1,1,1,1,1,1,1,1,1,1,1,1],
                                          [1,0,0,0,0,0,0,0,0,1,2,2,1],
                                          [1,0,0,0,0,0,0,0,0,1,2,2,1],
