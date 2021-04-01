@@ -294,6 +294,9 @@ class GenericEnv(gym.Env):
             if 'permanent' in maps[map]:
                 for value in maps[map]['permanent']:
                     self.permanents.append(value)
+                    #the permanents also need to be in the base_map
+                    print('')
+
             if 'free-spaces' in maps[map]:
                 [self.free_spaces.append(i) for i in maps[map]['free-spaces'] if not i in self.free_spaces]
 
@@ -399,7 +402,7 @@ class GenericEnv(gym.Env):
 
 
         for obj_val in self.object_values:
-            print("obj_val_grif",obj_val)
+            #print("obj_val_grif",obj_val)
             if not self.value_to_objects[obj_val]['display']:
                 continue
             objs = np.where(self.current_grid_map == obj_val)
@@ -437,6 +440,8 @@ class GenericEnv(gym.Env):
                 entity_actions.append(action)
         # print('ent_actions:',entity_actions)
 
+
+
         #this loop will carry out what COULD happen
         for entity, an_action in zip(self.active_entities, entity_actions):
             if an_action == 0:
@@ -452,8 +457,8 @@ class GenericEnv(gym.Env):
                     self.active_entities[entity].hitWall()
                 self.active_entities[entity].intended_position = self.active_entities[entity].current_position
 
-            self.current_grid_map[current_position] = self.base_grid_map[current_position] #erase the person from their old spot
-
+            #self.current_grid_map[current_position] = self.base_grid_map[current_position] #erase the person from their old spot
+        self.current_grid_map = self.base_grid_map.copy()
         #this loop carries out any action towards non-active entities (e.g. goals, reactive obstacles)
         for entity in self.active_entities:
             other_entities = [x for x in self.entities if x not in self.active_entities]

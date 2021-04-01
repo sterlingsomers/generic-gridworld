@@ -159,14 +159,16 @@ class InfectionMaster(Entity):
         if not self.step % self.step_rate:
             infects = random.randint(self.min_infect,self.max_infect)
             towns_to_infect = random.choices(self.towns,k=infects)
+
             print('step',self.step,'infects',infects)
             for town in self.towns:
-                if town in towns_to_infect:
+                if town in towns_to_infect and self.env.current_grid_map[town.current_position] == town.value:
+                    print('infecting town', town)
                     town.infection += 1
                     if town.infection >= 5:
                         town.infection = 5
-                town.color = self.town_colors[town.infection]
-                self.env.value_to_objects[town.value]['color'] = town.color
+                # town.color = self.town_colors[town.infection]
+                # self.env.value_to_objects[town.value]['color'] = town.color
 
         self.step += 1
 
@@ -184,13 +186,31 @@ class Town(Entity):
         self.town_number = len(self.infection_master.towns) + 1
         self.infection = 0
         self.env.current_grid_map[self.town_number,10] = self.value
+        self.steps_covered = 0
+
+
         print(self.env.entities)
 
     def stepCheck(self):
-        print('town?')
+        if not self.env.current_grid_map[self.current_position] == self.value and self.steps_covered:
+            self.infection -= 1
+            if self.infection < 0:
+                self.infection = 0
+        elif not self.env.current_grid_map[self.current_position] == self.value and not self.steps_covered:
+            self.steps_covered += 1
+
+        if self.env.current_grid_map[self.current_position] == self.value:
+            self.steps_covered = 0
+
+        self.color = self.infection_master.town_colors[self.infection]
+        self.env.value_to_objects[self.value]['color'] = self.color
+
+    def place(self,position,position_coords):
+        super().place(position,position_coords)
+        self.env.base_grid_map[self.current_position] = self.value
 
     def moveToMe(self,entity_object):
-        return 0
+        pass
 
 
 

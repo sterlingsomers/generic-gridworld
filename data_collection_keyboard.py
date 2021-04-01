@@ -56,12 +56,13 @@ env = envs.generic_env.GenericEnv(map='town-board')#,features=[{'entity_type':'o
 print("envfree",env.free_spaces)
 master = InfectionMaster(env,min_infect=0,max_infect=3,step_rate=3)
 town1 = Town(env, infection_master=master, color='white', position='specific', position_coords=(2,2))
-town2 = Town(env, infection_master=master, color='white', position='specific', position_coords=(8,8))
-town3 = Town(env, infection_master=master, color='white', position='specific', position_coords=(6,3))
+town2 = Town(env, infection_master=master, color='white', position='specific', position_coords=(3,7))
+town3 = Town(env, infection_master=master, color='white', position='specific', position_coords=(7,8))
 town4 = Town(env, infection_master=master, color='white', position='specific', position_coords=(8,5))
-town5 = Town(env, infection_master=master, color='white', position='specific', position_coords=(5,8))
+town5 = Town(env, infection_master=master, color='white', position='specific', position_coords=(6,3))
 
 player3 = HumanAgent(env,entity_type='agent',color='orange',position='random-free',pygame=pygame)
+#player4 = HumanAgent(env,entity_type='agent',color='blue',position='random-free',pygame=pygame)
 
 # goal = Goal(env,entity_type='goal',color='green')
 # # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
