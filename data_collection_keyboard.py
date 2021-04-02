@@ -60,9 +60,10 @@ town2 = Town(env, infection_master=master, color='white', position='specific', p
 town3 = Town(env, infection_master=master, color='white', position='specific', position_coords=(7,8))
 town4 = Town(env, infection_master=master, color='white', position='specific', position_coords=(8,5))
 town5 = Town(env, infection_master=master, color='white', position='specific', position_coords=(6,3))
-elixir = ElixirGenerator(env, infection_master=master, color='pale green', position='specific', position_coords=(5,5))
-player3 = HumanAgent(env,entity_type='agent',color='orange',position='random-free',pygame=pygame)
-#player4 = HumanAgent(env,entity_type='agent',color='blue',position='random-free',pygame=pygame)
+elixirgenerator = ElixirGenerator(env, infection_master=master, color='pale green', position='specific', position_coords=(5,5))
+#elixir = InventoryItem(env, color='green',display=True,coords_list=[(8,10)])
+player3 = HumanAgent(env,entity_type='agent',color='orange',position='random-free',pygame=pygame,inventory=[],inventory_coords=[(8,10)])
+player4 = HumanAgent(env,entity_type='agent',color='blue',position='random-free',pygame=pygame,inventory=[],inventory_coords=[(8,11)])
 
 # goal = Goal(env,entity_type='goal',color='green')
 # # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')

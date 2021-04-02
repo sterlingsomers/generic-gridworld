@@ -24,7 +24,7 @@ class Entity:
     current_position = (0,0)
     action_chosen = None
 
-    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',position_coords=[],display=True):
+    def __init__(self, env, obs_type='image',entity_type='', color='', position='random-free',position_coords=[],display=True,inventory=[],inventory_coords=[]):
         if env.__class__.__name__ == 'GenericEnv':
             self.env = env
         else:
@@ -44,6 +44,8 @@ class Entity:
         self.record_history = False
         self.stuck = 0
         self.display = display
+        self.inventory = inventory
+        self.inventory_coords = inventory_coords
 
     def setRecordHistory(self,on=True,history_dict={'actions':[],'agent_value':0,'stuck':[]},write_files=False,prefix=''):
         self.record_history = on
@@ -65,6 +67,9 @@ class Entity:
             return random.choice([UP])
         else:
             return 0
+
+    def reset(self):
+        pass
 
     def getAgents(self):
         agents = []
@@ -119,8 +124,8 @@ class Entity:
         pass
 
 class ActiveEntity(Entity):
-    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free',position_coords=[]):
-        super().__init__(env, obs_type, entity_type, color, position, position_coords)
+    def __init__(self, env, obs_type='image',entity_type='entity', color='', position='random-free',position_coords=[],inventory=[],inventory_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords,inventory=inventory,inventory_coords=inventory_coords)
         self.env.active_entities[self.value] = self
 
     def getAction(self, obs):
@@ -145,16 +150,27 @@ class InfectionMaster(Entity):
         self.town_colors = {0:'white',1:'light yellow',2:'yellow',3:'light orange', 4:'red', 5:'brown'}
         self.display = False
         self.step_rate = step_rate
-        self.step = 0
+        self.step = 1
         self.elixirs = []
         self.elixir_colors = {0:'pale green', 1:'light green', 2:'green'}
         print(self.env.entities)
 
-    def place(*args):
+    def place(self,position=None,position_coords=None):
         pass
 
     def setupTowns(self):
         pass
+
+    def reset(self,):
+        print("pace master")
+        infects = random.randint(1, self.max_infect)
+        towns_to_infect = random.choices(self.towns, k=infects)
+        for town in towns_to_infect:
+            if town.infection <= 4:
+                town.infection += 1
+            town.color = self.town_colors[town.infection]
+            self.env.value_to_objects[town.value]['color'] = town.color
+
 
 
     def stepCheck(self):
@@ -180,6 +196,26 @@ class InfectionMaster(Entity):
     def moveToMe(self):
         return None
 
+
+class InventoryItem(Entity):
+    def __init__(self, env, obs_type='image',entity_type='', color='', position='specific',position_coords=(0,0),display=False,coords_list=[]):
+        super().__init__(env, obs_type, entity_type, color, position,position_coords,display)
+        self.display = display
+        self.coords_list = coords_list
+        self.place()
+
+    def place(self):
+        #ignore the args, kplace in coords_list
+        print('place called')
+        for coord in self.coords_list:
+            if self.env.current_grid_map[coord] == 2:
+                self.current_position = coord
+                self.env.current_grid_map[coord] = self.value
+                self.display = True
+                break
+
+
+
 class ElixirGenerator(Entity):
     def __init__(self, env, infection_master, obs_type='image',entity_type='goal', color='', position='random-free', position_coords=[]):
         super().__init__(env, obs_type, entity_type, color, position, position_coords)
@@ -187,8 +223,10 @@ class ElixirGenerator(Entity):
         self.infection_master.elixirs.append(self)
         self.elixir_number = len(self.infection_master.elixirs)
         #self.env.current_grid_map[8,9+self.elixir_number] = self.value#[9,10+len(self.infection_master.elixirs)] = self.value
+        self.env.current_grid_map[7, 10] = self.value
         self.covered = False
         self.level = 0
+        self.original_color = color
 
         print(self.env.entities)
 
@@ -202,12 +240,32 @@ class ElixirGenerator(Entity):
         super().place(position,position_coords)
         self.env.base_grid_map[self.current_position] = self.value
 
+    def reset(self):
+        self.color = self.original_color
+        self.level = 0
+        self.stepCheck()
+
+
     def moveToMe(self,entity_object):
+        print("covered", self.covered)
         if self.covered:
+            print("level",self.level)
             if self.level < 2:
                 self.level += 1
+                self.color = self.infection_master.elixir_colors[self.level]
+                self.env.value_to_objects[self.value]['color'] = self.color
             elif self.level == 2:
-                self.env.base_grid_map[8,9+self.elixir_number] = self.value
+                print("level", self.level)
+                print("entity",entity_object,entity_object.color,entity_object.inventory,entity_object.inventory_coords)
+                if len(entity_object.inventory) < len(entity_object.inventory_coords):
+                    print("LESS than")
+                    elixir = InventoryItem(self.env,color='green',coords_list=entity_object.inventory_coords,display=True)
+                    print('created',elixir,entity_object.inventory_coords)
+                    entity_object.inventory.append(elixir)
+                    elixir.place()
+                    print("entity", entity_object, entity_object.color, entity_object.inventory,
+                          entity_object.inventory_coords)
+                    self.reset()
         self.covered = True
 
 class Town(Entity):
@@ -236,21 +294,40 @@ class Town(Entity):
         #
         # if self.env.current_grid_map[self.current_position] == self.value:
         #     self.steps_covered = 0
+        if self.infection >= 0:
+            self.color = self.infection_master.town_colors[self.infection]
+            self.env.value_to_objects[self.value]['color'] = self.color
+        else:
+            if not self.covered and not self.inventory:
+                self.infection += 1
+                if self.infection == 0:
+                    elixir = self.inventory.pop()
+                    del self.env.entities[elixir.value]
+                    del elixir
 
-        self.color = self.infection_master.town_colors[self.infection]
-        self.env.value_to_objects[self.value]['color'] = self.color
+            self.color = self.infection_master.elixir_colors[-self.infection]
+            self.env.value_to_objects[self.value]['color'] = self.color
 
     def place(self,position,position_coords):
         super().place(position,position_coords)
         self.env.base_grid_map[self.current_position] = self.value
 
     def moveToMe(self,entity_object):
-        print("move to me")
+
         if self.covered:
-            if self.infection >= 1:
+            if self.infection <= 0 and entity_object.inventory:
+                self.infection = -2
+                self.color = self.infection_master.elixir_colors[-self.infection]
+                self.env.value_to_objects[self.value]['color'] = self.color
+                elixir = entity_object.inventory.pop()
+                self.env.current_grid_map[elixir.current_position] = 2
+                elixir.display = False
+                self.inventory.append(elixir)
+
+            elif self.infection >= 1:
                 self.infection -= 1
-            self.color = self.infection_master.town_colors[self.infection]
-            self.env.value_to_objects[self.value]['color'] = self.color
+                self.color = self.infection_master.town_colors[self.infection]
+                self.env.value_to_objects[self.value]['color'] = self.color
         self.covered = True
 
 
@@ -301,11 +378,9 @@ class CountingGoal(Goal):
     def getAction(self,obs):
         return 0
 
-
-
 class Agent(ActiveEntity):
-    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[]):
-        super().__init__(env, obs_type, entity_type, color, position, position_coords)
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[],inventory=[],inventory_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords,inventory=inventory,inventory_coords=inventory_coords)
 
     def moveToMe(self,entity_object):
         self.env.done = True
@@ -620,9 +695,9 @@ class ACTR(Agent):
 
 class HumanAgent(Agent):
     obs = None
-    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[],pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'}):
+    def __init__(self, env, obs_type='image',entity_type='agent', color='', position='random-free',position_coords=[],pygame='None',mapping={'\uf700':UP,'\uf702':LEFT,'\uf701':DOWN,'\uf703':RIGHT,' ':NOOP,'r':'reset','q':'quit'},inventory=[],inventory_coords=[]):
         self.mapping = mapping
-        super().__init__(env, obs_type, entity_type, color, position,position_coords)
+        super().__init__(env, obs_type, entity_type, color, position,position_coords,inventory=inventory,inventory_coords=inventory_coords)
 
         self.pygame = pygame
         self.keymappings = {}

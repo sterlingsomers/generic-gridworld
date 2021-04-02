@@ -369,6 +369,8 @@ class GenericEnv(gym.Env):
 
         for entity in self.entities:
             entity_object = self.entities[entity]
+            if entity >= 10:
+                print("dub")
             if not config == None:
                 if entity_object.value in config:
                     entity_object.position = 'specific'
@@ -379,6 +381,8 @@ class GenericEnv(gym.Env):
                 entity_object.history['actions'] = []
             if entity_object.display:
                 entity_object.place(position=entity_object.position,position_coords=entity_object.position_coords)
+
+            entity_object.reset()
         # for object_value in self.object_values:
         #     if object_value <= 1:
         #         continue
@@ -505,6 +509,10 @@ class GenericEnv(gym.Env):
                 # print('entities', entity_object.current_position, 'ent_type', type(entity_object))
                 self.current_grid_map[entity_object.current_position] = entity_object.value
             # print("reward", self.reward, self.done)
+            for entity in self.entities:
+                entity_object = self.entities[entity]
+                if entity_object.display:
+                    self.current_grid_map[entity_object.current_position] = entity_object.value
             return self._gridmap_to_image(), self.reward, self.done, info
         else:
             # print("reward", self.reward, self.done)
