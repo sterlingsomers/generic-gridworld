@@ -69,7 +69,7 @@ class Entity:
             return 0
 
     def reset(self):
-        pass
+        self.inventory = []
 
     def getAgents(self):
         agents = []
@@ -168,12 +168,26 @@ class InfectionMaster(Entity):
         for town in towns_to_infect:
             if town.infection <= 4:
                 town.infection += 1
-            town.color = self.town_colors[town.infection]
-            self.env.value_to_objects[town.value]['color'] = town.color
+            if town.infection > 0:
+                town.color = self.town_colors[town.infection]
+                self.env.value_to_objects[town.value]['color'] = town.color
+            else:
+                town.color = self.elixir_colors[-town.infection]
+                self.env.value_to_objects[town.value]['color'] = town.color
 
 
 
     def stepCheck(self):
+        ##check for win/loss first
+        diseased = 0
+        for town in self.towns:
+            if town.infection > 0:
+                diseased += 1
+        if not diseased:
+            self.env.reward = 100
+            self.env.done = True
+
+
         if not self.step % self.step_rate:
             infects = random.randint(self.min_infect,self.max_infect)
             towns_to_infect = random.choices(self.towns,k=infects)
@@ -185,8 +199,12 @@ class InfectionMaster(Entity):
                     town.infection += 1
                     if town.infection >= 5:
                         town.infection = 5
-                # town.color = self.town_colors[town.infection]
-                # self.env.value_to_objects[town.value]['color'] = town.color
+                if town.infection > 0:
+                    town.color = self.town_colors[town.infection]
+                    self.env.value_to_objects[town.value]['color'] = town.color
+                else:
+                    town.color = self.elixir_colors[-town.infection]
+                    self.env.value_to_objects[town.value]['color'] = town.color
 
         self.step += 1
 
@@ -307,6 +325,12 @@ class Town(Entity):
 
             self.color = self.infection_master.elixir_colors[-self.infection]
             self.env.value_to_objects[self.value]['color'] = self.color
+
+    def reset(self):
+        self.infection = 0
+        self.color = self.infection_master.town_colors[self.infection]
+        self.env.value_to_objects[self.value]['color'] = self.color
+
 
     def place(self,position,position_coords):
         super().place(position,position_coords)
@@ -691,6 +715,43 @@ class ACTR(Agent):
             return 1
         return super().moveToMe(entity_object)
 
+class TownClearningAgent(Agent):
+    def __init__(self, env, obs_type='image', entity_type='agent', color='', position='random-free',position_coords=[],inventory=[],inventory_coords=[]):
+        super().__init__(env, obs_type, entity_type, color, position, position_coords,inventory=inventory,inventory_coords=inventory_coords)
+
+    def getAction(self,obs):
+        towns = {}
+        #town_descriptions = {}
+
+        my_location = self.current_position
+        for entity in self.env.entities:
+            entity_object = self.env.entities[entity]
+            if isinstance(entity_object,Town):
+                if self.current_position[0] == entity_object.current_position[0] and self.current_position[1] == entity_object.current_position[1] and entity_object.infection:
+                    return 0
+
+                distance = cityblock(self.current_position,entity_object.current_position) + 0.00001
+                infection = entity_object.infection
+
+                priority = (infection*2) / distance
+                towns[entity_object] = priority
+                #town_descriptions[entity_object] = {'distance':distance, 'infection':infection, 'position':entity_object.current_position, 'priority':priority}
+
+        highest_priority = max(towns, key=towns.get)
+        print(towns)
+        print(highest_priority,highest_priority.current_position)
+        path_to_town = self.env.getPathTo((my_location[0], my_location[1]), (highest_priority.current_position[0], highest_priority.current_position[1]),
+                                           free_spaces=self.env.free_spaces)
+        points_in_path = np.where(path_to_town == -1)
+        for direction in directions:
+            if path_to_town[self.env.action_map[direction]((my_location[0], my_location[1]))] == -1:
+                # print("diection2", direction)
+                return direction
+
+
+    def moveToMe(self,entity_object):
+        return 0
+
 
 
 class HumanAgent(Agent):
@@ -768,9 +829,6 @@ class HumanAgent(Agent):
 
 
     # @record_action
-
-
-
 
 class Advisary(ActiveEntity):
     def moveToMe(self,entity_object):
@@ -885,9 +943,6 @@ class RunAwayGoal(ActiveEntity):
 
     def moveToMe(self,entity_object):
         super().moveToMe(entity_object)
-
-
-
 
 class ChasingAdvisary(Advisary):
 
@@ -1011,7 +1066,6 @@ class ChasingBlockingAdvisary(Advisary):
                     # print("diection2", direction)
                     return {'actions':direction}
         # return 2
-
 
 class BlockingAdvisary(Advisary):
     def getGoal(self,obs):

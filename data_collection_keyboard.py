@@ -63,7 +63,8 @@ town5 = Town(env, infection_master=master, color='white', position='specific', p
 elixirgenerator = ElixirGenerator(env, infection_master=master, color='pale green', position='specific', position_coords=(5,5))
 #elixir = InventoryItem(env, color='green',display=True,coords_list=[(8,10)])
 player3 = HumanAgent(env,entity_type='agent',color='orange',position='random-free',pygame=pygame,inventory=[],inventory_coords=[(8,10)])
-player4 = HumanAgent(env,entity_type='agent',color='blue',position='random-free',pygame=pygame,inventory=[],inventory_coords=[(8,11)])
+# player4 = HumanAgent(env,entity_type='agent',color='blue',position='random-free',pygame=pygame,inventory=[],inventory_coords=[(8,11)])
+ai = TownClearningAgent(env,entity_type='agent',color='blue',position='random-free',inventory=[],inventory_coords=[(8,11)])
 
 # goal = Goal(env,entity_type='goal',color='green')
 # # player1 = AI_Agent(env,obs_type='data',entity_type='agent',color='blue')
@@ -182,12 +183,12 @@ for i in range(episodes):
             # continue
             data['environment_episode_data'].append(env.history.copy())
             data['player_episode_data'].append(player3.history.copy())
-            data['advisary_episode_data'].append(advisary.history.copy())
-            wins = wins + data['environment_episode_data'][-1]['reward'][-1] if data['environment_episode_data'][-1]['reward'][-1] > 0 else wins
-            losses = losses + 1 if data['environment_episode_data'][-1]['reward'][-1] < 0 else losses
+            # data['advisary_episode_data'].append(advisary.history.copy())
+            # wins = wins + data['environment_episode_data'][-1]['reward'][-1] if data['environment_episode_data'][-1]['reward'][-1] > 0 else wins
+            # losses = losses + 1 if data['environment_episode_data'][-1]['reward'][-1] < 0 else losses
             env.setRecordHistory()
             player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
-            advisary.setRecordHistory(history_dict={'actions':[]})
+            # advisary.setRecordHistory(history_dict={'actions':[]})
             episode_done = True
             #print(np.array2string(env.current_grid_map))
             t = player3.getAction(obs)
@@ -269,12 +270,9 @@ for i in range(episodes):
         if done:
             data['environment_episode_data'].append(env.history.copy())
             data['player_episode_data'].append(player3.history.copy())
-            data['advisary_episode_data'].append(advisary.history.copy())
-            wins = wins + data['environment_episode_data'][-1]['reward'][-1] if data['environment_episode_data'][-1]['reward'][-1] > 0 else wins
-            losses = losses + 1 if data['environment_episode_data'][-1]['reward'][-1] < 0 else losses
             env.setRecordHistory()
             player3.setRecordHistory(history_dict={'actions': [], 'saliences': [], 'stuck': []})
-            advisary.setRecordHistory(history_dict={'actions':[]})
+            # advisary.setRecordHistory(history_dict={'actions':[]})
             episode_done = True
             #print(np.array2string(env.current_grid_map))
             t = player3.getAction(obs)

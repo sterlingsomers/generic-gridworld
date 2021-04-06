@@ -367,22 +367,39 @@ class GenericEnv(gym.Env):
         self.history['reward'] = []
         self.history['done'] = []
 
+        inventory_to_remove = []
+        GM_to_reset = []
+
         for entity in self.entities:
             entity_object = self.entities[entity]
-            if entity >= 10:
-                print("dub")
+            if isinstance(entity_object,InventoryItem):
+                inventory_to_remove.append(entity_object)
+                continue
+            if isinstance(entity_object,InfectionMaster):
+                GM_to_reset.append(entity_object)
             if not config == None:
                 if entity_object.value in config:
                     entity_object.position = 'specific'
                     entity_object.position_coords = config[entity_object.value]
                 self.top_score = config['steps']
 
+            entity_object.reset()
             if entity_object.record_history:
                 entity_object.history['actions'] = []
             if entity_object.display:
                 entity_object.place(position=entity_object.position,position_coords=entity_object.position_coords)
 
-            entity_object.reset()
+
+
+        for item in inventory_to_remove:
+            del self.value_to_objects[item.value]
+            del self.entities[item.value]
+            self.object_values.remove(item.value)
+            del item
+
+        #RESET game masters LAST
+        for GM in GM_to_reset:
+            GM.reset()
         # for object_value in self.object_values:
         #     if object_value <= 1:
         #         continue
