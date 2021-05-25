@@ -39,7 +39,7 @@ run_data = []
 
 
 data = {'environment_episode_data': [], 'player_episode_data': [], 'stuck': [], 'advisary_episode_data': [],
-        'mismatch': 5, 'decay': 0.5, 'noise': 0.0, 'temperature':0.75}
+        'mismatch': 5, 'decay': 0.0, 'noise': 0.0, 'temperature':0.75}
 
 # env = envs.generic_env.GenericEnv(map='small-empty',features=[{'entity_type':'goal','start_number':1,'color':'green','moveTo':'moveToGoal'}])
 env = envs.generic_env.GenericEnv(dims=(10,10))#,features=[{'entity_type':'obstacle','start_number':5,'color':'pink','moveTo':'moveToObstacle'}])
@@ -99,6 +99,9 @@ clock = pygame.time.Clock()
     #while not player3.quit:
 for i in range(number_of_runs):
     player3.memory.clear()
+    player3.memory.learn(goal_distance=1, adversary_distance=1, value=1)
+    player3.memory.learn(value=-1,action=-1)
+    player3.memory.learn(value=1, action=1)
     data = {'environment_episode_data': [], 'player_episode_data': [], 'stuck': [], 'advisary_episode_data': [],
             'mismatch': data['mismatch'], 'decay': data['decay'], 'noise': data['noise'], 'temperature': data['temperature']}
     for i in range(episodes):
@@ -148,6 +151,8 @@ for i in range(number_of_runs):
 
             obs, r, done, info = env.step([])
 
+            if r < 0:
+                player3.should_store = True
 
             obs = PIL.Image.fromarray(obs)
             size = tuple((np.array(obs.size) * size_factor).astype(int))
@@ -179,6 +184,19 @@ for i in range(number_of_runs):
             # pygame.time.delay(100)
             pygame.display.update()
             # clock.tick(100)
+            if player3.should_store:
+                if player3.last_observation.any():
+                    # last_predator = np.where(player3.last_observation == 4)
+                    # last_predator = (int(last_predator[0]), int(last_predator[1]))
+                    # last_action = data['advisary_episode_data'][-1]['actions'][-1]
+                    chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value, player3.env.value_to_objects)
+
+                    if r == 0:
+                        chunk['value'] = 1
+                    else:
+                        chunk['value'] = r
+                    player3.memory.learn(**chunk)
+                    player3.should_store = False
             if done:
 
                 data['environment_episode_data'].append(env.history.copy())
@@ -192,17 +210,16 @@ for i in range(number_of_runs):
                 episode_done = True
                 chunk = {}
                 if player3.last_observation.any():
-                    last_predator = np.where(player3.last_observation == 4)
-                    last_predator = (int(last_predator[0]), int(last_predator[1]))
-                    last_action = data['advisary_episode_data'][-1]['actions'][-1]
+                    # last_predator = np.where(player3.last_observation == 4)
+                    # last_predator = (int(last_predator[0]), int(last_predator[1]))
+                    # last_action = data['advisary_episode_data'][-1]['actions'][-1]
                     chunk = player3.gridmap_to_symbols(player3.last_observation.copy(), player3.value, player3.env.value_to_objects)
-                    for advisary_action in advisary_action_map:
-                        chunk[advisary_action] = int((last_action == advisary_action_map[advisary_action]))
-                    for key in chunk:
-                        if 'distance' in key:
-                            chunk[key] = chunk[key] / player3.max_distance
+
+                    chunk['value'] = r
                 if chunk:
-                    player3.memory.learn(**chunk)
+                    if player3.should_store:
+                        player3.memory.learn(**chunk)
+                        player3.should_store = False
 
                 obs = env.reset()
                 player3.last_observation = np.zeros(player3.env.current_grid_map.shape)
