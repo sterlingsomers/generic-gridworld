@@ -195,8 +195,8 @@ class ACTR(Agent):
         self.decay = decay
         self.memory = self.pyactup.Memory(noise=self.noise,decay=decay,temperature=temperature,threshold=-100.0,mismatch=mismatch_penalty,optimized_learning=False)
         self.pyactup.set_similarity_function(self.angle_similarity, *['goal_rads','advisary_rads'])
-        self.pyactup.set_similarity_function(self.distance_similarity, *['goal_distance','adversary_distance','action'])
-        self.pyactup.set_similarity_function(self.value_similarity, 'value')
+        self.pyactup.set_similarity_function(self.distance_similarity, *['goal_distance','adversary_distance'])
+        self.pyactup.set_similarity_function(self.value_similarity, 'value','action')
         self.multiprocess = multiprocess
         self.processes = processes
         self.data = data
@@ -518,15 +518,13 @@ class ACTR(Agent):
         print(np.array2string(self.env.current_grid_map))
         self.last_observation = self.env.current_grid_map.copy()
         symbolic_obs = self.gridmap_to_symbols(self.env.current_grid_map.copy(),self.value,self.env.value_to_objects)
-        value_estimate = self.memory.blend('value',goal_distance=symbolic_obs['goal_distance'],adversary_distance=symbolic_obs['adversary_distance'])
-        print('VE',value_estimate)
-        if self.should_store == None:
-            self.should_store = True
 
-        #what goal
-        #1 towards, 0
-        goal_estimate = self.memory.blend('action',value=value_estimate)
-        print('GE',goal_estimate)
+        #pick the action plan that maximizes value
+        value_estimates = {}
+        for i in [-1,1]:
+            value_estimates[i] = self.memory.blend('value',goal_distance=symbolic_obs['goal_distance'],adversary_distance=symbolic_obs['adversary_distance'],action=i)
+
+        max_action = max(value_estimates, key=value_estimates.get)
 
 
         ##### an alternate approach

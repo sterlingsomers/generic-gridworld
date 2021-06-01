@@ -99,9 +99,9 @@ clock = pygame.time.Clock()
     #while not player3.quit:
 for i in range(number_of_runs):
     player3.memory.clear()
-    player3.memory.learn(goal_distance=1, adversary_distance=1, value=1)
-    player3.memory.learn(value=-1,action=-1)
-    player3.memory.learn(value=1, action=1)
+    player3.memory.learn(goal_distance=1, adversary_distance=1, action=1, value=1)
+    player3.memory.learn(goal_distance=1, adversary_distance=1, action=-1, value=-1)
+
     data = {'environment_episode_data': [], 'player_episode_data': [], 'stuck': [], 'advisary_episode_data': [],
             'mismatch': data['mismatch'], 'decay': data['decay'], 'noise': data['noise'], 'temperature': data['temperature']}
     for i in range(episodes):
