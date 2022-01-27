@@ -37,9 +37,9 @@ from envs.core_v2 import *
 # from envs.core_v2_before_chase import *
 
 FLAGS = flags.FLAGS
-flags.DEFINE_boolean("training", True, "if should train the model, if false then save only episode score summaries")
+flags.DEFINE_boolean("training", False, "if should train the model, if false then save only episode score summaries")
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
-flags.DEFINE_bool("testing", False, "Whether to render with pygame.")
+flags.DEFINE_bool("testing", True, "Whether to render with pygame.")
 flags.DEFINE_bool("recording", False, "Whether to record with Monitor.")
 flags.DEFINE_float("sleep_time", 0.4, "Time-delay in the demo")
 flags.DEFINE_integer("resolution",8, "Resolution for screen and minimap feature layers.")
